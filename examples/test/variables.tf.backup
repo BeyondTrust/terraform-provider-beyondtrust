@@ -1,0 +1,10 @@
+variable "access_token" {
+  description = "BeyondTrust API access token"
+  type        = string
+  sensitive   = true
+}
+
+variable "site_id" {
+  description = "BeyondTrust site ID (UUID)"
+  type        = string
+}

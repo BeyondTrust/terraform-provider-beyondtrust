@@ -1,0 +1,38 @@
+variable "access_token" {
+  description = "BeyondTrust API access token"
+  type        = string
+  sensitive   = true
+}
+
+variable "site_id" {
+  description = "BeyondTrust site ID (UUID)"
+  type        = string
+}
+
+variable "integration_role_arn" {
+  description = "ARN of the IAM role for SMOP integration in your AWS account"
+  type        = string
+}
+
+variable "external_id" {
+  description = "External ID for the integration role trust relationship"
+  type        = string
+  sensitive   = true
+}
+
+variable "developer_role_arn" {
+  description = "ARN of the IAM role for developer access"
+  type        = string
+}
+
+variable "admin_role_arn" {
+  description = "ARN of the IAM role for admin access"
+  type        = string
+}
+
+variable "admin_external_id" {
+  description = "Optional external ID for admin role"
+  type        = string
+  sensitive   = true
+  default     = null
+}

@@ -1,0 +1,17 @@
+# Example variables for complete.tf
+# Copy this to complete.tfvars and fill in your values
+
+# Provider configuration
+access_token = "your-beyondtrust-access-token"
+site_id      = "your-site-uuid"
+
+# AWS Integration role (created in your AWS account)
+integration_role_arn = "arn:aws:iam::123456789012:role/beyondtrust/btp-account-role-123456789012"
+external_id          = "your-generated-external-id"
+
+# Target roles for dynamic credentials
+developer_role_arn = "arn:aws:iam::123456789012:role/DeveloperRole"
+admin_role_arn     = "arn:aws:iam::123456789012:role/AdminRole"
+
+# Optional: External ID for admin role
+admin_external_id = "optional-admin-external-id"
