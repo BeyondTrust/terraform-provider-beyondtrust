@@ -1,0 +1,138 @@
+name: 'BeyondTrust AWS Dynamic Credentials'
+description: 'Generate temporary AWS credentials from BeyondTrust dynamic secrets using GitHub OIDC'
+branding:
+  icon: 'key'
+  color: 'orange'
+
+inputs:
+  dynamic_secret_path:
+    description: 'Path to the AWS dynamic secret in BeyondTrust (e.g., aws/developer-readonly-creds)'
+    required: true
+  site_id:
+    description: 'BeyondTrust site ID'
+    required: true
+  role:
+    description: 'Custom IDP role name for OIDC authentication (e.g., github-actions-terraform)'
+    required: true
+  aws_region:
+    description: 'AWS region to configure (default: us-east-1)'
+    required: false
+    default: 'us-east-1'
+
+outputs:
+  access_key_id:
+    description: 'AWS Access Key ID'
+    value: ${{ steps.generate-creds.outputs.access_key_id }}
+  lease_id:
+    description: 'BeyondTrust lease ID for the generated credentials'
+    value: ${{ steps.generate-creds.outputs.lease_id }}
+  expiration:
+    description: 'Credential expiration timestamp'
+    value: ${{ steps.generate-creds.outputs.expiration }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Get GitHub OIDC Token
+      id: get-token
+      shell: bash
+      run: |
+        # Request OIDC token from GitHub's token service
+        OIDC_TOKEN=$(curl -s -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+          "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=beyondtrust" | jq -r '.value')
+
+        if [ -z "$OIDC_TOKEN" ] || [ "$OIDC_TOKEN" = "null" ]; then
+          echo "::error::Failed to obtain OIDC token from GitHub"
+          exit 1
+        fi
+
+        echo "::add-mask::$OIDC_TOKEN"
+        echo "oidc_token=$OIDC_TOKEN" >> $GITHUB_OUTPUT
+
+    - name: Generate AWS Dynamic Credentials
+      id: generate-creds
+      shell: bash
+      env:
+        OIDC_TOKEN: ${{ steps.get-token.outputs.oidc_token }}
+        DYNAMIC_SECRET_PATH: ${{ inputs.dynamic_secret_path }}
+        SITE_ID: ${{ inputs.site_id }}
+        ROLE: ${{ inputs.role }}
+        AWS_REGION: ${{ inputs.aws_region }}
+      run: |
+        # Extract folder and name from path (e.g., "aws/developer-readonly-creds")
+        FOLDER=$(dirname "$DYNAMIC_SECRET_PATH")
+        SECRET_NAME=$(basename "$DYNAMIC_SECRET_PATH")
+
+        # Handle root-level secrets (no folder)
+        if [ "$FOLDER" = "." ]; then
+          FOLDER=""
+        fi
+
+        # Build URL with folder query parameter
+        if [ -n "$FOLDER" ]; then
+          URL="https://api.bt-platform.net/secrets/dynamic/${SECRET_NAME}/generate?folder=${FOLDER}"
+        else
+          URL="https://api.bt-platform.net/secrets/dynamic/${SECRET_NAME}/generate"
+        fi
+
+        echo "::notice::Generating AWS credentials from dynamic secret: $DYNAMIC_SECRET_PATH"
+
+        # Call BeyondTrust API to generate dynamic AWS credentials
+        RESPONSE=$(curl -s -w "\n%{http_code}" -X POST \
+          -H "Authorization: Bearer $OIDC_TOKEN" \
+          -H "X-BT-Site-ID: $SITE_ID" \
+          -H "X-BT-Role: $ROLE" \
+          -H "X-BT-Auth-Type: CUSTOM-IDP" \
+          -H "bt-secrets-api-version: 2026-02-16" \
+          "$URL")
+
+        HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
+        BODY=$(echo "$RESPONSE" | sed '$d')
+
+        if [ "$HTTP_CODE" -ne 201 ]; then
+          echo "::error::Failed to generate AWS credentials. HTTP status: $HTTP_CODE"
+          echo "::error::Response: $BODY"
+          exit 1
+        fi
+
+        # Extract AWS credentials from response
+        ACCESS_KEY_ID=$(echo "$BODY" | jq -r '.secret.accessKeyId // .secret.AccessKeyId')
+        SECRET_ACCESS_KEY=$(echo "$BODY" | jq -r '.secret.secretAccessKey // .secret.SecretAccessKey')
+        SESSION_TOKEN=$(echo "$BODY" | jq -r '.secret.sessionToken // .secret.SessionToken')
+        LEASE_ID=$(echo "$BODY" | jq -r '.secret.leaseId // .leaseId')
+        EXPIRATION=$(echo "$BODY" | jq -r '.secret.expiration // .expiration')
+
+        # Validate credentials were returned
+        if [ -z "$ACCESS_KEY_ID" ] || [ "$ACCESS_KEY_ID" = "null" ] || \
+           [ -z "$SECRET_ACCESS_KEY" ] || [ "$SECRET_ACCESS_KEY" = "null" ]; then
+          echo "::error::Failed to extract AWS credentials from response"
+          echo "::error::Response body: $BODY"
+          exit 1
+        fi
+
+        # Mask sensitive values in logs
+        echo "::add-mask::$ACCESS_KEY_ID"
+        echo "::add-mask::$SECRET_ACCESS_KEY"
+        echo "::add-mask::$SESSION_TOKEN"
+        echo "::add-mask::$LEASE_ID"
+
+        # Export AWS credentials as environment variables (AWS SDK/CLI standard)
+        echo "AWS_ACCESS_KEY_ID=$ACCESS_KEY_ID" >> $GITHUB_ENV
+        echo "AWS_SECRET_ACCESS_KEY=$SECRET_ACCESS_KEY" >> $GITHUB_ENV
+
+        if [ -n "$SESSION_TOKEN" ] && [ "$SESSION_TOKEN" != "null" ]; then
+          echo "AWS_SESSION_TOKEN=$SESSION_TOKEN" >> $GITHUB_ENV
+        fi
+
+        echo "AWS_REGION=$AWS_REGION" >> $GITHUB_ENV
+        echo "AWS_DEFAULT_REGION=$AWS_REGION" >> $GITHUB_ENV
+
+        # Set outputs
+        echo "access_key_id=$ACCESS_KEY_ID" >> $GITHUB_OUTPUT
+        echo "lease_id=$LEASE_ID" >> $GITHUB_OUTPUT
+        echo "expiration=$EXPIRATION" >> $GITHUB_OUTPUT
+
+        echo "::notice::✅ AWS credentials successfully generated and configured"
+        echo "::notice::   Lease ID: $LEASE_ID"
+        echo "::notice::   Expires: $EXPIRATION"
+        echo "::notice::   Region: $AWS_REGION"
