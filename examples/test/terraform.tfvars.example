@@ -1,0 +1,4 @@
+# Copy this file to terraform.tfvars and fill in your values
+
+access_token = "your-access-token-here"
+site_id      = "your-site-id-uuid-here"

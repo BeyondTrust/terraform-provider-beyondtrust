@@ -1,0 +1,59 @@
+# Example Terraform Variables File
+# Copy this to terraform.tfvars and fill in your values
+# WARNING: terraform.tfvars is in .gitignore - never commit it!
+
+# ============================================================================
+# BeyondTrust SMOP Configuration
+# ============================================================================
+
+# SMOP API endpoint
+smop_api_url = "https://api.smop.example.com"
+
+# SMOP access token (get from: secrets login, then check config)
+# Or generate an API key in SMOP web console
+smop_access_token = "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9..."
+
+# Site/tenant ID (find in SMOP web console under Settings > Site Information)
+smop_site_id = "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+
+# SMOP bridge account ID
+# Production: 012345678901
+# Development: 109876543210
+smop_bridge_account_id = "012345678901"
+
+# ============================================================================
+# AWS Configuration
+# ============================================================================
+
+# AWS region where IAM roles will be created
+aws_region = "us-east-1"
+
+# ============================================================================
+# Security Configuration
+# ============================================================================
+
+# External ID for SMOP integration role (generate with: openssl rand -base64 32)
+# IMPORTANT: Keep this secret and secure!
+external_id = "your-generated-external-id-here"
+
+# Optional: External ID for admin role (additional security layer)
+admin_external_id = "your-admin-external-id-here"
+
+# ============================================================================
+# Tagging
+# ============================================================================
+
+tags = {
+  ManagedBy    = "Terraform"
+  Environment  = "Production"
+  Team         = "Platform"
+  CostCenter   = "Engineering"
+  Project      = "SMOP-Integration"
+  ContactEmail = "platform-team@example.com"
+}
+
+# ============================================================================
+# Environment
+# ============================================================================
+
+environment = "production"

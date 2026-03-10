@@ -1,0 +1,115 @@
+name: Terraform Plan with BeyondTrust Dynamic AWS Credentials
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:  # Manual trigger for testing
+
+# Required for GitHub OIDC authentication to BeyondTrust
+permissions:
+  id-token: write
+  contents: read
+  pull-requests: write  # For posting plan output as PR comment
+
+env:
+  TERRAFORM_VERSION: '1.10.0'  # Supports ephemeral resources
+  TERRAFORM_MODULE_PATH: 'infrastructure/aws'  # Path to your Terraform module
+
+jobs:
+  terraform-plan:
+    name: Terraform Plan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      # Step 1: Get temporary AWS credentials from BeyondTrust
+      - name: Configure AWS Credentials from BeyondTrust
+        uses: ./beyondtrust-aws-credentials  # Use local action for testing
+        # For production, use: beyondtrust/beyondtrust-aws-credentials@v1
+        with:
+          dynamic_secret_path: 'aws/developer-readonly-creds'
+          site_id: 'YOUR_SITE_ID'
+          role: 'github-actions-terraform'
+          aws_region: 'us-east-1'
+
+      # Step 2: Verify AWS credentials work
+      - name: Verify AWS Credentials
+        run: |
+          echo "Testing AWS credentials..."
+          aws sts get-caller-identity
+          echo "✅ Successfully authenticated to AWS"
+
+      # Step 3: Set up Terraform
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+
+      # Step 4: Initialize Terraform
+      - name: Terraform Init
+        working-directory: ${{ env.TERRAFORM_MODULE_PATH }}
+        run: terraform init
+
+      # Step 5: Validate Terraform configuration
+      - name: Terraform Validate
+        working-directory: ${{ env.TERRAFORM_MODULE_PATH }}
+        run: terraform validate
+
+      # Step 6: Run Terraform Plan
+      - name: Terraform Plan
+        id: plan
+        working-directory: ${{ env.TERRAFORM_MODULE_PATH }}
+        run: |
+          terraform plan -no-color -out=tfplan
+          terraform show -no-color tfplan > plan_output.txt
+        continue-on-error: true
+
+      # Step 7: Post plan output to PR (if running on PR)
+      - name: Post Plan to PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            const planOutput = fs.readFileSync('${{ env.TERRAFORM_MODULE_PATH }}/plan_output.txt', 'utf8');
+
+            const output = `#### Terraform Plan 📋
+            <details><summary>Show Plan</summary>
+
+            \`\`\`terraform
+            ${planOutput}
+            \`\`\`
+
+            </details>
+
+            *Pusher: @${{ github.actor }}, Action: \`${{ github.event_name }}\`*`;
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: output
+            })
+
+      # Step 8: Check for plan errors
+      - name: Terraform Plan Status
+        if: steps.plan.outcome == 'failure'
+        run: |
+          echo "❌ Terraform plan failed"
+          exit 1
+
+      # Step 9: Upload plan artifact
+      - name: Upload Plan Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: terraform-plan
+          path: ${{ env.TERRAFORM_MODULE_PATH }}/tfplan
+          retention-days: 5
+
+      - name: Success Summary
+        run: |
+          echo "✅ Terraform plan completed successfully"
+          echo "📦 Plan artifact uploaded"
+          echo "🔐 AWS credentials will expire at: ${{ steps.configure-aws.outputs.expiration }}"
