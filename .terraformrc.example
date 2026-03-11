@@ -1,0 +1,8 @@
+provider_installation {
+  dev_overrides {
+    "beyondtrust/beyondtrust" = "PATH/TO/REPO/terraform-provider-beyondtrust"
+  }
+
+  # For all other providers, use the default registry
+  direct {}
+}

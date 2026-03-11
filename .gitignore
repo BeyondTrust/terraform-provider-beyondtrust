@@ -46,3 +46,4 @@ crash.*.log
 
 # Generated files
 terraform-provider-beyondtrust
+.terraformrc
