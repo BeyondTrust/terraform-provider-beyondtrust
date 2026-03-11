@@ -1,60 +1,154 @@
-# Testing Strategy
+# Testing Guide
 
-This document outlines the testing approach for the BeyondTrust Terraform provider.
+This document describes how to run tests for the BeyondTrust Terraform Provider.
 
-## Testing Layers
+## Test Structure
 
-### 1. Unit Tests (Go test)
+The provider includes three types of tests:
 
-**Purpose**: Test individual functions and business logic in isolation.
+1. **Unit Tests** - Fast tests that don't require external dependencies
+2. **Acceptance Tests** - End-to-end tests that run against a real BeyondTrust SMOP instance
+3. **Integration Tests** - Tests that verify the provider works with Terraform CLI
 
-**Location**: `*_test.go` files alongside implementation
+## Prerequisites
 
-**Run**: `go test ./...`
+### For Unit Tests
+- Go 1.25 or later
+- No external dependencies required
 
-**Example**:
-```go
-func TestFolderResourceSchema(t *testing.T) {
-    // Test schema validation
-}
+### For Acceptance Tests
+- Go 1.25 or later
+- Access to a BeyondTrust SMOP instance (local or remote)
+- Valid API credentials
 
-func TestClientAuthentication(t *testing.T) {
-    // Test auth logic with mocked HTTP responses
-}
-```
+## Running Tests
 
-**Coverage**:
-- Schema validation
-- Helper functions
-- Client methods with mocked responses
-- Edge cases and error handling
+### Unit Tests Only
 
-### 2. Acceptance Tests (Terraform Native)
+Unit tests are fast and don't require external services:
 
-**Purpose**: Test resources with real API calls. This is the **primary testing method** for Terraform providers.
-
-**Location**: `secrets/resources/*_test.go`
-
-**Run**:
 ```bash
-TF_ACC=1 \
-  BEYONDTRUST_API_URL=https://api.smop.local \
-  BEYONDTRUST_ACCESS_TOKEN=xxx \
-  BEYONDTRUST_SITE_ID=xxx \
-  go test ./secrets/resources -v -timeout 30m
+make test-unit
 ```
 
-**Example**:
+Or directly with go test:
+
+```bash
+go test -v -cover ./internal/... ./secrets/...
+```
+
+### Acceptance Tests
+
+Acceptance tests require a running SMOP instance and proper environment variables.
+
+#### Required Environment Variables
+
+```bash
+export BEYONDTRUST_API_URL="https://api.smop.local"
+export BEYONDTRUST_ACCESS_TOKEN="your-access-token"
+```
+
+#### Optional Environment Variables
+
+```bash
+export BEYONDTRUST_SITE_ID="your-site-uuid"
+export BEYONDTRUST_API_VERSION="2026-02-16"
+export BEYONDTRUST_TEST_AWS_ROLE_ARN="arn:aws:iam::123456789012:role/test-role"
+export BEYONDTRUST_TEST_AWS_ROLE_ARN_2="arn:aws:iam::123456789012:role/test-role-2"
+```
+
+#### Run All Acceptance Tests
+
+```bash
+make test-acc
+```
+
+Or directly with go test:
+
+```bash
+TF_ACC=1 go test -v -timeout=120m ./...
+```
+
+#### Run Specific Test
+
+```bash
+TF_ACC=1 go test -v -timeout=30m -run TestAccFolderResource_basic ./secrets/resources/
+```
+
+### Run All Tests
+
+To run both unit and acceptance tests:
+
+```bash
+make test
+```
+
+## Coverage Reports
+
+### Generate Coverage Report
+
+```bash
+make test-coverage
+```
+
+### Generate HTML Coverage Report
+
+```bash
+make test-coverage-html
+```
+
+This creates a `coverage.html` file you can open in a browser.
+
+## Test Organization
+
+### Unit Tests
+Located alongside the code they test:
+- `internal/client/client_test.go` - Tests for API client
+- `internal/provider/provider_test.go` - Tests for provider configuration
+
+### Acceptance Tests
+Located in the same package as the resources/data sources:
+- `secrets/resources/*_test.go` - Resource acceptance tests
+- `secrets/datasources/*_test.go` - Data source acceptance tests
+- `secrets/ephemeral/*_test.go` - Ephemeral resource acceptance tests
+
+### Test Helpers
+- `internal/acctest/` - Shared test utilities and helpers
+- `*/testing.go` - Package-specific test configuration
+
+## Writing New Tests
+
+### Unit Test Example
+
 ```go
-func TestAccFolder_basic(t *testing.T) {
-    resource.Test(t, resource.TestCase{
+func TestNewClient(t *testing.T) {
+    config := &Config{
+        BaseURL:     "https://api.example.com",
+        AccessToken: "test-token",
+        Timeout:     "30s",
+    }
+
+    client, err := NewClient(config)
+    assert.NoError(t, err)
+    assert.NotNil(t, client)
+}
+```
+
+### Acceptance Test Example
+
+```go
+func TestAccFolderResource_basic(t *testing.T) {
+    folderName := acctest.RandomFolderName()
+
+    resource.ParallelTest(t, resource.TestCase{
         PreCheck:                 func() { testAccPreCheck(t) },
         ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+        CheckDestroy:             testAccCheckFolderDestroy,
         Steps: []resource.TestStep{
             {
-                Config: testAccFolderConfig_basic("test-folder"),
-                Check: resource.ComposeTestCheckFunc(
-                    resource.TestCheckResourceAttr("beyondtrust_secrets_folder.test", "name", "test-folder"),
+                Config: testAccFolderResourceConfig_basic(folderName),
+                Check: resource.ComposeAggregateTestCheckFunc(
+                    resource.TestCheckResourceAttr("beyondtrust_secrets_folder.test", "name", folderName),
                     resource.TestCheckResourceAttrSet("beyondtrust_secrets_folder.test", "id"),
                 ),
             },
@@ -63,180 +157,82 @@ func TestAccFolder_basic(t *testing.T) {
 }
 ```
 
-**Coverage**:
-- Create, Read, Update, Delete operations
-- Import functionality
-- State management
-- Attribute validation
-- Error scenarios
+## Continuous Integration
 
-**Required for**:
-- Provider certification
-- Terraform Registry publication
-- Standard provider development
+Tests run automatically on:
+- Pull requests to main/develop branches
+- Pushes to main/develop branches
 
-### 3. Integration Tests (Terratest)
+See `.github/workflows/test.yml` for CI configuration.
 
-**Purpose**: End-to-end testing with real Terraform execution. Tests complex workflows and cross-resource dependencies.
+### CI Test Matrix
 
-**Location**: `test/integration/*_test.go`
+The CI pipeline runs:
+1. **Unit Tests** - Always runs, no credentials required
+2. **Acceptance Tests** - Only runs when credentials are available (main repo, not forks)
+3. **Linting** - golangci-lint checks
+4. **Documentation** - Validation of Terraform docs
+5. **Build** - Cross-platform build verification
 
-**Run**:
-```bash
-cd test/integration
-go test -v -timeout 30m
-```
+## Test Coverage Goals
 
-**Example**:
-```go
-func TestCompleteAWSIntegration(t *testing.T) {
-    terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
-        TerraformDir: "./fixtures/complete",
-    })
-
-    defer terraform.Destroy(t, terraformOptions)
-    terraform.InitAndApply(t, terraformOptions)
-
-    // Test that credentials can be generated
-    dynamicSecretPath := terraform.Output(t, terraformOptions, "dynamic_secret_path")
-    assert.NotEmpty(t, dynamicSecretPath)
-}
-```
-
-**Coverage**:
-- Complete workflows (folder → integration → dynamic secret)
-- Cross-resource dependencies
-- Real AWS integration with actual credentials
-- Idempotency testing
-- Import/export workflows
-
-**Benefits**:
-- More realistic testing
-- Better error messages
-- Retry logic for eventual consistency
-- Easy validation of complex scenarios
-
-## Testing Matrix
-
-| Test Type | Speed | Cost | Realism | Required | When to Use |
-|-----------|-------|------|---------|----------|-------------|
-| Unit | Fast | Low | Low | Yes | Always, for helper functions |
-| Acceptance | Medium | Medium | High | Yes | Primary resource testing |
-| Integration | Slow | High | Highest | No | Complex workflows, CI/CD |
-
-## Test Naming Conventions
-
-### Unit Tests
-```
-Test<Function>               // TestParseARN
-Test<Function>_<Scenario>    // TestParseARN_Invalid
-```
-
-### Acceptance Tests
-```
-TestAcc<Resource>_<scenario>           // TestAccFolder_basic
-TestAcc<Resource>_<scenario>_<detail>  // TestAccFolder_tags_update
-```
-
-### Integration Tests
-```
-Test<Scenario>                    // TestCompleteAWSIntegration
-Test<Resource><Action>            // TestFolderHierarchy
-```
-
-## CI/CD Pipeline
-
-### Pull Request Checks
-```yaml
-- Lint (golangci-lint)
-- Unit tests (go test ./...)
-- Acceptance tests (selected, fast tests only)
-```
-
-### Nightly Build
-```yaml
-- Full acceptance test suite
-- Integration tests (Terratest)
-- Performance benchmarks
-```
-
-### Release
-```yaml
-- All tests must pass
-- Manual approval required
-```
-
-## Test Data Management
-
-### Naming
-- Use unique identifiers: `terratest-${random_id}`
-- Include test name: `test-folder-basic-${timestamp}`
-- Avoid collisions in shared environments
-
-### Cleanup
-- **Always** use `defer terraform.Destroy()`
-- Tag resources with `managed_by: terratest`
-- Run cleanup scripts periodically
-
-### Credentials
-- **Never** commit credentials
-- Use environment variables
-- Rotate test credentials regularly
-
-## Pre-Commit Checklist
-
-- [ ] Unit tests pass locally
-- [ ] Acceptance tests pass for modified resources
-- [ ] Code is linted (no errors)
-- [ ] Documentation updated
-- [ ] CHANGELOG entry added
-
-## Running Specific Tests
-
-```bash
-# Run unit tests only
-go test ./internal/client
-
-# Run acceptance tests for folder resource
-TF_ACC=1 go test ./secrets/resources -run TestAccFolder
-
-# Run specific acceptance test
-TF_ACC=1 go test ./secrets/resources -run TestAccFolder_basic -v
-
-# Run integration tests with timeout
-cd test/integration && go test -v -timeout 30m
-
-# Run specific integration test
-cd test/integration && go test -run TestFolderBasic -v
-```
+- **Unit Tests**: Aim for 80%+ coverage of core logic
+- **Acceptance Tests**: Cover all resource CRUD operations
+- **Integration Tests**: Verify end-to-end workflows
 
 ## Debugging Tests
 
-### Enable verbose output
+### Verbose Output
+
 ```bash
-TF_ACC=1 TF_LOG=DEBUG go test ./secrets/resources -run TestAccFolder_basic -v
+go test -v -run TestAccFolderResource_basic ./secrets/resources/
 ```
 
-### Run with debugger
+### With Debug Logs
+
 ```bash
-TF_ACC=1 dlv test ./secrets/resources -- -test.run TestAccFolder_basic
+TF_LOG=DEBUG TF_ACC=1 go test -v -run TestAccFolderResource_basic ./secrets/resources/
 ```
 
-### Keep resources for inspection
-Comment out `defer terraform.Destroy()` temporarily (don't commit!)
+### Run Single Test Method
+
+```bash
+TF_ACC=1 go test -v -timeout=30m -run '^TestAccFolderResource_basic$' ./secrets/resources/
+```
+
+## Troubleshooting
+
+### "no tests to run"
+- Ensure test files end with `_test.go`
+- Ensure test functions start with `Test`
+- Check you're in the right directory
+
+### Acceptance tests skipped
+- Set `TF_ACC=1` environment variable
+- Ensure required environment variables are set (check `testAccPreCheck`)
+
+### Tests timeout
+- Increase timeout: `-timeout=120m`
+- Check if SMOP instance is accessible
+- Verify network connectivity
+
+### Import errors
+- Run `go mod tidy`
+- Verify Go version: `go version`
+- Check `go.mod` has correct dependencies
 
 ## Best Practices
 
-1. **Test Isolation**: Each test should be independent
-2. **Fast Feedback**: Unit tests should run in < 1s
-3. **Deterministic**: Tests should not be flaky
-4. **Clear Assertions**: Use descriptive error messages
-5. **Clean Up**: Always destroy test resources
-6. **Parallel Safe**: Use `t.Parallel()` when possible
-7. **Meaningful Names**: Test names should describe the scenario
+1. **Always use test helpers** from `internal/acctest/` for generating random names
+2. **Run tests in parallel** when possible using `resource.ParallelTest`
+3. **Clean up resources** - Implement proper `CheckDestroy` functions
+4. **Use descriptive test names** - Follow pattern `TestAcc<Resource>_<scenario>`
+5. **Test error cases** - Don't just test happy paths
+6. **Keep tests isolated** - Each test should be independent
+7. **Use table-driven tests** for testing multiple scenarios with similar logic
 
-## Resources
+## References
 
-- [Terraform Plugin Testing](https://developer.hashicorp.com/terraform/plugin/testing)
-- [Terratest Documentation](https://terratest.gruntwork.io/)
-- [AWS Provider Testing](https://hashicorp.github.io/terraform-provider-aws/running-and-writing-acceptance-tests/)
+- [Terraform Plugin Testing Framework](https://developer.hashicorp.com/terraform/plugin/framework/acctests)
+- [HashiCorp Testing Guide](https://developer.hashicorp.com/terraform/plugin/testing)
+- [Go Testing Package](https://pkg.go.dev/testing)
