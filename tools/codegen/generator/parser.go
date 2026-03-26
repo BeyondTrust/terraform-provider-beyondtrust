@@ -9,10 +9,10 @@ import (
 
 // OpenAPISpec represents a parsed OpenAPI 3.0 specification
 type OpenAPISpec struct {
-	OpenAPI    string                 `yaml:"openapi"`
-	Info       Info                   `yaml:"info"`
-	Paths      map[string]PathItem    `yaml:"paths"`
-	Components Components             `yaml:"components"`
+	OpenAPI    string              `yaml:"openapi"`
+	Info       Info                `yaml:"info"`
+	Paths      map[string]PathItem `yaml:"paths"`
+	Components Components          `yaml:"components"`
 }
 
 type Info struct {

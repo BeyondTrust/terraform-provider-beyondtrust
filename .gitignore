@@ -35,6 +35,8 @@ go.work.sum
 .terraform.lock.hcl
 crash.log
 crash.*.log
+*.backup
+.backup/
 
 # IDE
 .idea/

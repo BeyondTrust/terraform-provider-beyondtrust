@@ -106,7 +106,7 @@ tf-local-shell: .terraformrc
 	@echo "Generating .terraformrc with provider override..."
 	@echo 'provider_installation {' > .terraformrc
 	@echo '  dev_overrides {' >> .terraformrc
-	@echo '    "beyondtrust/beyondtrust" = "$(PWD)"' >> .terraformrc
+	@echo '    "registry.terraform.io/beyondtrust/beyondtrust" = "$(PWD)"' >> .terraformrc
 	@echo '  }' >> .terraformrc
 	@echo '' >> .terraformrc
 	@echo '  # For all other providers, use the default registry' >> .terraformrc

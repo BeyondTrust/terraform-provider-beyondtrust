@@ -12,7 +12,7 @@ This directory contains a test configuration to validate the BeyondTrust Terrafo
 
 1. Build the provider:
 ```bash
-cd /Users/macole/workspace/terraform-provider-beyondtrust
+# From the repository root
 go build -o terraform-provider-beyondtrust
 ```
 
@@ -20,7 +20,7 @@ go build -o terraform-provider-beyondtrust
 ```hcl
 provider_installation {
   dev_overrides {
-    "beyondtrust/beyondtrust" = "/Users/macole/workspace/terraform-provider-beyondtrust"
+    "beyondtrust/beyondtrust" = "<absolute-path-to-repo>"
   }
 
   # For all other providers, install them directly using their origin provider

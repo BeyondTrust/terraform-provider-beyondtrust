@@ -14,26 +14,26 @@ import (
 
 // Client is the BeyondTrust API client
 type Client struct {
-	BaseURL          string
-	AccessToken      string
-	SiteID           string
-	APIVersion       string // Header version (date-based, e.g., "2026-02-16")
-	APIPathVersion   string // Optional path version (e.g., "v1" or empty string)
-	Role             string // X-BT-Role header value (when set, auth type is always CUSTOM-IDP)
-	HTTPClient       *http.Client
-	csrfToken        string
+	BaseURL        string
+	AccessToken    string
+	SiteID         string
+	APIVersion     string // Header version (date-based, e.g., "2026-02-16")
+	APIPathVersion string // Optional path version (e.g., "v1" or empty string)
+	Role           string // X-BT-Role header value (when set, auth type is always CUSTOM-IDP)
+	HTTPClient     *http.Client
+	csrfToken      string
 }
 
 // Config holds the client configuration
 type Config struct {
-	BaseURL          string
-	AccessToken      string
-	SiteID           string
-	APIVersion       string // Header version (date-based)
-	APIPathVersion   string // Optional path version
-	Role             string // X-BT-Role header value (when set, auth type is always CUSTOM-IDP)
-	Insecure         bool
-	Timeout          string
+	BaseURL        string
+	AccessToken    string
+	SiteID         string
+	APIVersion     string // Header version (date-based)
+	APIPathVersion string // Optional path version
+	Role           string // X-BT-Role header value (when set, auth type is always CUSTOM-IDP)
+	Insecure       bool
+	Timeout        string
 }
 
 // APIError represents an error response from the API

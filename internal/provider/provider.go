@@ -32,14 +32,14 @@ type BeyondTrustProvider struct {
 
 // BeyondTrustProviderModel describes the provider data model.
 type BeyondTrustProviderModel struct {
-	ApiUrl          types.String `tfsdk:"api_url"`
-	AccessToken     types.String `tfsdk:"access_token"`
-	SiteId          types.String `tfsdk:"site_id"`
-	ApiVersion      types.String `tfsdk:"api_version"`       // Header version (date-based)
-	ApiPathVersion  types.String `tfsdk:"api_path_version"`  // Optional path version (e.g., "v1")
-	Role            types.String `tfsdk:"role"`              // X-BT-Role header value (auth type is always CUSTOM-IDP when role is set)
-	Insecure        types.Bool   `tfsdk:"insecure"`
-	Timeout         types.String `tfsdk:"timeout"`
+	ApiUrl         types.String `tfsdk:"api_url"`
+	AccessToken    types.String `tfsdk:"access_token"`
+	SiteId         types.String `tfsdk:"site_id"`
+	ApiVersion     types.String `tfsdk:"api_version"`      // Header version (date-based)
+	ApiPathVersion types.String `tfsdk:"api_path_version"` // Optional path version (e.g., "v1")
+	Role           types.String `tfsdk:"role"`             // X-BT-Role header value (auth type is always CUSTOM-IDP when role is set)
+	Insecure       types.Bool   `tfsdk:"insecure"`
+	Timeout        types.String `tfsdk:"timeout"`
 }
 
 func (p *BeyondTrustProvider) Metadata(ctx context.Context, req provider.MetadataRequest, resp *provider.MetadataResponse) {

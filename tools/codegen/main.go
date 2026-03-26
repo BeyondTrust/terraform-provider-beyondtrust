@@ -31,8 +31,8 @@ var generateCmd = &cobra.Command{
 }
 
 var (
-	specPath    string
-	outputPath  string
+	specPath     string
+	outputPath   string
 	resourceName string
 )
 
