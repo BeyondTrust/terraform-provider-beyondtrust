@@ -119,6 +119,9 @@ func (r *StaticSecretResource) Schema(ctx context.Context, req resource.SchemaRe
 			"created_at": schema.StringAttribute{
 				Description: "The timestamp when the secret was created.",
 				Computed:    true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
 			},
 			"tags": schema.MapAttribute{
 				Description: "Key-value tags for the secret (max 50 tags, max 256 chars per value).",
@@ -253,10 +256,17 @@ func (r *StaticSecretResource) Read(ctx context.Context, req resource.ReadReques
 		return
 	}
 
-	// Update state with metadata (NOT the secret value or secret_wo_version)
+	// Update state with metadata (NOT the secret value)
 	data.ID = types.StringValue(metadataResp.ID)
 	data.CreatedAt = types.StringValue(metadataResp.CreatedAt)
-	// Note: secret_wo_version comes from API version, updated on write operations only
+	data.SecretWoVersion = types.Int64Value(metadataResp.Version)
+
+	// Compute path from name and folder
+	if !data.Folder.IsNull() && data.Folder.ValueString() != "" {
+		data.Path = types.StringValue(fmt.Sprintf("%s/%s", data.Folder.ValueString(), name))
+	} else {
+		data.Path = types.StringValue(name)
+	}
 
 	// Update tags if present in response
 	if len(metadataResp.Tags) > 0 {

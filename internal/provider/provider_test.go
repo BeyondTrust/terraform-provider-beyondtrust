@@ -69,7 +69,9 @@ func TestProvider(t *testing.T) {
 	}
 
 	// Verify provider implements expected interfaces
-	if _, ok := prov.(interface{ Metadata(context.Context, provider.MetadataRequest, *provider.MetadataResponse) }); !ok {
+	if _, ok := prov.(interface {
+		Metadata(context.Context, provider.MetadataRequest, *provider.MetadataResponse)
+	}); !ok {
 		t.Fatal("provider does not implement Metadata method")
 	}
 }

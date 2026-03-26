@@ -5,10 +5,6 @@ terraform {
   required_version = ">= 1.10"
 
   required_providers {
-    beyondtrust = {
-      source = "registry.terraform.io/beyondtrust/beyondtrust"
-      # Note: With dev_overrides in ~/.terraformrc, this uses your local binary
-    }
     aws = {
       source  = "hashicorp/aws"
       version = "~> 5.0"
@@ -23,14 +19,6 @@ terraform {
 # ============================================================================
 # Provider Configuration
 # ============================================================================
-
-provider "beyondtrust" {
-  # Configuration loaded from environment variables:
-  # - BEYONDTRUST_API_URL
-  # - BEYONDTRUST_ACCESS_TOKEN
-  # - BEYONDTRUST_SITE_ID
-  # - BEYONDTRUST_ROLE (optional)
-}
 
 provider "aws" {
   region = var.aws_region
@@ -50,47 +38,6 @@ resource "random_password" "external_id" {
 # Local values for reuse
 locals {
   external_id = random_password.external_id.result
-}
-
-# ============================================================================
-# Step 2: Store External ID in SMOP (Write-Only Pattern)
-# ============================================================================
-
-resource "beyondtrust_secrets_folder" "aws" {
-  name   = "aws"
-  folder = ""
-
-  tags = {
-    purpose    = "AWS Integration"
-    managed_by = "terraform"
-  }
-}
-
-resource "beyondtrust_secrets_static_secret" "external_id" {
-  name   = "integration-external-id"
-  folder = beyondtrust_secrets_folder.aws.path
-
-  # Write-only: not stored in Terraform state
-  secret_wo = {
-    external_id = local.external_id
-  }
-
-  tags = {
-    purpose     = "AWS Integration External ID"
-    managed_by  = "terraform"
-    environment = var.environment
-  }
-}
-
-# ============================================================================
-# Step 3: Read External ID Ephemerally (When Needed)
-# ============================================================================
-
-ephemeral "beyondtrust_secrets_static_secret" "external_id_reader" {
-  depends_on = [beyondtrust_secrets_static_secret.external_id]
-
-  name   = beyondtrust_secrets_static_secret.external_id.name
-  folder = beyondtrust_secrets_static_secret.external_id.folder
 }
 
 # ============================================================================
@@ -223,57 +170,23 @@ resource "aws_iam_role_policy_attachment" "admin" {
 }
 
 # ============================================================================
-# Step 6: Create BeyondTrust AWS Integration
+# BeyondTrust Integration Module
 # ============================================================================
+# WORKFLOW:
+# 1. Init AWS providers:     terraform init -var="skip_beyondtrust=true"
+# 2. Plan/Apply with local:  terraform plan (skip_beyondtrust defaults to false)
 
-resource "beyondtrust_secrets_aws_integration" "main" {
-  name = "production-aws-account"
+module "beyondtrust" {
+  count  = var.skip_beyondtrust ? 0 : 1
+  source = "./modules/beyondtrust-integration"
 
-  role_arn = aws_iam_role.smop_integration.arn
-
-  # External ID is stored in state (required for AWS and BeyondTrust integration)
-  # The write-only secret in BeyondTrust is for retrieval via CLI/API, not for Terraform state management
-  external_id = local.external_id
-}
-
-# ============================================================================
-# Step 7: Create Dynamic Secrets
-# ============================================================================
-
-resource "beyondtrust_secrets_aws_dynamic_secret" "developer_access" {
-  name             = "developer-readonly-creds"
-  folder           = beyondtrust_secrets_folder.aws.path
-  integration_name = beyondtrust_secrets_aws_integration.main.name
-
-  credential_type = "assumed_role"
-  role_arn        = aws_iam_role.developer_readonly.arn
-  ttl             = 3600 # 1 hour
-
-  policy_arns = [
-    "arn:${data.aws_partition.current.partition}:iam::aws:policy/ReadOnlyAccess"
-  ]
-
-  aws_tags = {
-    Environment = var.environment
-    Team        = "Engineering"
-    ManagedBy   = "Terraform"
-  }
-}
-
-resource "beyondtrust_secrets_aws_dynamic_secret" "admin_access" {
-  name             = "admin-creds"
-  folder           = beyondtrust_secrets_folder.aws.path
-  integration_name = beyondtrust_secrets_aws_integration.main.name
-
-  credential_type = "assumed_role"
-  role_arn        = aws_iam_role.admin.arn
-  ttl             = 900 # 15 minutes (short TTL for admin)
-
-  aws_tags = {
-    Environment = var.environment
-    AccessLevel = "High"
-    ManagedBy   = "Terraform"
-  }
+  external_id                = local.external_id
+  integration_name           = "production-aws-account"
+  smop_integration_role_arn  = aws_iam_role.smop_integration.arn
+  developer_role_arn         = aws_iam_role.developer_readonly.arn
+  admin_role_arn             = aws_iam_role.admin.arn
+  developer_policy_arns      = ["arn:${data.aws_partition.current.partition}:iam::aws:policy/ReadOnlyAccess"]
+  environment                = var.environment
 }
 
 # ============================================================================
@@ -287,27 +200,27 @@ output "smop_integration_role_arn" {
 
 output "external_id_version" {
   description = "Version of the external ID secret (safe to output)"
-  value       = beyondtrust_secrets_static_secret.external_id.secret_wo_version
+  value       = try(module.beyondtrust[0].external_id_version, null)
 }
 
 output "external_id_path" {
   description = "Path to external ID secret in SMOP"
-  value       = beyondtrust_secrets_static_secret.external_id.path
+  value       = try(module.beyondtrust[0].external_id_path, null)
 }
 
 output "integration_id" {
   description = "BeyondTrust integration ID"
-  value       = beyondtrust_secrets_aws_integration.main.id
+  value       = try(module.beyondtrust[0].integration_id, null)
 }
 
 output "developer_dynamic_secret_path" {
   description = "Path to developer dynamic secret"
-  value       = beyondtrust_secrets_aws_dynamic_secret.developer_access.path
+  value       = try(module.beyondtrust[0].developer_dynamic_secret_path, null)
 }
 
 output "admin_dynamic_secret_path" {
   description = "Path to admin dynamic secret"
-  value       = beyondtrust_secrets_aws_dynamic_secret.admin_access.path
+  value       = try(module.beyondtrust[0].admin_dynamic_secret_path, null)
 }
 
 output "aws_account_id" {

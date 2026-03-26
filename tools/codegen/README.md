@@ -14,7 +14,7 @@ The code generator reads the OpenAPI spec and generates:
 ### Generate All Resources
 
 ```bash
-cd /Users/macole/workspace/terraform-provider-beyondtrust
+# From the repository root
 make generate
 ```
 
@@ -22,7 +22,7 @@ make generate
 
 ```bash
 go run tools/codegen/main.go generate \
-  --spec /Users/macole/workspace/platform-secrets-manager/schemas/openapi/openapi.yaml \
+  --spec <path-to-openapi-spec> \
   --resource folders \
   --output secrets/resources/folder_resource.go
 ```

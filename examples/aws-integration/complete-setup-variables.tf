@@ -38,3 +38,9 @@ variable "tags" {
     Purpose     = "SMOP-Integration"
   }
 }
+
+variable "skip_beyondtrust" {
+  description = "Skip BeyondTrust resources (use for terraform init)"
+  type        = bool
+  default     = false
+}
