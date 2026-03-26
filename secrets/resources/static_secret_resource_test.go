@@ -25,11 +25,10 @@ func TestAccStaticSecretResource_basic(t *testing.T) {
 				Config: testAccStaticSecretResourceConfig_basic(secretName, secretValue),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("beyondtrust_secrets_static_secret.test", "name", secretName),
-					resource.TestCheckResourceAttr("beyondtrust_secrets_static_secret.test", "value", secretValue),
 					resource.TestCheckResourceAttr("beyondtrust_secrets_static_secret.test", "path", secretName),
 					resource.TestCheckResourceAttrSet("beyondtrust_secrets_static_secret.test", "id"),
 					resource.TestCheckResourceAttrSet("beyondtrust_secrets_static_secret.test", "created_at"),
-					resource.TestCheckResourceAttrSet("beyondtrust_secrets_static_secret.test", "version"),
+					resource.TestCheckResourceAttrSet("beyondtrust_secrets_static_secret.test", "secret_wo_version"),
 				),
 			},
 			// ImportState testing
@@ -37,8 +36,8 @@ func TestAccStaticSecretResource_basic(t *testing.T) {
 				ResourceName:      "beyondtrust_secrets_static_secret.test",
 				ImportState:       true,
 				ImportStateVerify: true,
-				// value is not returned by the API on read
-				ImportStateVerifyIgnore: []string{"value"},
+				// secret_wo is write-only and not returned by the API on read
+				ImportStateVerifyIgnore: []string{"secret_wo"},
 			},
 		},
 	})
@@ -60,7 +59,6 @@ func TestAccStaticSecretResource_inFolder(t *testing.T) {
 					resource.TestCheckResourceAttr("beyondtrust_secrets_static_secret.test", "name", secretName),
 					resource.TestCheckResourceAttr("beyondtrust_secrets_static_secret.test", "folder", folderName),
 					resource.TestCheckResourceAttr("beyondtrust_secrets_static_secret.test", "path", fmt.Sprintf("%s/%s", folderName, secretName)),
-					resource.TestCheckResourceAttr("beyondtrust_secrets_static_secret.test", "value", secretValue),
 					resource.TestCheckResourceAttrSet("beyondtrust_secrets_static_secret.test", "id"),
 				),
 			},
@@ -83,24 +81,21 @@ func TestAccStaticSecretResource_updateValue(t *testing.T) {
 			{
 				Config: testAccStaticSecretResourceConfig_basic(secretName, secretValue1),
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("beyondtrust_secrets_static_secret.test", "value", secretValue1),
-					resource.TestCheckResourceAttr("beyondtrust_secrets_static_secret.test", "version", "1"),
+					resource.TestCheckResourceAttr("beyondtrust_secrets_static_secret.test", "secret_wo_version", "1"),
 				),
 			},
 			// Update value (should create version 2)
 			{
 				Config: testAccStaticSecretResourceConfig_basic(secretName, secretValue2),
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("beyondtrust_secrets_static_secret.test", "value", secretValue2),
-					resource.TestCheckResourceAttr("beyondtrust_secrets_static_secret.test", "version", "2"),
+					resource.TestCheckResourceAttr("beyondtrust_secrets_static_secret.test", "secret_wo_version", "2"),
 				),
 			},
 			// Update value again (should create version 3)
 			{
 				Config: testAccStaticSecretResourceConfig_basic(secretName, secretValue3),
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("beyondtrust_secrets_static_secret.test", "value", secretValue3),
-					resource.TestCheckResourceAttr("beyondtrust_secrets_static_secret.test", "version", "3"),
+					resource.TestCheckResourceAttr("beyondtrust_secrets_static_secret.test", "secret_wo_version", "3"),
 				),
 			},
 		},
@@ -193,8 +188,10 @@ func testAccCheckStaticSecretDestroy(s *terraform.State) error {
 func testAccStaticSecretResourceConfig_basic(name, value string) string {
 	return fmt.Sprintf(`
 resource "beyondtrust_secrets_static_secret" "test" {
-  name  = %[1]q
-  value = %[2]q
+  name = %[1]q
+  secret_wo = {
+    value = %[2]q
+  }
 }
 `, name, value)
 }
@@ -209,7 +206,9 @@ resource "beyondtrust_secrets_folder" "test" {
 resource "beyondtrust_secrets_static_secret" "test" {
   name   = %[2]q
   folder = beyondtrust_secrets_folder.test.path
-  value  = %[3]q
+  secret_wo = {
+    value = %[3]q
+  }
 }
 `, folderName, secretName, value)
 }
@@ -224,9 +223,11 @@ func testAccStaticSecretResourceConfig_withTags(name, value string, tags map[str
 
 	return fmt.Sprintf(`
 resource "beyondtrust_secrets_static_secret" "test" {
-  name  = %[1]q
-  value = %[2]q
-  tags  = %[3]s
+  name = %[1]q
+  secret_wo = {
+    value = %[2]q
+  }
+  tags = %[3]s
 }
 `, name, value, tagsStr)
 }

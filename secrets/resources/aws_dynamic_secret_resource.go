@@ -68,8 +68,8 @@ type AwsDynamicSecretCreateRequest struct {
 
 // AwsDynamicSecretResponse represents the API response for a dynamic secret
 type AwsDynamicSecretResponse struct {
-	Path   string          `json:"path"`
-	Config DynamicSecretConfig `json:"config"`
+	Path     string              `json:"path"`
+	Config   DynamicSecretConfig `json:"config"`
 	Metadata struct {
 		ID        string  `json:"id"`
 		Version   int     `json:"version"`
@@ -94,14 +94,14 @@ type DynamicSecretConfig struct {
 
 // AwsDynamicSecretUpdateRequest represents the API request for updating a dynamic secret
 type AwsDynamicSecretUpdateRequest struct {
-	Type           string              `json:"type"`
-	RoleArn        *string             `json:"roleArn,omitempty"`
-	ExternalId     *string             `json:"externalId,omitempty"`
-	TTL            *int64              `json:"ttl,omitempty"`
-	PolicyArns     *[]string           `json:"policyArns,omitempty"`
-	Policy         *string             `json:"policy,omitempty"`
-	Groups         *[]string           `json:"groups,omitempty"`
-	AwsTags        *map[string]*string `json:"awsTags,omitempty"`
+	Type       string              `json:"type"`
+	RoleArn    *string             `json:"roleArn,omitempty"`
+	ExternalId *string             `json:"externalId,omitempty"`
+	TTL        *int64              `json:"ttl,omitempty"`
+	PolicyArns *[]string           `json:"policyArns,omitempty"`
+	Policy     *string             `json:"policy,omitempty"`
+	Groups     *[]string           `json:"groups,omitempty"`
+	AwsTags    *map[string]*string `json:"awsTags,omitempty"`
 }
 
 func (r *AwsDynamicSecretResource) Metadata(ctx context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {

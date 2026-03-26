@@ -101,10 +101,16 @@ func (r *FolderResource) Schema(ctx context.Context, req resource.SchemaRequest,
 			"created_at": schema.StringAttribute{
 				Description: "The timestamp when the folder was created.",
 				Computed:    true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
 			},
 			"deleted_at": schema.StringAttribute{
 				Description: "The timestamp when the folder was soft-deleted (if applicable).",
 				Computed:    true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
 			},
 			"tags": schema.MapAttribute{
 				Description: "Key-value tags for the folder (max 50 tags, max 256 chars per value).",
@@ -166,7 +172,11 @@ func (r *FolderResource) Create(ctx context.Context, req resource.CreateRequest,
 	// Update the model with response data
 	data.ID = types.StringValue(createResp.ID)
 	data.Path = types.StringValue(createResp.Path)
-	data.CreatedAt = types.StringValue(createResp.Metadata.CreatedAt)
+
+	// Set created_at if provided by API
+	if createResp.Metadata.CreatedAt != "" {
+		data.CreatedAt = types.StringValue(createResp.Metadata.CreatedAt)
+	}
 
 	// DeletedAt should be null for newly created folders
 	data.DeletedAt = types.StringNull()
@@ -368,4 +378,3 @@ func (r *FolderResource) updateTags(ctx context.Context, name string, parentFold
 	// Use PATCH to update tags
 	return r.client.Patch(ctx, apiPath, query, tagsMap)
 }
-

@@ -163,7 +163,6 @@ func TestAccAwsDynamicSecretResource_updateTTL(t *testing.T) {
 	})
 }
 
-
 func testAccCheckAwsDynamicSecretDestroy(s *terraform.State) error {
 	// TODO: Implement actual destroy check by querying the API
 	// For now, we'll just verify the resource is no longer in state
