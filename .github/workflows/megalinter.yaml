@@ -1,0 +1,46 @@
+name: MegaLinter
+
+on:
+    workflow_call:
+        inputs:
+            full:
+                description: "To run a full repository scan or not"
+                required: true
+                type: boolean
+
+permissions: {}
+
+jobs:
+    btsw-linter:
+        name: "btsw:Lint Code Base"
+        runs-on: ubuntu-latest
+        permissions:
+            actions: read
+            contents: read
+            pull-requests: write
+            security-events: write
+
+        steps:
+            - name: Checkout Code
+              uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+            - name: Lint Code Base
+              uses: oxsecurity/megalinter/flavors/documentation@8fbdead70d1409964ab3d5afa885e18ee85388bb # v9.4.0
+              env:
+                  VALIDATE_ALL_CODEBASE: ${{ inputs.full }}
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+            # Upload MegaLinter artifacts
+            - name: Archive production artifacts
+              if: success() || failure()
+              uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+              with:
+                  name: MegaLinter reports
+                  path: |
+                      megalinter-reports
+
+            - name: Upload MegaLinter scan results to GitHub Security tab
+              if: success() || failure()
+              uses: github/codeql-action/upload-sarif@0d579ffd059c29b07949a3cce3983f0780820c98 # v4.32.6
+              with:
+                  sarif_file: "megalinter-reports/megalinter-report.sarif"

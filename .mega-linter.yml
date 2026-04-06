@@ -1,0 +1,55 @@
+# MegaLinter Configuration
+# See https://megalinter.io/configuration/
+
+# Use documentation flavor (lightweight, focused on docs/config files)
+FLAVOR_SUGGESTIONS: false
+
+# Apply fixes automatically (disabled by default, enable if you want auto-fixes)
+APPLY_FIXES: none
+
+# Disable linters that overlap with golangci-lint
+DISABLE_LINTERS:
+  - GO_GOLANGCI_LINT  # We use golangci-lint directly in test.yml
+  - GO_REVIVE         # Covered by golangci-lint
+
+# Enable specific linters for non-Go files
+ENABLE_LINTERS:
+  - BASH_SHELLCHECK
+  - MARKDOWN_MARKDOWNLINT
+  - MARKDOWN_MARKDOWN_LINK_CHECK
+  - TERRAFORM_TFLINT
+  - TERRAFORM_TERRASCAN
+  - YAML_YAMLLINT
+  - JSON_JSONLINT
+  - SPELL_CSPELL
+
+# File exclusions
+FILTER_REGEX_EXCLUDE: |
+  (\.git/|\.terraform/|node_modules/|vendor/|\.vscode/|\.idea/|coverage.*\.out|.*_test\.go)
+
+# Markdown settings
+MARKDOWN_MARKDOWNLINT_CONFIG_FILE: .markdownlint.json
+MARKDOWN_MARKDOWNLINT_DISABLE_ERRORS: false
+
+# Terraform settings
+TERRAFORM_TFLINT_CONFIG_FILE: .tflint.hcl
+
+# YAML settings
+YAML_YAMLLINT_CONFIG_FILE: .yamllint.yml
+
+# Spell checker settings
+SPELL_CSPELL_CONFIG_FILE: .cspell.json
+
+# Disable linters that might be too noisy
+DISABLE:
+  - COPYPASTE  # Can be noisy
+  - SPELL_MISSPELL  # Use cspell instead
+
+# GitHub Status Reporter
+GITHUB_STATUS_REPORTER: true
+
+# Show elapsed time
+SHOW_ELAPSED_TIME: true
+
+# Fail if any linter has errors
+DISABLE_ERRORS: false
