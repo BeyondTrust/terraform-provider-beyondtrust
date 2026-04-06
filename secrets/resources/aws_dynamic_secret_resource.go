@@ -20,8 +20,10 @@ import (
 )
 
 // Ensure provider defined types fully satisfy framework interfaces.
-var _ resource.Resource = &AwsDynamicSecretResource{}
-var _ resource.ResourceWithImportState = &AwsDynamicSecretResource{}
+var (
+	_ resource.Resource                = &AwsDynamicSecretResource{}
+	_ resource.ResourceWithImportState = &AwsDynamicSecretResource{}
+)
 
 func NewAwsDynamicSecretResource() resource.Resource {
 	return &AwsDynamicSecretResource{}
