@@ -40,7 +40,7 @@ jobs:
                       megalinter-reports
 
             - name: Upload MegaLinter scan results to GitHub Security tab
-              if: success() || failure()
+              if: (success() || failure()) && hashFiles('megalinter-reports/megalinter-report.sarif') != ''
               uses: github/codeql-action/upload-sarif@0d579ffd059c29b07949a3cce3983f0780820c98 # v4.32.6
               with:
                   sarif_file: "megalinter-reports/megalinter-report.sarif"
