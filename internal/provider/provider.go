@@ -19,8 +19,10 @@ import (
 )
 
 // Ensure provider defined types fully satisfy framework interfaces.
-var _ provider.Provider = &BeyondTrustProvider{}
-var _ provider.ProviderWithEphemeralResources = &BeyondTrustProvider{}
+var (
+	_ provider.Provider                       = &BeyondTrustProvider{}
+	_ provider.ProviderWithEphemeralResources = &BeyondTrustProvider{}
+)
 
 // BeyondTrustProvider defines the provider implementation.
 type BeyondTrustProvider struct {

@@ -18,8 +18,10 @@ import (
 )
 
 // Ensure provider defined types fully satisfy framework interfaces.
-var _ resource.Resource = &StaticSecretResource{}
-var _ resource.ResourceWithImportState = &StaticSecretResource{}
+var (
+	_ resource.Resource                = &StaticSecretResource{}
+	_ resource.ResourceWithImportState = &StaticSecretResource{}
+)
 
 func NewStaticSecretResource() resource.Resource {
 	return &StaticSecretResource{}

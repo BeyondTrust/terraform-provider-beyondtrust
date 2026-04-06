@@ -17,8 +17,10 @@ import (
 )
 
 // Ensure provider defined types fully satisfy framework interfaces.
-var _ resource.Resource = &AwsIntegrationResource{}
-var _ resource.ResourceWithImportState = &AwsIntegrationResource{}
+var (
+	_ resource.Resource                = &AwsIntegrationResource{}
+	_ resource.ResourceWithImportState = &AwsIntegrationResource{}
+)
 
 func NewAwsIntegrationResource() resource.Resource {
 	return &AwsIntegrationResource{}
