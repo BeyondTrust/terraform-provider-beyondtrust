@@ -40,7 +40,7 @@ docs: generate
 ## docs-validate: Validate documentation
 docs-validate:
 	@echo "Validating documentation..."
-	cd tools && go run github.com/hashicorp/terraform-plugin-docs/cmd/tfplugindocs validate
+	go run github.com/hashicorp/terraform-plugin-docs/cmd/tfplugindocs validate
 
 ## test: Run all tests (unit and acceptance)
 test:
