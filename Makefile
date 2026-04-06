@@ -86,8 +86,15 @@ fmt:
 
 ## lint: Run linters
 lint:
-	@echo "Running linters..."
+	@echo "Running golangci-lint..."
 	golangci-lint run
+
+	@echo "Running gofumpt..."
+	@out="$$(gofumpt -l .)"; \
+	if [ -n "$$out" ]; then \
+		echo "$$out"; \
+		exit 1; \
+	fi
 
 ## tf-local: Export TF_CLI_CONFIG_FILE to use local .terraformrc (run with: eval $(make tf-local))
 tf-local: .terraformrc
