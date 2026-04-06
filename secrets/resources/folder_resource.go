@@ -18,8 +18,10 @@ import (
 )
 
 // Ensure provider defined types fully satisfy framework interfaces.
-var _ resource.Resource = &FolderResource{}
-var _ resource.ResourceWithImportState = &FolderResource{}
+var (
+	_ resource.Resource                = &FolderResource{}
+	_ resource.ResourceWithImportState = &FolderResource{}
+)
 
 func NewFolderResource() resource.Resource {
 	return &FolderResource{}
