@@ -1,0 +1,41 @@
+{
+  "version": "0.2",
+  "language": "en",
+  "words": [
+    "beyondtrust",
+    "golangci",
+    "gofumpt",
+    "tfplugindocs",
+    "goarch",
+    "GOARCH",
+    "gomod",
+    "mvdan",
+    "btsw",
+    "sarif",
+    "SMOP",
+    "testacc",
+    "coverprofile",
+    "covermode",
+    "SHELLCHECK",
+    "TFLINT",
+    "TERRASCAN",
+    "JSONLINT",
+    "tflint",
+    "terraformrc",
+    "amannn",
+    "thollander",
+    "BEYONDTRUST"
+  ],
+  "ignoreWords": [],
+  "ignorePaths": [
+    "node_modules",
+    ".git",
+    "vendor",
+    "*.min.js",
+    "*.min.css",
+    "coverage-*.out",
+    "*.sum",
+    ".terraform",
+    "terraform-provider-*"
+  ]
+}
