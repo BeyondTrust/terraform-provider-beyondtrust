@@ -1,3 +1,4 @@
+#!/bin/bash
 # Import a root-level secret
 terraform import beyondtrust_secrets_static_secret.api_key api-key
 

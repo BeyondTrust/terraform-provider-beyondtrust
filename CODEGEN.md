@@ -38,13 +38,13 @@ make validate-generated
 
 ### Automatic Field Mapping
 
-| OpenAPI Type | Terraform Type |
-|--------------|----------------|
+| OpenAPI Type | Terraform Type  |
+|--------------|-----------------|
 | string       | StringAttribute |
-| integer      | Int64Attribute |
-| boolean      | BoolAttribute |
-| array        | ListAttribute |
-| object       | MapAttribute |
+| integer      | Int64Attribute  |
+| boolean      | BoolAttribute   |
+| array        | ListAttribute   |
+| object       | MapAttribute    |
 
 ### SMOP Pattern Recognition
 

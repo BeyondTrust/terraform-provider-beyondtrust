@@ -1,3 +1,4 @@
+#!/bin/bash
 # Import an AWS integration by name
 terraform import beyondtrust_secrets_aws_integration.production production-aws-account
 

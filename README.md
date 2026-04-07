@@ -10,7 +10,9 @@ The BeyondTrust Terraform provider allows you to manage BeyondTrust resources us
 - [Terraform](https://www.terraform.io/downloads.html) >= 1.10 (for ephemeral resources) or >= 1.0 (for basic functionality)
 - [Go](https://golang.org/doc/install) >= 1.25 (for development)
 
-> **Note**: This provider uses **ephemeral resources** for secure secret handling, which require Terraform 1.10 or later. Ephemeral resources ensure sensitive values are never persisted in state or plan files. See [TERRAFORM_VERSION_REQUIREMENTS.md](TERRAFORM_VERSION_REQUIREMENTS.md) for details on version compatibility and future production considerations (OpenTofu support, backward compatibility strategy).
+> **Note**: This provider uses **ephemeral resources** for secure secret handling, which require Terraform 1.10 or later.
+> Ephemeral resources ensure sensitive values are never persisted in state or plan files.
+> See [TERRAFORM_VERSION_REQUIREMENTS.md](TERRAFORM_VERSION_REQUIREMENTS.md) for details on version compatibility.
 
 ## Using the Provider
 
