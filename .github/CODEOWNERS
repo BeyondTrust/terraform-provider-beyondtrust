@@ -1,0 +1,17 @@
+# BeyondTrust Project Codeowners
+# ---
+# Codeowners are automatically requested for review whenever someone opens a
+# pull request
+# 1. Codeowners must always be teams, never individuals
+# 2. Codeowners must have write permissions for the repository
+# 3. PRs touching any code with a codeowner must be signed off by at least one
+#    person on the codeowner team.
+
+* @beyondtrust/volt
+
+# BeyondTrust Global Codeowners
+# DO NOT MODIFY BELOW THIS LINE
+# ---
+
+/.github/CODEOWNERS @beyondtrust/lumberjacks
+/.github/settings.yml   @beyondtrust/lumberjacks
