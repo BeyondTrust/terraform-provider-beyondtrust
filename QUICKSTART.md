@@ -57,11 +57,11 @@ Download from: <https://www.terraform.io/downloads>
 
 ### Option C: Environment-Specific Endpoints
 
-| Environment | API URL                                 |
+| Environment | API URL                                  |
 |-------------|------------------------------------------|
-| Production  | `https://api.smop.your-company.com`    |
-| Sandbox/Dev | Contact your SMOP administrator         |
-| Self-Hosted | Your custom SMOP API endpoint           |
+| Production  | `https://api.smop.your-company.com`      |
+| Sandbox/Dev | Contact your SMOP administrator          |
+| Self-Hosted | Your custom SMOP API endpoint            |
 
 ## Step 2: Configure Provider
 
