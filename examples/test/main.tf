@@ -19,7 +19,7 @@ resource "beyondtrust_secrets_folder" "test" {
   folder = ""
 
   tags = {
-    managed_by = "terraform"
+    managed_by  = "terraform"
     environment = "test"
   }
 }
