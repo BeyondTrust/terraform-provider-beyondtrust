@@ -13,7 +13,7 @@ Terratest provides:
 
 ## Structure
 
-```
+```text
 test/integration/
 ├── folder_test.go              # Folder resource tests
 ├── aws_integration_test.go     # AWS integration tests
@@ -87,13 +87,13 @@ func TestFolderBasic(t *testing.T) {
 
 ## Test Matrix
 
-| Test | Purpose | Duration |
-|------|---------|----------|
-| `TestFolderBasic` | Create/delete folder | ~30s |
-| `TestFolderWithTags` | Folder with tag management | ~30s |
-| `TestAwsIntegration` | AWS integration CRUD | ~1m |
-| `TestDynamicSecret` | Dynamic secret CRUD | ~1m |
-| `TestCompleteStack` | Full integration + dynamic secret + AWS resources | ~5m |
+| Test                  | Purpose                                            | Duration |
+|-----------------------|----------------------------------------------------|----------|
+| `TestFolderBasic`     | Create/delete folder                               | ~30s     |
+| `TestFolderWithTags`  | Folder with tag management                         | ~30s     |
+| `TestAwsIntegration`  | AWS integration CRUD                               | ~1m      |
+| `TestDynamicSecret`   | Dynamic secret CRUD                                | ~1m      |
+| `TestCompleteStack`   | Full integration + dynamic secret + AWS resources  | ~5m      |
 
 ## Best Practices
 

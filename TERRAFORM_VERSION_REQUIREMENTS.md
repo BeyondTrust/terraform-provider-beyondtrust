@@ -79,7 +79,7 @@ terraform {
 
 ### Current Architecture
 
-```
+```text
 terraform-plugin-framework v1.18.0
 ├── Ephemeral Resources (framework v1.14+, Terraform 1.10+)
 │   └── beyondtrust_secrets_static_secret (ephemeral)
@@ -103,7 +103,7 @@ terraform-plugin-framework v1.18.0
 - Pros: Works with Terraform 1.0+, larger user base
 - Cons: More code to maintain, users on older versions get degraded security
 - Implementation:
-  ```
+  ```text
   - Static secret resource with secret_wo (Terraform 1.0+)
   - Static secret ephemeral resource (Terraform 1.10+)
   - Data source fallback for reading secrets (Terraform 1.0+)
@@ -139,12 +139,12 @@ tofu apply
 
 ### Feature Parity Matrix
 
-| Feature | Terraform 1.10+ | Terraform 1.0-1.9 | OpenTofu |
-|---------|----------------|-------------------|----------|
-| Ephemeral Resources | ✅ Full | ❌ Not Available | ❓ TBD |
-| Write-Only Attributes | ✅ Full | ⚠️ Degraded | ❓ TBD |
-| Standard Resources | ✅ Full | ✅ Full | ❓ TBD |
-| Data Sources | ✅ Full | ✅ Full | ❓ TBD |
+| Feature               | Terraform 1.10+ | Terraform 1.0-1.9 | OpenTofu      |
+|-----------------------|-----------------|-------------------|---------------|
+| Ephemeral Resources   | ✅ Full         | ❌ Not Available  | ❓ TBD        |
+| Write-Only Attributes | ✅ Full         | ⚠️ Degraded       | ❓ TBD        |
+| Standard Resources    | ✅ Full         | ✅ Full           | ❓ TBD        |
+| Data Sources          | ✅ Full         | ✅ Full           | ❓ TBD        |
 
 ## Recommendation for v1.0 Release
 

@@ -4,7 +4,7 @@ This directory contains a test configuration to validate the BeyondTrust Terrafo
 
 ## Prerequisites
 
-1. Running SMOP instance (local dev at https://api.smop.local)
+1. Running SMOP instance (local dev at <https://api.smop.local>)
 2. Valid API access token
 3. Site ID (UUID)
 

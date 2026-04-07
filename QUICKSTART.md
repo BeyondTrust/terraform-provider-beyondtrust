@@ -23,7 +23,7 @@ Check your version:
 terraform version
 ```
 
-Download from: https://www.terraform.io/downloads
+Download from: <https://www.terraform.io/downloads>
 
 ## Step 1: Obtain API Credentials
 
@@ -57,11 +57,11 @@ Download from: https://www.terraform.io/downloads
 
 ### Option C: Environment-Specific Endpoints
 
-| Environment | API URL |
-|-------------|---------|
-| Production  | `https://api.smop.your-company.com` |
-| Sandbox/Dev | Contact your SMOP administrator |
-| Self-Hosted | Your custom SMOP API endpoint |
+| Environment | API URL                                  |
+|-------------|------------------------------------------|
+| Production  | `https://api.smop.your-company.com`      |
+| Sandbox/Dev | Contact your SMOP administrator          |
+| Self-Hosted | Your custom SMOP API endpoint            |
 
 ## Step 2: Configure Provider
 
@@ -249,7 +249,7 @@ curl -H "Authorization: Bearer ${BEYONDTRUST_ACCESS_TOKEN}" \
 **Error**: `Ephemeral resources require Terraform 1.10 or later`
 
 **Solutions**:
-- Upgrade to Terraform 1.10+: https://www.terraform.io/downloads
+- Upgrade to Terraform 1.10+: <https://www.terraform.io/downloads>
 - Or remove ephemeral resource blocks (you can still use regular resources)
 
 ### Resource Not Found on Import
@@ -283,10 +283,10 @@ curl -H "Authorization: Bearer ${BEYONDTRUST_ACCESS_TOKEN}" \
 
 ## Terraform Version Requirements
 
-| Feature | Minimum Terraform Version |
-|---------|---------------------------|
-| Basic Resources (folder, integration, dynamic secrets) | 1.0+ |
-| Ephemeral Resources (read secrets without state) | 1.10+ |
-| All Features | 1.10+ (recommended) |
+| Feature                                                | Minimum Terraform Version |
+|--------------------------------------------------------|---------------------------|
+| Basic Resources (folder, integration, dynamic secrets) | 1.0+                      |
+| Ephemeral Resources (read secrets without state)       | 1.10+                     |
+| All Features                                           | 1.10+ (recommended)       |
 
 See [TERRAFORM_VERSION_REQUIREMENTS.md](TERRAFORM_VERSION_REQUIREMENTS.md) for detailed version compatibility information.
