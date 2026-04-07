@@ -106,7 +106,7 @@ Located alongside the code they test:
 - `internal/client/client_test.go` - Tests for API client
 - `internal/provider/provider_test.go` - Tests for provider configuration
 
-### Acceptance Tests
+### Acceptance Test Files
 Located in the same package as the resources/data sources:
 - `secrets/resources/*_test.go` - Resource acceptance tests
 - `secrets/datasources/*_test.go` - Data source acceptance tests

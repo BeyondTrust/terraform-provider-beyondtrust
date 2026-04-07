@@ -118,24 +118,24 @@ Here's how the new AWS helpers work in tests:
 
 ```go
 func TestAccAwsIntegrationResource_basic(t *testing.T) {
-	// This automatically creates roles and cleans them up
-	roleARN1, roleARN2, externalID, cleanup := acctest.SetupAWSTestRoles(t)
-	defer cleanup()
+    // This automatically creates roles and cleans them up
+    roleARN1, roleARN2, externalID, cleanup := acctest.SetupAWSTestRoles(t)
+    defer cleanup()
 
-	integrationName := acctest.RandomIntegrationName()
+    integrationName := acctest.RandomIntegrationName()
 
-	resource.ParallelTest(t, resource.TestCase{
-		PreCheck:                 func() { acctest.PreCheck(t) },
-		ProtoV6ProviderFactories: acctest.ProtoV6ProviderFactories,
-		Steps: []resource.TestStep{
-			{
-				Config: testAccConfig(integrationName, roleARN1, externalID),
-				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("beyondtrust_secrets_aws_integration.test", "role_arn", roleARN1),
-				),
-			},
-		},
-	})
+    resource.ParallelTest(t, resource.TestCase{
+        PreCheck:                 func() { acctest.PreCheck(t) },
+        ProtoV6ProviderFactories: acctest.ProtoV6ProviderFactories,
+        Steps: []resource.TestStep{
+            {
+                Config: testAccConfig(integrationName, roleARN1, externalID),
+                Check: resource.ComposeAggregateTestCheckFunc(
+                    resource.TestCheckResourceAttr("beyondtrust_secrets_aws_integration.test", "role_arn", roleARN1),
+                ),
+            },
+        },
+    })
 }
 ```
 
@@ -273,14 +273,14 @@ jobs:
 
 ## Environment Variables Reference
 
-| Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `BEYONDTRUST_AWS_ACCOUNT_ID` | Yes | - | BeyondTrust SMOP's AWS account ID |
-| `BEYONDTRUST_TEST_AWS_ROLE_ARN` | No | Auto-created | Pre-created test role ARN |
-| `BEYONDTRUST_TEST_AWS_ROLE_ARN_2` | No | Auto-created | Second test role ARN |
-| `BEYONDTRUST_TEST_AWS_EXTERNAL_ID` | No | Auto-generated | External ID for role trust |
-| `AWS_PROFILE` | No | `default` | AWS CLI profile to use (local dev) |
-| `AWS_REGION` | No | `us-east-1` | AWS region |
+| Variable                           | Required | Default       | Description                           |
+|------------------------------------|----------|---------------|---------------------------------------|
+| `BEYONDTRUST_AWS_ACCOUNT_ID`       | Yes      | -             | BeyondTrust SMOP's AWS account ID     |
+| `BEYONDTRUST_TEST_AWS_ROLE_ARN`    | No       | Auto-created  | Pre-created test role ARN             |
+| `BEYONDTRUST_TEST_AWS_ROLE_ARN_2`  | No       | Auto-created  | Second test role ARN                  |
+| `BEYONDTRUST_TEST_AWS_EXTERNAL_ID` | No       | Auto-generated| External ID for role trust            |
+| `AWS_PROFILE`                      | No       | `default`     | AWS CLI profile to use (local dev)    |
+| `AWS_REGION`                       | No       | `us-east-1`   | AWS region                            |
 
 **Note**: AWS credentials are obtained via:
 - **Preferred**: IAM role via OIDC web identity token (CI/CD)

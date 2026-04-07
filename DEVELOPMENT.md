@@ -98,7 +98,7 @@ unset TF_CLI_CONFIG_FILE
 
 **Important:** When using dev overrides, Terraform will display this warning:
 
-```
+```text
 Warning: Provider development overrides are in effect
 ```
 
@@ -189,7 +189,7 @@ make lint
 
 ## Project Structure
 
-```
+```text
 .
 ├── internal/
 │   ├── client/          # BeyondTrust API client

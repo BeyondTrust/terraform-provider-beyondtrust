@@ -1,3 +1,4 @@
+#!/bin/bash
 # Import a root-level folder
 terraform import beyondtrust_secrets_folder.production production
 

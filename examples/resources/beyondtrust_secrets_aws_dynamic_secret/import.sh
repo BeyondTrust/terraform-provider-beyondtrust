@@ -1,3 +1,4 @@
+#!/bin/bash
 # Import a root-level dynamic secret
 terraform import beyondtrust_secrets_aws_dynamic_secret.developer developer-readonly-creds
 
