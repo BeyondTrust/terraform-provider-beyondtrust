@@ -30,7 +30,7 @@ jobs:
         run: make test-unit
 
       - name: Upload coverage
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v6
         if: always()
         with:
           files: ./coverage-unit.out
@@ -67,7 +67,7 @@ jobs:
           TF_ACC: "1"
 
       - name: Upload coverage
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v6
         if: always()
         with:
           files: ./coverage-acc.out
