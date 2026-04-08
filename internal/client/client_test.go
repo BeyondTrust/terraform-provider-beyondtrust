@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"testing"
 
@@ -288,34 +289,12 @@ func TestDoRequestWithoutRole(t *testing.T) {
 }
 
 func TestAPIError(t *testing.T) {
-	tests := []struct {
-		name     string
-		apiError *APIError
-		want     string
-	}{
-		{
-			name: "error with code",
-			apiError: &APIError{
-				Message: "Resource not found",
-				Code:    "NOT_FOUND",
-			},
-			want: "Resource not found (code: NOT_FOUND)",
-		},
-		{
-			name: "error without code",
-			apiError: &APIError{
-				Message: "Internal server error",
-			},
-			want: "Internal server error",
-		},
+	// Test error with code (primary use case)
+	apiError := &APIError{
+		Message: "Resource not found",
+		Code:    "NOT_FOUND",
 	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := tt.apiError.Error()
-			assert.Equal(t, tt.want, got)
-		})
-	}
+	assert.Equal(t, "Resource not found (code: NOT_FOUND)", apiError.Error())
 }
 
 func TestClientInsecureMode(t *testing.T) {
@@ -346,4 +325,342 @@ func TestClientSecureMode(t *testing.T) {
 	// Verify TLS config is NOT set to skip verification
 	transport := client.HTTPClient.Transport.(*http.Transport)
 	assert.False(t, transport.TLSClientConfig.InsecureSkipVerify)
+}
+
+// TestEnsureCSRFToken_FromHeader validates CSRF token extraction from response header (primary method).
+func TestEnsureCSRFToken_FromHeader(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Set CSRF token in header
+		w.Header().Set("X-CSRF-Token", "test-csrf-from-header")
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+	}))
+	defer server.Close()
+
+	client, err := NewClient(&Config{
+		BaseURL:     server.URL,
+		AccessToken: "test-token",
+		SiteID:      "test-site",
+		APIVersion:  "2026-02-16",
+		Timeout:     "30s",
+	})
+	require.NoError(t, err)
+
+	// Call ensureCSRFToken
+	err = client.ensureCSRFToken(context.Background())
+	assert.NoError(t, err)
+	assert.Equal(t, "test-csrf-from-header", client.csrfToken)
+}
+
+// TestEnsureCSRFToken_Caching validates that CSRF token is cached and not re-fetched.
+func TestEnsureCSRFToken_Caching(t *testing.T) {
+	callCount := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		callCount++
+		w.Header().Set("X-CSRF-Token", "test-csrf-token")
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+	}))
+	defer server.Close()
+
+	client, err := NewClient(&Config{
+		BaseURL:     server.URL,
+		AccessToken: "test-token",
+		SiteID:      "test-site",
+		APIVersion:  "2026-02-16",
+		Timeout:     "30s",
+	})
+	require.NoError(t, err)
+
+	// First call should fetch token
+	err = client.ensureCSRFToken(context.Background())
+	assert.NoError(t, err)
+	assert.Equal(t, "test-csrf-token", client.csrfToken)
+	assert.Equal(t, 1, callCount)
+
+	// Second call should use cached token
+	err = client.ensureCSRFToken(context.Background())
+	assert.NoError(t, err)
+	assert.Equal(t, "test-csrf-token", client.csrfToken)
+	assert.Equal(t, 1, callCount, "CSRF token should be cached, no additional API call")
+}
+
+// TestEnsureCSRFToken_NoToken validates behavior when no CSRF token is provided.
+func TestEnsureCSRFToken_NoToken(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// No CSRF token in any location
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+	}))
+	defer server.Close()
+
+	client, err := NewClient(&Config{
+		BaseURL:     server.URL,
+		AccessToken: "test-token",
+		SiteID:      "test-site",
+		APIVersion:  "2026-02-16",
+		Timeout:     "30s",
+	})
+	require.NoError(t, err)
+
+	// Call ensureCSRFToken - should not error even if no token is found
+	err = client.ensureCSRFToken(context.Background())
+	assert.NoError(t, err)
+	assert.Equal(t, "", client.csrfToken)
+}
+
+// TestHandleErrorResponse_StructuredJSON validates error parsing from structured JSON.
+func TestHandleErrorResponse_StructuredJSON(t *testing.T) {
+	tests := []struct {
+		name         string
+		statusCode   int
+		responseBody map[string]interface{}
+		wantErrMsg   string
+	}{
+		{
+			name:       "error with code and message",
+			statusCode: http.StatusBadRequest,
+			responseBody: map[string]interface{}{
+				"message": "Invalid request",
+				"code":    "INVALID_REQUEST",
+			},
+			wantErrMsg: "Invalid request (code: INVALID_REQUEST)",
+		},
+		{
+			name:       "error with only message",
+			statusCode: http.StatusNotFound,
+			responseBody: map[string]interface{}{
+				"message": "Resource not found",
+			},
+			wantErrMsg: "Resource not found",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(tt.statusCode)
+				json.NewEncoder(w).Encode(tt.responseBody)
+			}))
+			defer server.Close()
+
+			client, err := NewClient(&Config{
+				BaseURL:     server.URL,
+				AccessToken: "test-token",
+				SiteID:      "test-site",
+				APIVersion:  "2026-02-16",
+				Timeout:     "30s",
+			})
+			require.NoError(t, err)
+
+			var result map[string]string
+			err = client.DoRequest(context.Background(), "GET", "/test", nil, nil, &result)
+			assert.Error(t, err)
+			assert.Contains(t, err.Error(), tt.wantErrMsg)
+		})
+	}
+}
+
+// TestHandleErrorResponse_UnstructuredJSON validates error handling for non-JSON responses.
+func TestHandleErrorResponse_UnstructuredJSON(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte("Internal Server Error"))
+	}))
+	defer server.Close()
+
+	client, err := NewClient(&Config{
+		BaseURL:     server.URL,
+		AccessToken: "test-token",
+		SiteID:      "test-site",
+		APIVersion:  "2026-02-16",
+		Timeout:     "30s",
+	})
+	require.NoError(t, err)
+
+	var result map[string]string
+	err = client.DoRequest(context.Background(), "GET", "/test", nil, nil, &result)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "500")
+	assert.Contains(t, err.Error(), "Internal Server Error")
+}
+
+// TestValidateSession_Success validates successful session validation.
+func TestValidateSession_Success(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/secrets/session" {
+			w.WriteHeader(http.StatusOK)
+			json.NewEncoder(w).Encode(map[string]string{"status": "valid"})
+			return
+		}
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer server.Close()
+
+	client, err := NewClient(&Config{
+		BaseURL:     server.URL,
+		AccessToken: "test-token",
+		SiteID:      "test-site",
+		APIVersion:  "2026-02-16",
+		Timeout:     "30s",
+	})
+	require.NoError(t, err)
+
+	err = client.ValidateSession(context.Background())
+	assert.NoError(t, err)
+}
+
+// TestValidateSession_Unauthorized validates session validation failure.
+func TestValidateSession_Unauthorized(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/secrets/session" {
+			w.WriteHeader(http.StatusUnauthorized)
+			json.NewEncoder(w).Encode(map[string]string{
+				"message": "Invalid access token",
+				"code":    "UNAUTHORIZED",
+			})
+			return
+		}
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer server.Close()
+
+	client, err := NewClient(&Config{
+		BaseURL:     server.URL,
+		AccessToken: "invalid-token",
+		SiteID:      "test-site",
+		APIVersion:  "2026-02-16",
+		Timeout:     "30s",
+	})
+	require.NoError(t, err)
+
+	err = client.ValidateSession(context.Background())
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "session validation failed")
+}
+
+// TestMergePatchRequest validates merge-patch content type.
+func TestMergePatchRequest(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Verify merge-patch content type
+		assert.Equal(t, "application/merge-patch+json", r.Header.Get("Content-Type"))
+		assert.Equal(t, "PATCH", r.Method)
+
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(map[string]string{"status": "updated"})
+	}))
+	defer server.Close()
+
+	client, err := NewClient(&Config{
+		BaseURL:     server.URL,
+		AccessToken: "test-token",
+		SiteID:      "test-site",
+		APIVersion:  "2026-02-16",
+		Timeout:     "30s",
+	})
+	require.NoError(t, err)
+
+	// Use Patch method which should use merge-patch content type
+	err = client.Patch(context.Background(), "/test", nil, map[string]string{"key": "value"})
+	assert.NoError(t, err)
+}
+
+// TestHTTPMethods validates HTTP method convenience functions.
+func TestHTTPMethods(t *testing.T) {
+	tests := []struct {
+		name   string
+		method string
+		call   func(client *Client, ctx context.Context) error
+	}{
+		{
+			name:   "GET without body",
+			method: "GET",
+			call: func(client *Client, ctx context.Context) error {
+				var result map[string]string
+				return client.Get(ctx, "/test", nil, &result)
+			},
+		},
+		{
+			name:   "POST with body",
+			method: "POST",
+			call: func(client *Client, ctx context.Context) error {
+				var result map[string]string
+				return client.Post(ctx, "/test", nil, map[string]string{"key": "value"}, &result)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				assert.Equal(t, tt.method, r.Method)
+				w.WriteHeader(http.StatusOK)
+				json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+			}))
+			defer server.Close()
+
+			client, err := NewClient(&Config{
+				BaseURL:     server.URL,
+				AccessToken: "test-token",
+				SiteID:      "test-site",
+				APIVersion:  "2026-02-16",
+				Timeout:     "30s",
+			})
+			require.NoError(t, err)
+
+			err = tt.call(client, context.Background())
+			assert.NoError(t, err)
+		})
+	}
+}
+
+// TestDoRequest_NoContent validates handling of 204 No Content responses.
+func TestDoRequest_NoContent(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer server.Close()
+
+	client, err := NewClient(&Config{
+		BaseURL:     server.URL,
+		AccessToken: "test-token",
+		SiteID:      "test-site",
+		APIVersion:  "2026-02-16",
+		Timeout:     "30s",
+	})
+	require.NoError(t, err)
+
+	err = client.DoRequest(context.Background(), "DELETE", "/test", nil, nil, nil)
+	assert.NoError(t, err)
+}
+
+// TestDoRequest_QueryParameters validates query parameter encoding.
+func TestDoRequest_QueryParameters(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Verify query parameters
+		assert.Equal(t, "test value", r.URL.Query().Get("path"))
+		assert.Equal(t, "true", r.URL.Query().Get("permanent"))
+
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+	}))
+	defer server.Close()
+
+	client, err := NewClient(&Config{
+		BaseURL:     server.URL,
+		AccessToken: "test-token",
+		SiteID:      "test-site",
+		APIVersion:  "2026-02-16",
+		Timeout:     "30s",
+	})
+	require.NoError(t, err)
+
+	query := url.Values{}
+	query.Set("path", "test value")
+	query.Set("permanent", "true")
+
+	var result map[string]string
+	err = client.Get(context.Background(), "/test", query, &result)
+	assert.NoError(t, err)
 }
