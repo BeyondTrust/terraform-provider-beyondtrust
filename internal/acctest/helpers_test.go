@@ -34,9 +34,9 @@ func TestRandomGeneration(t *testing.T) {
 // TestRandomNaming validates resource name generation patterns.
 func TestRandomNaming(t *testing.T) {
 	tests := []struct {
-		name     string
-		fn       func() string
-		wantPfx  string
+		name      string
+		fn        func() string
+		wantPfx   string
 		suffixLen int
 	}{
 		{
