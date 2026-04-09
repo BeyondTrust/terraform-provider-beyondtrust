@@ -51,7 +51,7 @@ test:
 ## test-unit: Run unit tests only (excludes acceptance tests)
 test-unit:
 	@echo "Running unit tests..."
-	go test -v -cover -timeout=120s -parallel=10 -coverprofile=coverage-unit.out -covermode=atomic ./internal/client
+	go test -v -cover -timeout=120s -parallel=10 -coverprofile=coverage-unit.out -covermode=atomic ./internal/...
 
 ## test-acc: Run acceptance tests (requires SMOP instance)
 test-acc:
