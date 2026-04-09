@@ -25,7 +25,7 @@ A Terraform provider for BeyondTrust's Secrets Manager Operations Platform (SMOP
 
 ### Project Structure
 
-```
+```text
 terraform-provider-beyondtrust/
 ├── main.go                          # Provider entry point
 ├── internal/
@@ -68,7 +68,7 @@ terraform-provider-beyondtrust/
 
 ### Layered Architecture
 
-```
+```text
 main.go
   ↓
 internal/provider/provider.go
@@ -154,7 +154,7 @@ make install-git-hooks   # Runs pre-commit-quick on every commit
 ### Essential Commands
 
 | Command | Purpose | Time |
-|---------|---------|------|
+| ------- | ------- | ---- |
 | `make build` | Build provider binary | ~2s |
 | `make install` | Install to ~/.terraform.d/plugins/ | ~3s |
 | `make tf-local-shell` | Start shell with local provider override | instant |
@@ -645,7 +645,7 @@ resource "beyondtrust_example" "test" {
 - **CSRF/Session endpoint**: Backend `/session` endpoint requires admin permissions (blocks CSRF protection)
 - **Missing APIs**: OIDC trust and Policy APIs not yet available from backend
 
-### Testing
+### Test Coverage
 
 - **Unit coverage**: Current 68.1% (target: 80%+)
   - Client: 86.4% ✅

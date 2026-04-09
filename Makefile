@@ -198,7 +198,7 @@ docs: generate
 ## docs-validate: Validate documentation
 docs-validate:
 	@echo "Validating documentation..."
-	@go run github.com/hashicorp/terraform-plugin-docs/cmd/tfplugindocs validate
+	@tfplugindocs validate
 
 # ==========================================
 # Pre-Commit Targets
