@@ -39,6 +39,8 @@ YAML_YAMLLINT_CONFIG_FILE: .yamllint.yml
 
 # Spell checker settings
 SPELL_CSPELL_CONFIG_FILE: .cspell.json
+SPELL_CSPELL_FILE_EXTENSIONS:
+  - .md
 
 # Disable linters that might be too noisy
 DISABLE:
