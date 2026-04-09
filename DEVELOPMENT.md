@@ -14,14 +14,24 @@ This guide explains how to develop and test the BeyondTrust Terraform provider l
 # Build and install the provider locally
 make install
 
-# Run unit tests
-make test-unit
+# Run pre-commit checks (recommended before pushing)
+make pre-commit        # Full checks (~8s)
+make pre-commit-quick  # Fast checks for iteration (~4s)
 
-# Format and lint code
-make fmt lint
+# Run full CI simulation before opening PR
+make ci-local          # (~12s)
+```
 
-# Generate documentation
-make generate
+### First Time Setup
+
+Install required development tools:
+```bash
+make install-tools
+```
+
+Optional: Install git hooks for automatic pre-commit checks:
+```bash
+make install-git-hooks
 ```
 
 ## Local Development with Terraform
@@ -109,13 +119,87 @@ This is expected and confirms your local build is being used.
 When making changes:
 
 1. Edit the provider code
-2. Rebuild: `make build`
-3. Re-run Terraform (no need to run `terraform init` again unless you change provider schema)
+2. During rapid iteration: `make pre-commit-quick` (~4s)
+3. Rebuild: `make build`
+4. Re-run Terraform (no need to run `terraform init` again unless you change provider schema)
    ```bash
    terraform plan
    ```
 
 The dev override automatically picks up your newly built binary.
+
+### Pre-Commit Workflow
+
+Before committing or pushing code:
+
+**During development (fast iteration):**
+```bash
+make pre-commit-quick  # Runs: fmt, lint, tests, tf-fmt-check (~4s)
+```
+
+**Before committing:**
+```bash
+make pre-commit  # Full checks including build, docs, and validation (~8s)
+```
+
+**Before opening a PR:**
+```bash
+make ci-local  # Full CI simulation with clean workspace (~12s)
+```
+
+These commands catch ~95% of CI failures locally, saving you from the push-wait-fix cycle.
+
+#### What Each Target Does
+
+- **`pre-commit-quick`** - Fast checks for rapid iteration:
+  - Format code (gofmt + gofumpt)
+  - Run linters (golangci-lint + gofumpt check)
+  - Run unit tests
+  - Check Terraform formatting
+
+- **`pre-commit`** - Comprehensive pre-commit checks:
+  - All `pre-commit-quick` checks
+  - Build provider binary
+  - Generate documentation
+  - Validate documentation
+  - Verify go.mod/go.sum are clean
+
+- **`ci-local`** - Full CI simulation:
+  - Clean workspace
+  - All `pre-commit` checks
+  - Verify no uncommitted changes after generation
+
+#### Tool Installation
+
+Install all required development tools with correct versions:
+
+```bash
+make install-tools
+```
+
+This installs:
+- golangci-lint v2.11.4
+- gofumpt v0.8.0
+- tfplugindocs (latest)
+
+Verify tools are installed:
+```bash
+make check-tools
+```
+
+#### Git Hooks (Optional)
+
+Auto-run checks on every commit:
+
+```bash
+make install-git-hooks
+```
+
+This installs a pre-commit hook that runs `make pre-commit-quick`. To skip the hook temporarily:
+
+```bash
+git commit --no-verify
+```
 
 ### Disabling Local Provider
 
@@ -226,12 +310,13 @@ If Terraform is using the registry version instead of your local build:
 
 ## Best Practices
 
-1. **Always run tests** before committing: `make test-unit`
-2. **Format code** before committing: `make fmt`
-3. **Run linters** to catch issues: `make lint`
-4. **Update documentation** if you change the schema: `make generate`
-5. **Use separate shells** for development vs normal work
-6. **Clean up** when done: `exit` or `unset TF_CLI_CONFIG_FILE`
+1. **Run pre-commit checks** before pushing: `make pre-commit`
+2. **Use quick checks** during iteration: `make pre-commit-quick`
+3. **Run CI simulation** before opening PR: `make ci-local`
+4. **Install git hooks** for automatic checking: `make install-git-hooks`
+5. **Update documentation** if you change the schema: `make generate`
+6. **Use separate shells** for development vs normal work
+7. **Clean up** when done: `exit` or `unset TF_CLI_CONFIG_FILE`
 
 ## CI/CD
 
