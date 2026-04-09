@@ -60,9 +60,26 @@ See the [examples](./examples/) directory for complete examples:
 
 ## Development
 
+### Quick Start
+
+Before committing or pushing code, run local checks to catch issues:
+
+```bash
+make pre-commit        # Full checks (~8s)
+make pre-commit-quick  # Fast checks (~4s)
+make ci-local         # CI simulation (~12s)
+```
+
+Install git hook for automatic checks (optional):
+```bash
+make install-git-hooks
+```
+
 ### Building the Provider
 
 ```bash
+make build
+# or
 go build -o terraform-provider-beyondtrust
 ```
 
@@ -70,9 +87,13 @@ go build -o terraform-provider-beyondtrust
 
 ```bash
 # Run unit tests
+make test-unit
+# or
 go test ./...
 
 # Run acceptance tests (requires SMOP instance)
+make test-acc
+# or
 TF_ACC=1 \
   BEYONDTRUST_API_URL=https://api.smop.local \
   BEYONDTRUST_ACCESS_TOKEN=xxx \
@@ -84,20 +105,17 @@ TF_ACC=1 \
 
 1. Build the provider:
 ```bash
-go build -o terraform-provider-beyondtrust
+make build
 ```
 
-2. Create `~/.terraformrc` with local provider override:
-```hcl
-provider_installation {
-  dev_overrides {
-    "beyondtrust/beyondtrust" = "/Users/yourusername/workspace/terraform-provider-beyondtrust"
-  }
-  direct {}
-}
+2. Start a shell with local provider override:
+```bash
+make tf-local-shell
 ```
 
 3. Run Terraform commands in your test configuration directory.
+
+For more details, see [DEVELOPMENT.md](DEVELOPMENT.md).
 
 ## Contributing
 
