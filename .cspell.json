@@ -11,7 +11,6 @@
         "megalinter-reports"
     ],
     "words": [
-        "GOPATH",
         "Unsetenv",
         "httptest",
         "planmodifier",
@@ -26,6 +25,21 @@
         "tfplugindocs",
         "tfsdk",
         "SMOP",
-        "CSRF"
+        "CSRF",
+        "codegen",
+        "CODEGEN",
+        "terraformrc",
+        "creds",
+        "CREDS",
+        "jsonencode",
+        "tfvars",
+        "uuidgen",
+        "Terratest",
+        "terratest",
+        "stretchr",
+        "Getenv",
+        "goreleaser",
+        "stringdefault",
+        "tflog"
     ]
 }

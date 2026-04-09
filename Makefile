@@ -5,7 +5,7 @@
 # ==========================================
 
 .PHONY: help build install test test-unit test-acc testacc test-coverage test-coverage-html clean fmt lint generate docs docs-validate tf-local tf-local-shell default
-.PHONY: pre-commit pre-commit-quick ci-local check-tools install-tools gofumpt-fix tf-fmt-check tf-fmt-fix go-mod-tidy check-uncommitted install-git-hooks
+.PHONY: pre-commit pre-commit-quick ci-local check-tools install-tools gofumpt-fix tf-fmt-check tf-fmt-fix spell-check go-mod-tidy check-uncommitted install-git-hooks
 
 BINARY_NAME := terraform-provider-beyondtrust
 VERSION := dev
@@ -30,9 +30,9 @@ help:
 	@echo "BeyondTrust Terraform Provider - Make Targets"
 	@echo ""
 	@echo "Pre-Commit Targets (Run before committing):"
-	@echo "  pre-commit        - Full pre-commit checks (~8s)"
-	@echo "  pre-commit-quick  - Fast checks for iteration (~4s)"
-	@echo "  ci-local          - Full CI simulation (~12s)"
+	@echo "  pre-commit        - Full pre-commit checks (~9s)"
+	@echo "  pre-commit-quick  - Fast checks for iteration (~5s)"
+	@echo "  ci-local          - Full CI simulation (~13s)"
 	@echo ""
 	@echo "Build and Installation:"
 	@echo "  build             - Build provider binary"
@@ -46,6 +46,7 @@ help:
 	@echo "  lint              - Run golangci-lint and gofumpt check"
 	@echo "  tf-fmt-check      - Check Terraform formatting in examples/"
 	@echo "  tf-fmt-fix        - Fix Terraform formatting in examples/"
+	@echo "  spell-check       - Check spelling in documentation files"
 	@echo ""
 	@echo "Testing:"
 	@echo "  test              - Run all tests (unit + acceptance)"
@@ -148,6 +149,11 @@ tf-fmt-fix:
 	@terraform fmt -recursive examples/
 	@echo "✅ Terraform formatting complete"
 
+## spell-check: Check spelling in documentation files
+spell-check:
+	@echo "Checking spelling..."
+	@npx --yes --quiet cspell --no-progress "**/*.md" || (echo "❌ Spelling errors found. Add unknown technical terms to .cspell.json" && exit 1)
+
 # ==========================================
 # Testing
 # ==========================================
@@ -245,17 +251,22 @@ pre-commit: check-tools
 	@echo "✅ Docs validation complete"
 	@echo ""
 
-	@echo "Step 8/10: Checking Terraform formatting..."
+	@echo "Step 8/11: Checking Terraform formatting..."
 	@$(MAKE) --no-print-directory tf-fmt-check || (echo "❌ Terraform format check failed. Run 'make tf-fmt-fix' to fix." && exit 1)
 	@echo "✅ Terraform format check complete"
 	@echo ""
 
-	@echo "Step 9/10: Tidying go.mod..."
+	@echo "Step 9/11: Checking spelling..."
+	@$(MAKE) --no-print-directory spell-check || (echo "❌ Spelling check failed. Add technical terms to .cspell.json" && exit 1)
+	@echo "✅ Spelling check complete"
+	@echo ""
+
+	@echo "Step 10/11: Tidying go.mod..."
 	@$(MAKE) --no-print-directory go-mod-tidy || (echo "❌ go mod tidy failed" && exit 1)
 	@echo "✅ go.mod tidy complete"
 	@echo ""
 
-	@echo "Step 10/10: Final verification..."
+	@echo "Step 11/11: Final verification..."
 	@echo "✅ Final checks complete"
 	@echo ""
 
@@ -285,9 +296,14 @@ pre-commit-quick:
 	@echo "✅ Tests complete"
 	@echo ""
 
-	@echo "Step 4/4: Checking Terraform formatting..."
+	@echo "Step 4/5: Checking Terraform formatting..."
 	@$(MAKE) --no-print-directory tf-fmt-check || (echo "❌ Terraform format check failed. Run 'make tf-fmt-fix' to fix." && exit 1)
 	@echo "✅ Terraform format check complete"
+	@echo ""
+
+	@echo "Step 5/5: Checking spelling..."
+	@$(MAKE) --no-print-directory spell-check || (echo "❌ Spelling check failed. Add technical terms to .cspell.json" && exit 1)
+	@echo "✅ Spelling check complete"
 	@echo ""
 
 	@echo "=================================================="
