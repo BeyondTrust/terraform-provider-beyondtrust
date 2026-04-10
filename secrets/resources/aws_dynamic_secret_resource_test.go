@@ -1,287 +1,300 @@
-package resources_test
+package resources
 
 import (
-	"fmt"
 	"testing"
 
-	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
-	"github.com/hashicorp/terraform-plugin-testing/terraform"
-
-	"github.com/beyondtrust/terraform-provider-beyondtrust/internal/acctest"
-	_ "github.com/beyondtrust/terraform-provider-beyondtrust/internal/provider" // Import to trigger init()
+	"github.com/stretchr/testify/assert"
 )
 
-func TestAccAwsDynamicSecretResource_basic(t *testing.T) {
-	integrationName := acctest.RandomIntegrationName()
-	dynamicSecretName := acctest.RandomDynamicSecretName()
-	roleArn := getTestRoleArn(t)
-	targetRoleArn := getTestTargetRoleArn(t)
-	externalId := acctest.RandomString(32)
+// This file contains AWS Dynamic Secret-specific unit tests.
+// Shared helper tests are in resource_helpers_test.go
 
-	resource.ParallelTest(t, resource.TestCase{
-		PreCheck:                 func() { acctest.PreCheck(t); acctest.PreCheckAWS(t) },
-		ProtoV6ProviderFactories: acctest.ProtoV6ProviderFactories,
-		CheckDestroy:             testAccCheckAwsDynamicSecretDestroy,
-		Steps: []resource.TestStep{
-			// Create and Read testing
-			{
-				Config: testAccAwsDynamicSecretResourceConfig_basic(integrationName, dynamicSecretName, roleArn, targetRoleArn, externalId),
-				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("beyondtrust_secrets_aws_dynamic_secret.test", "name", dynamicSecretName),
-					resource.TestCheckResourceAttr("beyondtrust_secrets_aws_dynamic_secret.test", "integration_name", integrationName),
-					resource.TestCheckResourceAttr("beyondtrust_secrets_aws_dynamic_secret.test", "credential_type", "assumed_role"),
-					resource.TestCheckResourceAttr("beyondtrust_secrets_aws_dynamic_secret.test", "role_arn", targetRoleArn),
-					resource.TestCheckResourceAttr("beyondtrust_secrets_aws_dynamic_secret.test", "ttl", "3600"),
-					resource.TestCheckResourceAttr("beyondtrust_secrets_aws_dynamic_secret.test", "path", dynamicSecretName),
-					resource.TestCheckResourceAttrSet("beyondtrust_secrets_aws_dynamic_secret.test", "id"),
-					resource.TestCheckResourceAttrSet("beyondtrust_secrets_aws_dynamic_secret.test", "integration_id"),
-					resource.TestCheckResourceAttrSet("beyondtrust_secrets_aws_dynamic_secret.test", "created_at"),
-				),
-			},
-			// ImportState testing
-			{
-				ResourceName:      "beyondtrust_secrets_aws_dynamic_secret.test",
-				ImportState:       true,
-				ImportStateVerify: true,
-				// external_id is sensitive and not returned by the API
-				ImportStateVerifyIgnore: []string{"external_id"},
-			},
+// TestValidateAwsAssumedRoleTTL tests TTL validation for assumed_role credentials
+// This is AWS-SPECIFIC and CRITICAL for security/compliance (wrong TTL = security violation)
+func TestValidateAwsAssumedRoleTTL(t *testing.T) {
+	tests := []struct {
+		name        string
+		ttl         int64
+		isValid     bool
+		description string
+	}{
+		{
+			name:        "valid - minimum TTL (900 seconds = 15 min)",
+			ttl:         900,
+			isValid:     true,
+			description: "Minimum TTL of 900 seconds should be valid",
 		},
-	})
-}
-
-func TestAccAwsDynamicSecretResource_inFolder(t *testing.T) {
-	folderName := acctest.RandomFolderName()
-	integrationName := acctest.RandomIntegrationName()
-	dynamicSecretName := acctest.RandomDynamicSecretName()
-	roleArn := getTestRoleArn(t)
-	targetRoleArn := getTestTargetRoleArn(t)
-	externalId := acctest.RandomString(32)
-
-	resource.ParallelTest(t, resource.TestCase{
-		PreCheck:                 func() { acctest.PreCheck(t); acctest.PreCheckAWS(t) },
-		ProtoV6ProviderFactories: acctest.ProtoV6ProviderFactories,
-		CheckDestroy:             testAccCheckAwsDynamicSecretDestroy,
-		Steps: []resource.TestStep{
-			{
-				Config: testAccAwsDynamicSecretResourceConfig_inFolder(folderName, integrationName, dynamicSecretName, roleArn, targetRoleArn, externalId),
-				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("beyondtrust_secrets_aws_dynamic_secret.test", "name", dynamicSecretName),
-					resource.TestCheckResourceAttr("beyondtrust_secrets_aws_dynamic_secret.test", "folder", folderName),
-					resource.TestCheckResourceAttr("beyondtrust_secrets_aws_dynamic_secret.test", "path", fmt.Sprintf("%s/%s", folderName, dynamicSecretName)),
-					resource.TestCheckResourceAttrSet("beyondtrust_secrets_aws_dynamic_secret.test", "id"),
-				),
-			},
+		{
+			name:        "valid - maximum TTL (43200 seconds = 12 hours)",
+			ttl:         43200,
+			isValid:     true,
+			description: "Maximum TTL of 43200 seconds should be valid",
 		},
-	})
-}
-
-func TestAccAwsDynamicSecretResource_withPolicyArns(t *testing.T) {
-	integrationName := acctest.RandomIntegrationName()
-	dynamicSecretName := acctest.RandomDynamicSecretName()
-	roleArn := getTestRoleArn(t)
-	targetRoleArn := getTestTargetRoleArn(t)
-	externalId := acctest.RandomString(32)
-
-	resource.ParallelTest(t, resource.TestCase{
-		PreCheck:                 func() { acctest.PreCheck(t); acctest.PreCheckAWS(t) },
-		ProtoV6ProviderFactories: acctest.ProtoV6ProviderFactories,
-		CheckDestroy:             testAccCheckAwsDynamicSecretDestroy,
-		Steps: []resource.TestStep{
-			{
-				Config: testAccAwsDynamicSecretResourceConfig_withPolicyArns(integrationName, dynamicSecretName, roleArn, targetRoleArn, externalId),
-				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("beyondtrust_secrets_aws_dynamic_secret.test", "policy_arns.#", "2"),
-					resource.TestCheckResourceAttr("beyondtrust_secrets_aws_dynamic_secret.test", "policy_arns.0", "arn:aws:iam::aws:policy/ReadOnlyAccess"),
-					resource.TestCheckResourceAttr("beyondtrust_secrets_aws_dynamic_secret.test", "policy_arns.1", "arn:aws:iam::aws:policy/SecurityAudit"),
-				),
-			},
+		{
+			name:        "valid - middle range (3600 seconds = 1 hour)",
+			ttl:         3600,
+			isValid:     true,
+			description: "TTL of 3600 seconds should be valid",
 		},
-	})
-}
-
-func TestAccAwsDynamicSecretResource_withInlinePolicy(t *testing.T) {
-	integrationName := acctest.RandomIntegrationName()
-	dynamicSecretName := acctest.RandomDynamicSecretName()
-	roleArn := getTestRoleArn(t)
-	targetRoleArn := getTestTargetRoleArn(t)
-	externalId := acctest.RandomString(32)
-
-	inlinePolicy := `{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Effect": "Allow",
-      "Action": "s3:ListBucket",
-      "Resource": "arn:aws:s3:::test-bucket"
-    }
-  ]
-}`
-
-	resource.ParallelTest(t, resource.TestCase{
-		PreCheck:                 func() { acctest.PreCheck(t); acctest.PreCheckAWS(t) },
-		ProtoV6ProviderFactories: acctest.ProtoV6ProviderFactories,
-		CheckDestroy:             testAccCheckAwsDynamicSecretDestroy,
-		Steps: []resource.TestStep{
-			{
-				Config: testAccAwsDynamicSecretResourceConfig_withInlinePolicy(integrationName, dynamicSecretName, roleArn, targetRoleArn, externalId, inlinePolicy),
-				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttrSet("beyondtrust_secrets_aws_dynamic_secret.test", "policy"),
-				),
-			},
+		{
+			name:        "valid - 2 hours",
+			ttl:         7200,
+			isValid:     true,
+			description: "TTL of 2 hours should be valid",
 		},
-	})
-}
-
-func TestAccAwsDynamicSecretResource_updateTTL(t *testing.T) {
-	integrationName := acctest.RandomIntegrationName()
-	dynamicSecretName := acctest.RandomDynamicSecretName()
-	roleArn := getTestRoleArn(t)
-	targetRoleArn := getTestTargetRoleArn(t)
-	externalId := acctest.RandomString(32)
-
-	resource.ParallelTest(t, resource.TestCase{
-		PreCheck:                 func() { acctest.PreCheck(t); acctest.PreCheckAWS(t) },
-		ProtoV6ProviderFactories: acctest.ProtoV6ProviderFactories,
-		CheckDestroy:             testAccCheckAwsDynamicSecretDestroy,
-		Steps: []resource.TestStep{
-			// Create with 1 hour TTL
-			{
-				Config: testAccAwsDynamicSecretResourceConfig_withTTL(integrationName, dynamicSecretName, roleArn, targetRoleArn, externalId, 3600),
-				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("beyondtrust_secrets_aws_dynamic_secret.test", "ttl", "3600"),
-				),
-			},
-			// Update to 2 hour TTL
-			{
-				Config: testAccAwsDynamicSecretResourceConfig_withTTL(integrationName, dynamicSecretName, roleArn, targetRoleArn, externalId, 7200),
-				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("beyondtrust_secrets_aws_dynamic_secret.test", "ttl", "7200"),
-				),
-			},
+		{
+			name:        "invalid - below minimum (899 seconds)",
+			ttl:         899,
+			isValid:     false,
+			description: "TTL below 900 seconds should be invalid",
 		},
-	})
-}
-
-func testAccCheckAwsDynamicSecretDestroy(s *terraform.State) error {
-	// TODO: Implement actual destroy check by querying the API
-	// For now, we'll just verify the resource is no longer in state
-	for _, rs := range s.RootModule().Resources {
-		if rs.Type != "beyondtrust_secrets_aws_dynamic_secret" {
-			continue
-		}
-
-		// In a real implementation, you would:
-		// 1. Get the client from the provider
-		// 2. Try to fetch the dynamic secret by path
-		// 3. Verify it returns a 404 or is marked as deleted
-		_ = rs.Primary.Attributes["path"]
+		{
+			name:        "invalid - above maximum (43201 seconds)",
+			ttl:         43201,
+			isValid:     false,
+			description: "TTL above 43200 seconds should be invalid",
+		},
+		{
+			name:        "invalid - zero",
+			ttl:         0,
+			isValid:     false,
+			description: "Zero TTL should be invalid",
+		},
+		{
+			name:        "invalid - negative",
+			ttl:         -100,
+			isValid:     false,
+			description: "Negative TTL should be invalid",
+		},
+		{
+			name:        "invalid - extremely high",
+			ttl:         86400, // 24 hours
+			isValid:     false,
+			description: "24 hour TTL should be invalid for assumed_role",
+		},
 	}
 
-	return nil
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := validateAssumedRoleTTL(tt.ttl)
+			assert.Equal(t, tt.isValid, result, tt.description)
+		})
+	}
 }
 
-// testAccAwsDynamicSecretResourceConfig_basic returns a basic AWS dynamic secret resource configuration
-func testAccAwsDynamicSecretResourceConfig_basic(integrationName, dynamicSecretName, roleArn, targetRoleArn, externalId string) string {
-	return fmt.Sprintf(`
-resource "beyondtrust_secrets_aws_integration" "test" {
-  name        = %[1]q
-  role_arn    = %[3]q
-  external_id = %[5]q
+// TestValidateAwsCredentialType tests credential type validation
+// This is AWS-SPECIFIC for ensuring correct credential type usage
+func TestValidateAwsCredentialType(t *testing.T) {
+	tests := []struct {
+		name           string
+		credentialType string
+		isValid        bool
+		description    string
+	}{
+		{
+			name:           "valid - assumed_role",
+			credentialType: "assumed_role",
+			isValid:        true,
+			description:    "assumed_role is currently supported",
+		},
+		{
+			name:           "invalid - iam_user (future)",
+			credentialType: "iam_user",
+			isValid:        false,
+			description:    "iam_user is not yet supported",
+		},
+		{
+			name:           "invalid - federation_token (future)",
+			credentialType: "federation_token",
+			isValid:        false,
+			description:    "federation_token is not yet supported",
+		},
+		{
+			name:           "invalid - session_token (future)",
+			credentialType: "session_token",
+			isValid:        false,
+			description:    "session_token is not yet supported",
+		},
+		{
+			name:           "invalid - empty",
+			credentialType: "",
+			isValid:        false,
+			description:    "Empty credential type should be invalid",
+		},
+		{
+			name:           "invalid - unknown type",
+			credentialType: "unknown_type",
+			isValid:        false,
+			description:    "Unknown credential type should be invalid",
+		},
+		{
+			name:           "invalid - case sensitive",
+			credentialType: "ASSUMED_ROLE",
+			isValid:        false,
+			description:    "Credential type should be case-sensitive",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := validateAwsCredentialType(tt.credentialType)
+			assert.Equal(t, tt.isValid, result, tt.description)
+		})
+	}
 }
 
-resource "beyondtrust_secrets_aws_dynamic_secret" "test" {
-  name             = %[2]q
-  integration_name = beyondtrust_secrets_aws_integration.test.name
-  credential_type  = "assumed_role"
-  role_arn         = %[4]q
-  ttl              = 3600
-}
-`, integrationName, dynamicSecretName, roleArn, targetRoleArn, externalId)
+// TestValidateJSONPolicy tests AWS IAM policy JSON validation
+// This is AWS-SPECIFIC and critical (invalid JSON = policy creation failure)
+func TestValidateJSONPolicy(t *testing.T) {
+	tests := []struct {
+		name        string
+		policy      string
+		isValid     bool
+		description string
+	}{
+		{
+			name: "valid - simple policy",
+			policy: `{
+				"Version": "2012-10-17",
+				"Statement": [{
+					"Effect": "Allow",
+					"Action": "s3:GetObject",
+					"Resource": "*"
+				}]
+			}`,
+			isValid:     true,
+			description: "Valid IAM policy JSON should pass",
+		},
+		{
+			name: "valid - complex policy",
+			policy: `{
+				"Version": "2012-10-17",
+				"Statement": [
+					{
+						"Effect": "Allow",
+						"Action": ["s3:GetObject", "s3:PutObject"],
+						"Resource": "arn:aws:s3:::bucket/*"
+					},
+					{
+						"Effect": "Deny",
+						"Action": "s3:DeleteObject",
+						"Resource": "*"
+					}
+				]
+			}`,
+			isValid:     true,
+			description: "Complex multi-statement policy should pass",
+		},
+		{
+			name:        "valid - minimal JSON",
+			policy:      `{"Version":"2012-10-17"}`,
+			isValid:     true,
+			description: "Minimal valid JSON should pass",
+		},
+		{
+			name:        "invalid - malformed JSON (missing quote)",
+			policy:      `{"Version: "2012-10-17"}`,
+			isValid:     false,
+			description: "Malformed JSON should fail",
+		},
+		{
+			name:        "invalid - malformed JSON (trailing comma)",
+			policy:      `{"Version": "2012-10-17",}`,
+			isValid:     false,
+			description: "JSON with trailing comma should fail",
+		},
+		{
+			name:        "invalid - not JSON",
+			policy:      "not json",
+			isValid:     false,
+			description: "Plain text should fail",
+		},
+		{
+			name:        "invalid - empty string",
+			policy:      "",
+			isValid:     false,
+			description: "Empty policy should fail",
+		},
+		{
+			name:        "invalid - JSON array instead of object",
+			policy:      `["item1", "item2"]`,
+			isValid:     false,
+			description: "JSON array should fail (must be object)",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validateJSONPolicy(tt.policy)
+			if tt.isValid {
+				assert.NoError(t, err, tt.description)
+			} else {
+				assert.Error(t, err, tt.description)
+			}
+		})
+	}
 }
 
-// testAccAwsDynamicSecretResourceConfig_inFolder returns a configuration with dynamic secret in a folder
-func testAccAwsDynamicSecretResourceConfig_inFolder(folderName, integrationName, dynamicSecretName, roleArn, targetRoleArn, externalId string) string {
-	return fmt.Sprintf(`
-resource "beyondtrust_secrets_folder" "test" {
-  name = %[1]q
-}
+// TestConvertAwsTagsMap tests AWS tags map conversion
+// This is AWS-SPECIFIC for converting Terraform map to AWS tags format
+func TestConvertAwsTagsMap(t *testing.T) {
+	tests := []struct {
+		name        string
+		tagsMap     map[string]string
+		expected    map[string]*string
+		description string
+	}{
+		{
+			name: "simple tags",
+			tagsMap: map[string]string{
+				"Environment": "production",
+				"Team":        "platform",
+			},
+			expected: map[string]*string{
+				"Environment": stringPtr("production"),
+				"Team":        stringPtr("platform"),
+			},
+			description: "Simple tags should convert to pointer map",
+		},
+		{
+			name:        "empty tags",
+			tagsMap:     map[string]string{},
+			expected:    map[string]*string{},
+			description: "Empty tags should produce empty pointer map",
+		},
+		{
+			name: "tags with special values",
+			tagsMap: map[string]string{
+				"CostCenter": "12345",
+				"Owner":      "user@example.com",
+			},
+			expected: map[string]*string{
+				"CostCenter": stringPtr("12345"),
+				"Owner":      stringPtr("user@example.com"),
+			},
+			description: "Tags with numbers and special chars should convert",
+		},
+	}
 
-resource "beyondtrust_secrets_aws_integration" "test" {
-  name        = %[2]q
-  role_arn    = %[4]q
-  external_id = %[6]q
-}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := convertAwsTagsMap(tt.tagsMap)
 
-resource "beyondtrust_secrets_aws_dynamic_secret" "test" {
-  name             = %[3]q
-  folder           = beyondtrust_secrets_folder.test.path
-  integration_name = beyondtrust_secrets_aws_integration.test.name
-  credential_type  = "assumed_role"
-  role_arn         = %[5]q
-  ttl              = 3600
-}
-`, folderName, integrationName, dynamicSecretName, roleArn, targetRoleArn, externalId)
-}
+			assert.Equal(t, len(tt.expected), len(result), "Map size should match")
 
-// testAccAwsDynamicSecretResourceConfig_withPolicyArns returns a configuration with policy ARNs
-func testAccAwsDynamicSecretResourceConfig_withPolicyArns(integrationName, dynamicSecretName, roleArn, targetRoleArn, externalId string) string {
-	return fmt.Sprintf(`
-resource "beyondtrust_secrets_aws_integration" "test" {
-  name        = %[1]q
-  role_arn    = %[3]q
-  external_id = %[5]q
-}
+			for key, expectedVal := range tt.expected {
+				actualVal, exists := result[key]
+				assert.True(t, exists, "Key %s should exist", key)
 
-resource "beyondtrust_secrets_aws_dynamic_secret" "test" {
-  name             = %[2]q
-  integration_name = beyondtrust_secrets_aws_integration.test.name
-  credential_type  = "assumed_role"
-  role_arn         = %[4]q
-  ttl              = 3600
-  policy_arns = [
-    "arn:aws:iam::aws:policy/ReadOnlyAccess",
-    "arn:aws:iam::aws:policy/SecurityAudit"
-  ]
-}
-`, integrationName, dynamicSecretName, roleArn, targetRoleArn, externalId)
-}
-
-// testAccAwsDynamicSecretResourceConfig_withInlinePolicy returns a configuration with inline policy
-func testAccAwsDynamicSecretResourceConfig_withInlinePolicy(integrationName, dynamicSecretName, roleArn, targetRoleArn, externalId, policy string) string {
-	return fmt.Sprintf(`
-resource "beyondtrust_secrets_aws_integration" "test" {
-  name        = %[1]q
-  role_arn    = %[3]q
-  external_id = %[5]q
-}
-
-resource "beyondtrust_secrets_aws_dynamic_secret" "test" {
-  name             = %[2]q
-  integration_name = beyondtrust_secrets_aws_integration.test.name
-  credential_type  = "assumed_role"
-  role_arn         = %[4]q
-  ttl              = 3600
-  policy           = %[6]q
-}
-`, integrationName, dynamicSecretName, roleArn, targetRoleArn, externalId, policy)
-}
-
-// testAccAwsDynamicSecretResourceConfig_withTTL returns a configuration with custom TTL
-func testAccAwsDynamicSecretResourceConfig_withTTL(integrationName, dynamicSecretName, roleArn, targetRoleArn, externalId string, ttl int) string {
-	return fmt.Sprintf(`
-resource "beyondtrust_secrets_aws_integration" "test" {
-  name        = %[1]q
-  role_arn    = %[3]q
-  external_id = %[5]q
-}
-
-resource "beyondtrust_secrets_aws_dynamic_secret" "test" {
-  name             = %[2]q
-  integration_name = beyondtrust_secrets_aws_integration.test.name
-  credential_type  = "assumed_role"
-  role_arn         = %[4]q
-  ttl              = %[6]d
-}
-`, integrationName, dynamicSecretName, roleArn, targetRoleArn, externalId, ttl)
+				if expectedVal == nil {
+					assert.Nil(t, actualVal, "Key %s should be nil", key)
+				} else {
+					assert.NotNil(t, actualVal, "Key %s should have value", key)
+					if actualVal != nil {
+						assert.Equal(t, *expectedVal, *actualVal, "Value for key %s should match", key)
+					}
+				}
+			}
+		})
+	}
 }
