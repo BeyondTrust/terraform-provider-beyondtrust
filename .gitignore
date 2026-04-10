@@ -49,3 +49,6 @@ crash.*.log
 # Generated files
 terraform-provider-beyondtrust
 .terraformrc
+
+# Test configuration (contains secrets)
+test.config.json

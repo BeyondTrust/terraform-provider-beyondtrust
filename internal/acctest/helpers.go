@@ -29,22 +29,15 @@ func RegisterProviderFactory(name string, factory func() (tfprotov6.ProviderServ
 	ProtoV6ProviderFactories[name] = factory
 }
 
-// PreCheck validates that all required environment variables are set
-// before running acceptance tests.
+// PreCheck validates that required test configuration is available
+// before running acceptance tests. Checks test.config.json first,
+// then falls back to environment variables.
 func PreCheck(t *testing.T) {
 	t.Helper()
 
-	// Required environment variables for acceptance tests
-	requiredEnvVars := []string{
-		"BEYONDTRUST_API_URL",
-		"BEYONDTRUST_ACCESS_TOKEN",
-	}
-
-	// Check required variables
-	for _, envVar := range requiredEnvVars {
-		if v := os.Getenv(envVar); v == "" {
-			t.Fatalf("%s must be set for acceptance tests", envVar)
-		}
+	// Try to load test configuration
+	if _, err := LoadTestConfig(); err != nil {
+		t.Fatalf("Failed to load test configuration: %v\n\nProvide either:\n  1. test.config.json (see test.config.json.example)\n  2. Environment variables: BEYONDTRUST_API_URL, BEYONDTRUST_SITE_ID, BEYONDTRUST_ACCESS_TOKEN", err)
 	}
 }
 

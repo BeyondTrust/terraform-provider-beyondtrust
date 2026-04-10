@@ -1,0 +1,6 @@
+{
+  "api_url": "https://api.smop.bt-platform.net",
+  "site_id": "default",
+  "access_token": "your-staging-access-token-here",
+  "api_version": "2026-02-16"
+}
