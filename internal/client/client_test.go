@@ -87,45 +87,52 @@ func TestNewClient(t *testing.T) {
 func TestBuildPath(t *testing.T) {
 	tests := []struct {
 		name           string
+		siteID         string
 		apiPathVersion string
 		endpoint       string
 		want           string
 	}{
 		{
 			name:           "no path version",
+			siteID:         "default",
 			apiPathVersion: "",
 			endpoint:       "/folders",
-			want:           "/secrets/folders",
+			want:           "/site/default/secrets/folders",
 		},
 		{
 			name:           "with path version",
+			siteID:         "default",
 			apiPathVersion: "v1",
 			endpoint:       "/folders",
-			want:           "/secrets/v1/folders",
+			want:           "/site/default/secrets/v1/folders",
 		},
 		{
 			name:           "root endpoint",
+			siteID:         "test-site",
 			apiPathVersion: "",
 			endpoint:       "/",
-			want:           "/secrets/",
+			want:           "/site/test-site/secrets/",
 		},
 		{
 			name:           "complex path no version",
+			siteID:         "prod",
 			apiPathVersion: "",
 			endpoint:       "/folders/production/secrets",
-			want:           "/secrets/folders/production/secrets",
+			want:           "/site/prod/secrets/folders/production/secrets",
 		},
 		{
 			name:           "complex path with version",
+			siteID:         "staging",
 			apiPathVersion: "v2",
 			endpoint:       "/folders/production/secrets",
-			want:           "/secrets/v2/folders/production/secrets",
+			want:           "/site/staging/secrets/v2/folders/production/secrets",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			client := &Client{
+				SiteID:         tt.siteID,
 				APIPathVersion: tt.apiPathVersion,
 			}
 			got := client.BuildPath(tt.endpoint)
@@ -489,7 +496,7 @@ func TestHandleErrorResponse_UnstructuredJSON(t *testing.T) {
 // TestValidateSession_Success validates successful session validation.
 func TestValidateSession_Success(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/secrets/session" {
+		if r.URL.Path == "/site/test-site/secrets/session" {
 			w.WriteHeader(http.StatusOK)
 			json.NewEncoder(w).Encode(map[string]string{"status": "valid"})
 			return
@@ -514,7 +521,7 @@ func TestValidateSession_Success(t *testing.T) {
 // TestValidateSession_Unauthorized validates session validation failure.
 func TestValidateSession_Unauthorized(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/secrets/session" {
+		if r.URL.Path == "/site/test-site/secrets/session" {
 			w.WriteHeader(http.StatusUnauthorized)
 			json.NewEncoder(w).Encode(map[string]string{
 				"message": "Invalid access token",
