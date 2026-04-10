@@ -368,4 +368,3 @@ func (r *FolderResource) updateTags(ctx context.Context, name string, parentFold
 	resourcePath := fmt.Sprintf("/folders/%s/metadata/tags", name)
 	return updateResourceTags(ctx, r.client, resourcePath, parentFolder, tags)
 }
-

@@ -196,7 +196,7 @@ func TestBuildTagPatch(t *testing.T) {
 			expectedPatch: map[string]*string{
 				"env":   stringPtr("prod"),     // Update
 				"team":  stringPtr("platform"), // Add
-				"owner": nil,                    // Delete
+				"owner": nil,                   // Delete
 			},
 			description: "Mixed add/update/delete operations",
 		},
@@ -212,9 +212,9 @@ func TestBuildTagPatch(t *testing.T) {
 			description:   "No changes should produce empty patch",
 		},
 		{
-			name:    "both empty",
-			oldTags: map[string]string{},
-			newTags: map[string]string{},
+			name:          "both empty",
+			oldTags:       map[string]string{},
+			newTags:       map[string]string{},
 			expectedPatch: map[string]*string{},
 			description:   "Empty to empty should produce no patch",
 		},
