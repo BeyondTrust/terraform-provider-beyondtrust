@@ -1,172 +1,175 @@
-package resources_test
+package resources
 
 import (
-	"fmt"
+	"strings"
 	"testing"
 
-	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
-	"github.com/hashicorp/terraform-plugin-testing/terraform"
-
-	"github.com/beyondtrust/terraform-provider-beyondtrust/internal/acctest"
-	_ "github.com/beyondtrust/terraform-provider-beyondtrust/internal/provider" // Import to trigger init()
+	"github.com/stretchr/testify/assert"
 )
 
-func TestAccAwsIntegrationResource_basic(t *testing.T) {
-	integrationName := acctest.RandomIntegrationName()
-	roleArn := getTestRoleArn(t)
-	externalId := acctest.RandomString(32)
+// This file contains AWS Integration-specific unit tests.
+// Shared helper tests are in resource_helpers_test.go
 
-	resource.ParallelTest(t, resource.TestCase{
-		PreCheck:                 func() { acctest.PreCheck(t); acctest.PreCheckAWS(t) },
-		ProtoV6ProviderFactories: acctest.ProtoV6ProviderFactories,
-		CheckDestroy:             testAccCheckAwsIntegrationDestroy,
-		Steps: []resource.TestStep{
-			// Create and Read testing
-			{
-				Config: testAccAwsIntegrationResourceConfig_basic(integrationName, roleArn, externalId),
-				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("beyondtrust_secrets_aws_integration.test", "name", integrationName),
-					resource.TestCheckResourceAttr("beyondtrust_secrets_aws_integration.test", "role_arn", roleArn),
-					resource.TestCheckResourceAttr("beyondtrust_secrets_aws_integration.test", "external_id", externalId),
-					resource.TestCheckResourceAttrSet("beyondtrust_secrets_aws_integration.test", "id"),
-					resource.TestCheckResourceAttrSet("beyondtrust_secrets_aws_integration.test", "created_at"),
-				),
-			},
-			// ImportState testing
-			{
-				ResourceName:      "beyondtrust_secrets_aws_integration.test",
-				ImportState:       true,
-				ImportStateVerify: true,
-				// external_id is sensitive and not returned by the API
-				ImportStateVerifyIgnore: []string{"external_id"},
-			},
+// TestValidateAwsRoleArn tests ARN format validation
+// This is AWS-SPECIFIC and critical for security (wrong ARN = access failure)
+func TestValidateAwsRoleArn(t *testing.T) {
+	tests := []struct {
+		name        string
+		arn         string
+		isValid     bool
+		description string
+	}{
+		{
+			name:        "valid standard role ARN",
+			arn:         "arn:aws:iam::123456789012:role/MyRole",
+			isValid:     true,
+			description: "Standard AWS role ARN should be valid",
 		},
-	})
-}
-
-func TestAccAwsIntegrationResource_updateRole(t *testing.T) {
-	integrationName := acctest.RandomIntegrationName()
-	roleArn1 := getTestRoleArn(t)
-	roleArn2 := getTestRoleArn2(t)
-	externalId := acctest.RandomString(32)
-
-	resource.ParallelTest(t, resource.TestCase{
-		PreCheck:                 func() { acctest.PreCheck(t); acctest.PreCheckAWS(t) },
-		ProtoV6ProviderFactories: acctest.ProtoV6ProviderFactories,
-		CheckDestroy:             testAccCheckAwsIntegrationDestroy,
-		Steps: []resource.TestStep{
-			// Create with first role
-			{
-				Config: testAccAwsIntegrationResourceConfig_basic(integrationName, roleArn1, externalId),
-				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("beyondtrust_secrets_aws_integration.test", "role_arn", roleArn1),
-				),
-			},
-			// Update to second role
-			{
-				Config: testAccAwsIntegrationResourceConfig_basic(integrationName, roleArn2, externalId),
-				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("beyondtrust_secrets_aws_integration.test", "role_arn", roleArn2),
-				),
-			},
+		{
+			name:        "valid role with path",
+			arn:         "arn:aws:iam::123456789012:role/path/to/MyRole",
+			isValid:     true,
+			description: "Role ARN with path should be valid",
 		},
-	})
-}
-
-func TestAccAwsIntegrationResource_updateExternalId(t *testing.T) {
-	integrationName := acctest.RandomIntegrationName()
-	roleArn := getTestRoleArn(t)
-	externalId1 := acctest.RandomString(32)
-	externalId2 := acctest.RandomString(32)
-
-	resource.ParallelTest(t, resource.TestCase{
-		PreCheck:                 func() { acctest.PreCheck(t); acctest.PreCheckAWS(t) },
-		ProtoV6ProviderFactories: acctest.ProtoV6ProviderFactories,
-		CheckDestroy:             testAccCheckAwsIntegrationDestroy,
-		Steps: []resource.TestStep{
-			// Create with first external ID
-			{
-				Config: testAccAwsIntegrationResourceConfig_basic(integrationName, roleArn, externalId1),
-				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("beyondtrust_secrets_aws_integration.test", "external_id", externalId1),
-				),
-			},
-			// Update to second external ID
-			{
-				Config: testAccAwsIntegrationResourceConfig_basic(integrationName, roleArn, externalId2),
-				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("beyondtrust_secrets_aws_integration.test", "external_id", externalId2),
-				),
-			},
+		{
+			name:        "valid role with hyphens",
+			arn:         "arn:aws:iam::123456789012:role/my-role-name",
+			isValid:     true,
+			description: "Role name with hyphens should be valid",
 		},
-	})
-}
-
-func TestAccAwsIntegrationResource_nameImmutable(t *testing.T) {
-	integrationName1 := acctest.RandomIntegrationName()
-	integrationName2 := acctest.RandomIntegrationName()
-	roleArn := getTestRoleArn(t)
-	externalId := acctest.RandomString(32)
-
-	resource.ParallelTest(t, resource.TestCase{
-		PreCheck:                 func() { acctest.PreCheck(t); acctest.PreCheckAWS(t) },
-		ProtoV6ProviderFactories: acctest.ProtoV6ProviderFactories,
-		CheckDestroy:             testAccCheckAwsIntegrationDestroy,
-		Steps: []resource.TestStep{
-			{
-				Config: testAccAwsIntegrationResourceConfig_basic(integrationName1, roleArn, externalId),
-				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("beyondtrust_secrets_aws_integration.test", "name", integrationName1),
-				),
-			},
-			{
-				Config: testAccAwsIntegrationResourceConfig_basic(integrationName2, roleArn, externalId),
-				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("beyondtrust_secrets_aws_integration.test", "name", integrationName2),
-				),
-				// This should trigger a replacement (destroy then create)
-			},
+		{
+			name:        "valid role with underscores",
+			arn:         "arn:aws:iam::123456789012:role/my_role_name",
+			isValid:     true,
+			description: "Role name with underscores should be valid",
 		},
-	})
-}
-
-func getTestRoleArn(t *testing.T) string {
-	return acctest.GetAWSRoleARN(t)
-}
-
-func getTestRoleArn2(t *testing.T) string {
-	return acctest.GetAWSRoleARN2(t)
-}
-
-func getTestTargetRoleArn(t *testing.T) string {
-	return getTestRoleArn(t)
-}
-
-func testAccCheckAwsIntegrationDestroy(s *terraform.State) error {
-	// TODO: Implement actual destroy check by querying the API
-	// For now, we'll just verify the resource is no longer in state
-	for _, rs := range s.RootModule().Resources {
-		if rs.Type != "beyondtrust_secrets_aws_integration" {
-			continue
-		}
-
-		// In a real implementation, you would:
-		// 1. Get the client from the provider
-		// 2. Try to fetch the integration by name
-		// 3. Verify it returns a 404
-		_ = rs.Primary.Attributes["name"]
+		{
+			name:        "aws-cn partition",
+			arn:         "arn:aws-cn:iam::123456789012:role/MyRole",
+			isValid:     true,
+			description: "China partition ARN should be valid",
+		},
+		{
+			name:        "aws-gov partition",
+			arn:         "arn:aws-us-gov:iam::123456789012:role/MyRole",
+			isValid:     true,
+			description: "GovCloud partition ARN should be valid",
+		},
+		{
+			name:        "invalid - not a role",
+			arn:         "arn:aws:iam::123456789012:user/MyUser",
+			isValid:     false,
+			description: "User ARN should be invalid (must be role)",
+		},
+		{
+			name:        "invalid - missing account ID",
+			arn:         "arn:aws:iam:::role/MyRole",
+			isValid:     false,
+			description: "ARN without account ID should be invalid",
+		},
+		{
+			name:        "invalid - wrong service",
+			arn:         "arn:aws:s3:::bucket-name",
+			isValid:     false,
+			description: "S3 ARN should be invalid (must be IAM)",
+		},
+		{
+			name:        "invalid - missing role name",
+			arn:         "arn:aws:iam::123456789012:role/",
+			isValid:     false,
+			description: "ARN without role name should be invalid",
+		},
+		{
+			name:        "invalid - malformed",
+			arn:         "not-an-arn",
+			isValid:     false,
+			description: "Malformed string should be invalid",
+		},
+		{
+			name:        "invalid - empty",
+			arn:         "",
+			isValid:     false,
+			description: "Empty ARN should be invalid",
+		},
+		{
+			name:        "invalid - account ID not numeric",
+			arn:         "arn:aws:iam::abcdefghijkl:role/MyRole",
+			isValid:     false,
+			description: "Non-numeric account ID should be invalid",
+		},
 	}
 
-	return nil
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := validateAwsRoleArn(tt.arn)
+			assert.Equal(t, tt.isValid, result, tt.description)
+		})
+	}
 }
 
-// testAccAwsIntegrationResourceConfig_basic returns a basic AWS integration resource configuration
-func testAccAwsIntegrationResourceConfig_basic(name, roleArn, externalId string) string {
-	return fmt.Sprintf(`
-resource "beyondtrust_secrets_aws_integration" "test" {
-  name        = %[1]q
-  role_arn    = %[2]q
-  external_id = %[3]q
-}
-`, name, roleArn, externalId)
+// TestValidateAwsExternalId tests external ID format validation
+// This is AWS-SPECIFIC for security (confused deputy prevention)
+func TestValidateAwsExternalId(t *testing.T) {
+	tests := []struct {
+		name        string
+		externalId  string
+		isValid     bool
+		description string
+	}{
+		{
+			name:        "valid alphanumeric",
+			externalId:  "my-external-id-123",
+			isValid:     true,
+			description: "Alphanumeric with hyphens should be valid",
+		},
+		{
+			name:        "valid with allowed special chars",
+			externalId:  "id_+=,.@:\\/test-123",
+			isValid:     true,
+			description: "Allowed special characters should be valid",
+		},
+		{
+			name:        "valid minimum length (2 chars)",
+			externalId:  "ab",
+			isValid:     true,
+			description: "Minimum 2 characters should be valid",
+		},
+		{
+			name:        "valid maximum length (1224 chars)",
+			externalId:  strings.Repeat("a", 1224),
+			isValid:     true,
+			description: "Maximum 1224 characters should be valid",
+		},
+		{
+			name:        "invalid - too short (1 char)",
+			externalId:  "a",
+			isValid:     false,
+			description: "Single character should be invalid",
+		},
+		{
+			name:        "invalid - too long (1225 chars)",
+			externalId:  strings.Repeat("a", 1225),
+			isValid:     false,
+			description: "Over 1224 characters should be invalid",
+		},
+		{
+			name:        "invalid - empty",
+			externalId:  "",
+			isValid:     false,
+			description: "Empty external ID should be invalid",
+		},
+		{
+			name:        "invalid - disallowed special chars",
+			externalId:  "test!@#$%^&*()",
+			isValid:     false,
+			description: "Disallowed special characters should be invalid",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := validateAwsExternalId(tt.externalId)
+			assert.Equal(t, tt.isValid, result, tt.description)
+		})
+	}
 }

@@ -3,10 +3,7 @@ package resources
 import (
 	"context"
 	"fmt"
-	"net/url"
-	"strings"
 
-	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -155,10 +152,11 @@ func (r *FolderResource) Create(ctx context.Context, req resource.CreateRequest,
 	apiPath := r.client.BuildPath(fmt.Sprintf("/folders/%s", name))
 
 	// Add folder query parameter if parent folder is specified
-	query := url.Values{}
-	if !data.Folder.IsNull() && data.Folder.ValueString() != "" {
-		query.Set("folder", data.Folder.ValueString())
+	parentFolder := ""
+	if !data.Folder.IsNull() {
+		parentFolder = data.Folder.ValueString()
 	}
+	query := buildFolderQueryParam(parentFolder)
 
 	// Create the folder
 	var createResp FolderCreateResponse
@@ -175,14 +173,6 @@ func (r *FolderResource) Create(ctx context.Context, req resource.CreateRequest,
 	data.ID = types.StringValue(createResp.ID)
 	data.Path = types.StringValue(createResp.Path)
 
-	// Set created_at if provided by API
-	if createResp.Metadata.CreatedAt != "" {
-		data.CreatedAt = types.StringValue(createResp.Metadata.CreatedAt)
-	}
-
-	// DeletedAt should be null for newly created folders
-	data.DeletedAt = types.StringNull()
-
 	// Handle tags if provided
 	if !data.Tags.IsNull() && len(data.Tags.Elements()) > 0 {
 		if err := r.updateTags(ctx, name, data.Folder.ValueString(), data.Tags); err != nil {
@@ -192,6 +182,31 @@ func (r *FolderResource) Create(ctx context.Context, req resource.CreateRequest,
 			)
 			// Don't return here - folder was created successfully
 		}
+	}
+
+	// Read back the folder metadata to populate all computed fields (created_at, etc.)
+	metadataPath := r.client.BuildPath(fmt.Sprintf("/folders/%s/metadata", name))
+	var metadataResp FolderMetadataResponse
+	err = r.client.Get(ctx, metadataPath, query, &metadataResp)
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Error Reading Created Folder",
+			fmt.Sprintf("Folder created but could not read metadata: %s", err.Error()),
+		)
+		return
+	}
+
+	// Update state with metadata
+	data.CreatedAt = types.StringValue(metadataResp.CreatedAt)
+	if metadataResp.DeletedAt != nil {
+		data.DeletedAt = types.StringValue(*metadataResp.DeletedAt)
+	} else {
+		data.DeletedAt = types.StringNull()
+	}
+
+	// Update tags from metadata response
+	if len(metadataResp.Tags) > 0 {
+		data.Tags = convertTagsToTerraformMap(metadataResp.Tags)
 	}
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
@@ -211,17 +226,18 @@ func (r *FolderResource) Read(ctx context.Context, req resource.ReadRequest, res
 	apiPath := r.client.BuildPath(fmt.Sprintf("/folders/%s/metadata", name))
 
 	// Add folder query parameter if parent folder is specified
-	query := url.Values{}
-	if !data.Folder.IsNull() && data.Folder.ValueString() != "" {
-		query.Set("folder", data.Folder.ValueString())
+	parentFolder := ""
+	if !data.Folder.IsNull() {
+		parentFolder = data.Folder.ValueString()
 	}
+	query := buildFolderQueryParam(parentFolder)
 
 	// Get folder metadata
 	var metadataResp FolderMetadataResponse
 	err := r.client.Get(ctx, apiPath, query, &metadataResp)
 	if err != nil {
-		// Check if it's a 404 error
-		if strings.Contains(err.Error(), "404") || strings.Contains(err.Error(), "not found") {
+		// Check if it's a 404 error using helper
+		if isNotFoundError(err.Error()) {
 			// Folder no longer exists, remove from state
 			resp.State.RemoveResource(ctx)
 			return
@@ -244,11 +260,7 @@ func (r *FolderResource) Read(ctx context.Context, req resource.ReadRequest, res
 
 	// Update tags if present in response
 	if len(metadataResp.Tags) > 0 {
-		tagsMap := make(map[string]attr.Value)
-		for k, v := range metadataResp.Tags {
-			tagsMap[k] = types.StringValue(v)
-		}
-		data.Tags = types.MapValueMust(types.StringType, tagsMap)
+		data.Tags = convertTagsToTerraformMap(metadataResp.Tags)
 	}
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
@@ -278,10 +290,11 @@ func (r *FolderResource) Update(ctx context.Context, req resource.UpdateRequest,
 	name := data.Name.ValueString()
 	apiPath := r.client.BuildPath(fmt.Sprintf("/folders/%s/metadata", name))
 
-	query := url.Values{}
-	if !data.Folder.IsNull() && data.Folder.ValueString() != "" {
-		query.Set("folder", data.Folder.ValueString())
+	parentFolder := ""
+	if !data.Folder.IsNull() {
+		parentFolder = data.Folder.ValueString()
 	}
+	query := buildFolderQueryParam(parentFolder)
 
 	var metadataResp FolderMetadataResponse
 	err := r.client.Get(ctx, apiPath, query, &metadataResp)
@@ -295,11 +308,7 @@ func (r *FolderResource) Update(ctx context.Context, req resource.UpdateRequest,
 
 	// Update tags in state
 	if len(metadataResp.Tags) > 0 {
-		tagsMap := make(map[string]attr.Value)
-		for k, v := range metadataResp.Tags {
-			tagsMap[k] = types.StringValue(v)
-		}
-		data.Tags = types.MapValueMust(types.StringType, tagsMap)
+		data.Tags = convertTagsToTerraformMap(metadataResp.Tags)
 	}
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
@@ -318,18 +327,18 @@ func (r *FolderResource) Delete(ctx context.Context, req resource.DeleteRequest,
 	name := data.Name.ValueString()
 	apiPath := r.client.BuildPath(fmt.Sprintf("/folders/%s", name))
 
-	// Add folder query parameter and permanent delete flag
-	query := url.Values{}
-	if !data.Folder.IsNull() && data.Folder.ValueString() != "" {
-		query.Set("folder", data.Folder.ValueString())
+	// Build query parameters using helper (includes parent folder and permanent flag)
+	parentFolder := ""
+	if !data.Folder.IsNull() {
+		parentFolder = data.Folder.ValueString()
 	}
-	query.Set("permanent", "true") // Permanent delete when using terraform destroy
+	query := buildQueryParameters(parentFolder, "delete", true)
 
 	// Delete the folder
 	err := r.client.Delete(ctx, apiPath, query)
 	if err != nil {
-		// Ignore 404 errors (already deleted)
-		if strings.Contains(err.Error(), "404") || strings.Contains(err.Error(), "not found") {
+		// Ignore 404 errors (already deleted) using helper
+		if isNotFoundError(err.Error()) {
 			return
 		}
 
@@ -345,14 +354,8 @@ func (r *FolderResource) ImportState(ctx context.Context, req resource.ImportSta
 	// Import format: "path/to/folder" or "foldername"
 	fullPath := req.ID
 
-	// Split the path into name and parent folder
-	parts := strings.Split(fullPath, "/")
-	name := parts[len(parts)-1]
-	var parentFolder string
-
-	if len(parts) > 1 {
-		parentFolder = strings.Join(parts[:len(parts)-1], "/")
-	}
+	// Parse the import path
+	name, parentFolder := parseImportPath(fullPath)
 
 	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("name"), name)...)
 	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("folder"), parentFolder)...)
@@ -362,21 +365,6 @@ func (r *FolderResource) ImportState(ctx context.Context, req resource.ImportSta
 // Helper functions
 
 func (r *FolderResource) updateTags(ctx context.Context, name string, parentFolder string, tags types.Map) error {
-	apiPath := r.client.BuildPath(fmt.Sprintf("/folders/%s/metadata/tags", name))
-
-	query := url.Values{}
-	if parentFolder != "" {
-		query.Set("folder", parentFolder)
-	}
-
-	// Convert Terraform tags to map
-	tagsMap := make(map[string]string)
-	for k, v := range tags.Elements() {
-		if strVal, ok := v.(types.String); ok {
-			tagsMap[k] = strVal.ValueString()
-		}
-	}
-
-	// Use PATCH to update tags
-	return r.client.Patch(ctx, apiPath, query, tagsMap)
+	resourcePath := fmt.Sprintf("/folders/%s/metadata/tags", name)
+	return updateResourceTags(ctx, r.client, resourcePath, parentFolder, tags)
 }
