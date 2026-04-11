@@ -3,8 +3,6 @@ package resources
 import (
 	"context"
 	"fmt"
-	"net/url"
-	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/path"
@@ -166,18 +164,14 @@ func (r *StaticSecretResource) Create(ctx context.Context, req resource.CreateRe
 	apiPath := r.client.BuildPath(fmt.Sprintf("/static/%s", name))
 
 	// Add folder query parameter if parent folder is specified
-	query := url.Values{}
-	if !data.Folder.IsNull() && data.Folder.ValueString() != "" {
-		query.Set("folder", data.Folder.ValueString())
+	parentFolder := ""
+	if !data.Folder.IsNull() {
+		parentFolder = data.Folder.ValueString()
 	}
+	query := buildFolderQueryParam(parentFolder)
 
-	// Convert Terraform secret map to API format
-	secretMap := make(map[string]string)
-	for k, v := range data.SecretWo.Elements() {
-		if strVal, ok := v.(types.String); ok {
-			secretMap[k] = strVal.ValueString()
-		}
-	}
+	// Convert Terraform secret map to API format using helper
+	secretMap := convertSecretMap(data.SecretWo.Elements())
 
 	// Create the secret
 	requestBody := StaticSecretCreateRequest{
@@ -202,11 +196,7 @@ func (r *StaticSecretResource) Create(ctx context.Context, req resource.CreateRe
 
 	// Handle tags if provided in the create response
 	if len(createResp.Metadata.Tags) > 0 {
-		tagsMap := make(map[string]attr.Value)
-		for k, v := range createResp.Metadata.Tags {
-			tagsMap[k] = types.StringValue(v)
-		}
-		data.Tags = types.MapValueMust(types.StringType, tagsMap)
+		data.Tags = convertTagsToTerraformMap(createResp.Metadata.Tags)
 	} else if !data.Tags.IsNull() && len(data.Tags.Elements()) > 0 {
 		// If tags were provided in config but not in response, update them
 		if err := r.updateTags(ctx, name, data.Folder.ValueString(), data.Tags); err != nil {
@@ -235,17 +225,18 @@ func (r *StaticSecretResource) Read(ctx context.Context, req resource.ReadReques
 	apiPath := r.client.BuildPath(fmt.Sprintf("/static/%s/metadata", name))
 
 	// Add folder query parameter if parent folder is specified
-	query := url.Values{}
-	if !data.Folder.IsNull() && data.Folder.ValueString() != "" {
-		query.Set("folder", data.Folder.ValueString())
+	parentFolder := ""
+	if !data.Folder.IsNull() {
+		parentFolder = data.Folder.ValueString()
 	}
+	query := buildFolderQueryParam(parentFolder)
 
 	// Get secret metadata
 	var metadataResp StaticSecretMetadataResponse
 	err := r.client.Get(ctx, apiPath, query, &metadataResp)
 	if err != nil {
-		// Check if it's a 404 error
-		if strings.Contains(err.Error(), "404") || strings.Contains(err.Error(), "not found") {
+		// Check if it's a 404 error using helper
+		if isNotFoundError(err.Error()) {
 			// Secret no longer exists, remove from state
 			resp.State.RemoveResource(ctx)
 			return
@@ -263,20 +254,13 @@ func (r *StaticSecretResource) Read(ctx context.Context, req resource.ReadReques
 	data.CreatedAt = types.StringValue(metadataResp.CreatedAt)
 	data.SecretWoVersion = types.Int64Value(metadataResp.Version)
 
-	// Compute path from name and folder
-	if !data.Folder.IsNull() && data.Folder.ValueString() != "" {
-		data.Path = types.StringValue(fmt.Sprintf("%s/%s", data.Folder.ValueString(), name))
-	} else {
-		data.Path = types.StringValue(name)
-	}
+	// Compute path from name and folder using helper
+	pathStr := buildFolderPath(name, parentFolder)
+	data.Path = types.StringValue(pathStr)
 
 	// Update tags if present in response
 	if len(metadataResp.Tags) > 0 {
-		tagsMap := make(map[string]attr.Value)
-		for k, v := range metadataResp.Tags {
-			tagsMap[k] = types.StringValue(v)
-		}
-		data.Tags = types.MapValueMust(types.StringType, tagsMap)
+		data.Tags = convertTagsToTerraformMap(metadataResp.Tags)
 	}
 
 	// IMPORTANT: Secret value is not updated here - it remains from the plan
@@ -299,19 +283,21 @@ func (r *StaticSecretResource) Update(ctx context.Context, req resource.UpdateRe
 	name := data.Name.ValueString()
 	apiPath := r.client.BuildPath(fmt.Sprintf("/static/%s", name))
 
-	query := url.Values{}
-	if !data.Folder.IsNull() && data.Folder.ValueString() != "" {
-		query.Set("folder", data.Folder.ValueString())
+	parentFolder := ""
+	if !data.Folder.IsNull() {
+		parentFolder = data.Folder.ValueString()
 	}
+	query := buildFolderQueryParam(parentFolder)
 
 	// Check if secret value changed
 	if !data.SecretWo.Equal(state.SecretWo) {
-		// Convert Terraform secret map to API format
+		// Convert Terraform secret map to API format using helper
+		stringMap := convertSecretMap(data.SecretWo.Elements())
+
+		// Convert to map[string]interface{} for PATCH request
 		secretMap := make(map[string]interface{})
-		for k, v := range data.SecretWo.Elements() {
-			if strVal, ok := v.(types.String); ok {
-				secretMap[k] = strVal.ValueString()
-			}
+		for k, v := range stringMap {
+			secretMap[k] = v
 		}
 
 		// Use PATCH to update the secret
@@ -364,11 +350,7 @@ func (r *StaticSecretResource) Update(ctx context.Context, req resource.UpdateRe
 
 	// Update tags in state
 	if len(metadataResp.Tags) > 0 {
-		tagsMap := make(map[string]attr.Value)
-		for k, v := range metadataResp.Tags {
-			tagsMap[k] = types.StringValue(v)
-		}
-		data.Tags = types.MapValueMust(types.StringType, tagsMap)
+		data.Tags = convertTagsToTerraformMap(metadataResp.Tags)
 	}
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
@@ -387,18 +369,18 @@ func (r *StaticSecretResource) Delete(ctx context.Context, req resource.DeleteRe
 	name := data.Name.ValueString()
 	apiPath := r.client.BuildPath(fmt.Sprintf("/static/%s", name))
 
-	// Add folder query parameter and permanent delete flag
-	query := url.Values{}
-	if !data.Folder.IsNull() && data.Folder.ValueString() != "" {
-		query.Set("folder", data.Folder.ValueString())
+	// Build query parameters using helper (includes parent folder and permanent flag)
+	parentFolder := ""
+	if !data.Folder.IsNull() {
+		parentFolder = data.Folder.ValueString()
 	}
-	query.Set("permanent", "true") // Permanent delete when using terraform destroy
+	query := buildQueryParameters(parentFolder, "delete", true)
 
 	// Delete the secret
 	err := r.client.Delete(ctx, apiPath, query)
 	if err != nil {
-		// Ignore 404 errors (already deleted)
-		if strings.Contains(err.Error(), "404") || strings.Contains(err.Error(), "not found") {
+		// Ignore 404 errors (already deleted) using helper
+		if isNotFoundError(err.Error()) {
 			return
 		}
 
@@ -414,14 +396,8 @@ func (r *StaticSecretResource) ImportState(ctx context.Context, req resource.Imp
 	// Import format: "path/to/secret" or "secretname"
 	fullPath := req.ID
 
-	// Split the path into name and parent folder
-	parts := strings.Split(fullPath, "/")
-	name := parts[len(parts)-1]
-	var parentFolder string
-
-	if len(parts) > 1 {
-		parentFolder = strings.Join(parts[:len(parts)-1], "/")
-	}
+	// Parse the import path using helper
+	name, parentFolder := parseImportPath(fullPath)
 
 	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("name"), name)...)
 	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("folder"), parentFolder)...)
@@ -437,21 +413,40 @@ func (r *StaticSecretResource) ImportState(ctx context.Context, req resource.Imp
 // Helper functions
 
 func (r *StaticSecretResource) updateTags(ctx context.Context, name string, parentFolder string, tags types.Map) error {
-	apiPath := r.client.BuildPath(fmt.Sprintf("/static/%s/metadata/tags", name))
+	resourcePath := fmt.Sprintf("/static/%s/metadata/tags", name)
+	return updateResourceTags(ctx, r.client, resourcePath, parentFolder, tags)
+}
 
-	query := url.Values{}
-	if parentFolder != "" {
-		query.Set("folder", parentFolder)
-	}
+// Helper functions for static secret business logic
 
-	// Convert Terraform tags to map
-	tagsMap := make(map[string]string)
-	for k, v := range tags.Elements() {
-		if strVal, ok := v.(types.String); ok {
-			tagsMap[k] = strVal.ValueString()
+// convertSecretMap converts a Terraform types.Map to a Go map[string]string.
+// This is used when creating/updating secrets to convert from Terraform types.
+func convertSecretMap(terraformMap map[string]attr.Value) map[string]string {
+	result := make(map[string]string)
+
+	for key, value := range terraformMap {
+		if strVal, ok := value.(types.String); ok {
+			result[key] = strVal.ValueString()
 		}
 	}
 
-	// Use PATCH to update tags
-	return r.client.Patch(ctx, apiPath, query, tagsMap)
+	return result
+}
+
+// secretMapsEqual checks if two secret maps are equal.
+// Returns true if equal, false if different.
+// Used in Update to detect if secret values have changed.
+func secretMapsEqual(map1, map2 map[string]string) bool {
+	if len(map1) != len(map2) {
+		return false
+	}
+
+	for key, val1 := range map1 {
+		val2, exists := map2[key]
+		if !exists || val1 != val2 {
+			return false
+		}
+	}
+
+	return true
 }
