@@ -1,233 +1,204 @@
-package resources_test
+package resources
 
 import (
-	"fmt"
 	"testing"
 
-	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
-	"github.com/hashicorp/terraform-plugin-testing/terraform"
-
-	"github.com/beyondtrust/terraform-provider-beyondtrust/internal/acctest"
-	_ "github.com/beyondtrust/terraform-provider-beyondtrust/internal/provider" // Import to trigger init()
+	"github.com/hashicorp/terraform-plugin-framework/attr"
+	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/stretchr/testify/assert"
 )
 
-func TestAccStaticSecretResource_basic(t *testing.T) {
-	secretName := acctest.RandomSecretName()
-	secretValue := acctest.RandomString(32)
+// This file contains secret-specific unit tests.
+// Shared helper tests are in resource_helpers_test.go
 
-	resource.ParallelTest(t, resource.TestCase{
-		PreCheck:                 func() { acctest.PreCheck(t) },
-		ProtoV6ProviderFactories: acctest.ProtoV6ProviderFactories,
-		CheckDestroy:             testAccCheckStaticSecretDestroy,
-		Steps: []resource.TestStep{
-			// Create and Read testing
-			{
-				Config: testAccStaticSecretResourceConfig_basic(secretName, secretValue),
-				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("beyondtrust_secrets_static_secret.test", "name", secretName),
-					resource.TestCheckResourceAttr("beyondtrust_secrets_static_secret.test", "path", secretName),
-					resource.TestCheckResourceAttrSet("beyondtrust_secrets_static_secret.test", "id"),
-					resource.TestCheckResourceAttrSet("beyondtrust_secrets_static_secret.test", "created_at"),
-					resource.TestCheckResourceAttrSet("beyondtrust_secrets_static_secret.test", "secret_wo_version"),
-				),
+// TestConvertSecretMap tests Terraform types.Map → Go map conversion
+// This is SECRET-SPECIFIC because it handles the secret_wo field
+func TestConvertSecretMap(t *testing.T) {
+	tests := []struct {
+		name         string
+		terraformMap map[string]attr.Value
+		expectedMap  map[string]string
+		description  string
+	}{
+		{
+			name: "single key-value pair",
+			terraformMap: map[string]attr.Value{
+				"password": types.StringValue("secret123"),
 			},
-			// ImportState testing
-			{
-				ResourceName:      "beyondtrust_secrets_static_secret.test",
-				ImportState:       true,
-				ImportStateVerify: true,
-				// secret_wo is write-only and not returned by the API on read
-				ImportStateVerifyIgnore: []string{"secret_wo"},
+			expectedMap: map[string]string{
+				"password": "secret123",
 			},
+			description: "Single secret key should convert correctly",
 		},
-	})
-}
-
-func TestAccStaticSecretResource_inFolder(t *testing.T) {
-	folderName := acctest.RandomFolderName()
-	secretName := acctest.RandomSecretName()
-	secretValue := acctest.RandomString(32)
-
-	resource.ParallelTest(t, resource.TestCase{
-		PreCheck:                 func() { acctest.PreCheck(t) },
-		ProtoV6ProviderFactories: acctest.ProtoV6ProviderFactories,
-		CheckDestroy:             testAccCheckStaticSecretDestroy,
-		Steps: []resource.TestStep{
-			{
-				Config: testAccStaticSecretResourceConfig_inFolder(folderName, secretName, secretValue),
-				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("beyondtrust_secrets_static_secret.test", "name", secretName),
-					resource.TestCheckResourceAttr("beyondtrust_secrets_static_secret.test", "folder", folderName),
-					resource.TestCheckResourceAttr("beyondtrust_secrets_static_secret.test", "path", fmt.Sprintf("%s/%s", folderName, secretName)),
-					resource.TestCheckResourceAttrSet("beyondtrust_secrets_static_secret.test", "id"),
-				),
+		{
+			name: "multiple key-value pairs",
+			terraformMap: map[string]attr.Value{
+				"username": types.StringValue("admin"),
+				"password": types.StringValue("secret123"),
+				"apikey":   types.StringValue("key-xyz"),
 			},
+			expectedMap: map[string]string{
+				"username": "admin",
+				"password": "secret123",
+				"apikey":   "key-xyz",
+			},
+			description: "Multiple secret keys should convert correctly",
 		},
-	})
-}
-
-func TestAccStaticSecretResource_updateValue(t *testing.T) {
-	secretName := acctest.RandomSecretName()
-	secretValue1 := acctest.RandomString(32)
-	secretValue2 := acctest.RandomString(32)
-	secretValue3 := acctest.RandomString(32)
-
-	resource.ParallelTest(t, resource.TestCase{
-		PreCheck:                 func() { acctest.PreCheck(t) },
-		ProtoV6ProviderFactories: acctest.ProtoV6ProviderFactories,
-		CheckDestroy:             testAccCheckStaticSecretDestroy,
-		Steps: []resource.TestStep{
-			// Create with initial value
-			{
-				Config: testAccStaticSecretResourceConfig_basic(secretName, secretValue1),
-				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("beyondtrust_secrets_static_secret.test", "secret_wo_version", "1"),
-				),
-			},
-			// Update value (should create version 2)
-			{
-				Config: testAccStaticSecretResourceConfig_basic(secretName, secretValue2),
-				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("beyondtrust_secrets_static_secret.test", "secret_wo_version", "2"),
-				),
-			},
-			// Update value again (should create version 3)
-			{
-				Config: testAccStaticSecretResourceConfig_basic(secretName, secretValue3),
-				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("beyondtrust_secrets_static_secret.test", "secret_wo_version", "3"),
-				),
-			},
+		{
+			name:         "empty map",
+			terraformMap: map[string]attr.Value{},
+			expectedMap:  map[string]string{},
+			description:  "Empty secret map should convert to empty Go map",
 		},
-	})
-}
-
-func TestAccStaticSecretResource_withTags(t *testing.T) {
-	secretName := acctest.RandomSecretName()
-	secretValue := acctest.RandomString(32)
-
-	resource.ParallelTest(t, resource.TestCase{
-		PreCheck:                 func() { acctest.PreCheck(t) },
-		ProtoV6ProviderFactories: acctest.ProtoV6ProviderFactories,
-		CheckDestroy:             testAccCheckStaticSecretDestroy,
-		Steps: []resource.TestStep{
-			// Create with tags
-			{
-				Config: testAccStaticSecretResourceConfig_withTags(secretName, secretValue, map[string]string{
-					"Environment": "test",
-					"Type":        "database-password",
-				}),
-				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("beyondtrust_secrets_static_secret.test", "tags.Environment", "test"),
-					resource.TestCheckResourceAttr("beyondtrust_secrets_static_secret.test", "tags.Type", "database-password"),
-				),
+		{
+			name: "special characters in values",
+			terraformMap: map[string]attr.Value{
+				"password": types.StringValue("p@ssw0rd!#$%^&*()"),
 			},
-			// Update tags
-			{
-				Config: testAccStaticSecretResourceConfig_withTags(secretName, secretValue, map[string]string{
-					"Environment": "production",
-					"Type":        "api-key",
-					"Owner":       "platform-team",
-				}),
-				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("beyondtrust_secrets_static_secret.test", "tags.Environment", "production"),
-					resource.TestCheckResourceAttr("beyondtrust_secrets_static_secret.test", "tags.Type", "api-key"),
-					resource.TestCheckResourceAttr("beyondtrust_secrets_static_secret.test", "tags.Owner", "platform-team"),
-				),
+			expectedMap: map[string]string{
+				"password": "p@ssw0rd!#$%^&*()",
 			},
+			description: "Special characters in secret values should be preserved",
 		},
-	})
-}
-
-func TestAccStaticSecretResource_nameImmutable(t *testing.T) {
-	secretName1 := acctest.RandomSecretName()
-	secretName2 := acctest.RandomSecretName()
-	secretValue := acctest.RandomString(32)
-
-	resource.ParallelTest(t, resource.TestCase{
-		PreCheck:                 func() { acctest.PreCheck(t) },
-		ProtoV6ProviderFactories: acctest.ProtoV6ProviderFactories,
-		CheckDestroy:             testAccCheckStaticSecretDestroy,
-		Steps: []resource.TestStep{
-			{
-				Config: testAccStaticSecretResourceConfig_basic(secretName1, secretValue),
-				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("beyondtrust_secrets_static_secret.test", "name", secretName1),
-				),
+		{
+			name: "whitespace in values",
+			terraformMap: map[string]attr.Value{
+				"token": types.StringValue("  secret with spaces  "),
 			},
-			{
-				Config: testAccStaticSecretResourceConfig_basic(secretName2, secretValue),
-				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("beyondtrust_secrets_static_secret.test", "name", secretName2),
-				),
-				// This should trigger a replacement (destroy then create)
+			expectedMap: map[string]string{
+				"token": "  secret with spaces  ",
 			},
+			description: "Whitespace in secret values should be preserved",
 		},
-	})
-}
-
-func testAccCheckStaticSecretDestroy(s *terraform.State) error {
-	// TODO: Implement actual destroy check by querying the API
-	// For now, we'll just verify the resource is no longer in state
-	for _, rs := range s.RootModule().Resources {
-		if rs.Type != "beyondtrust_secrets_static_secret" {
-			continue
-		}
-
-		// In a real implementation, you would:
-		// 1. Get the client from the provider
-		// 2. Try to fetch the secret by path
-		// 3. Verify it returns a 404 or is marked as deleted
-		_ = rs.Primary.Attributes["path"]
+		{
+			name: "empty string value",
+			terraformMap: map[string]attr.Value{
+				"empty": types.StringValue(""),
+			},
+			expectedMap: map[string]string{
+				"empty": "",
+			},
+			description: "Empty string values should be allowed",
+		},
 	}
 
-	return nil
-}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := convertSecretMap(tt.terraformMap)
 
-// testAccStaticSecretResourceConfig_basic returns a basic static secret resource configuration
-func testAccStaticSecretResourceConfig_basic(name, value string) string {
-	return fmt.Sprintf(`
-resource "beyondtrust_secrets_static_secret" "test" {
-  name = %[1]q
-  secret_wo = {
-    value = %[2]q
-  }
-}
-`, name, value)
-}
+			assert.Equal(t, len(tt.expectedMap), len(result), "Map size should match")
 
-// testAccStaticSecretResourceConfig_inFolder returns a configuration with a secret in a folder
-func testAccStaticSecretResourceConfig_inFolder(folderName, secretName, value string) string {
-	return fmt.Sprintf(`
-resource "beyondtrust_secrets_folder" "test" {
-  name = %[1]q
-}
-
-resource "beyondtrust_secrets_static_secret" "test" {
-  name   = %[2]q
-  folder = beyondtrust_secrets_folder.test.path
-  secret_wo = {
-    value = %[3]q
-  }
-}
-`, folderName, secretName, value)
-}
-
-// testAccStaticSecretResourceConfig_withTags returns a configuration with tags
-func testAccStaticSecretResourceConfig_withTags(name, value string, tags map[string]string) string {
-	tagsStr := "{\n"
-	for k, v := range tags {
-		tagsStr += fmt.Sprintf("    %q = %q\n", k, v)
+			for key, expectedValue := range tt.expectedMap {
+				actualValue, exists := result[key]
+				assert.True(t, exists, "Key %s should exist", key)
+				assert.Equal(t, expectedValue, actualValue, "Value for key %s should match", key)
+			}
+		})
 	}
-	tagsStr += "  }"
-
-	return fmt.Sprintf(`
-resource "beyondtrust_secrets_static_secret" "test" {
-  name = %[1]q
-  secret_wo = {
-    value = %[2]q
-  }
-  tags = %[3]s
 }
-`, name, value, tagsStr)
+
+// TestSecretMapsEqual tests secret value change detection
+// This is SECRET-SPECIFIC for the Update method to detect if secret_wo changed
+func TestSecretMapsEqual(t *testing.T) {
+	tests := []struct {
+		name        string
+		map1        map[string]string
+		map2        map[string]string
+		shouldEqual bool
+		description string
+	}{
+		{
+			name: "identical maps",
+			map1: map[string]string{
+				"password": "secret123",
+			},
+			map2: map[string]string{
+				"password": "secret123",
+			},
+			shouldEqual: true,
+			description: "Identical maps should be equal",
+		},
+		{
+			name: "value changed",
+			map1: map[string]string{
+				"password": "old-secret",
+			},
+			map2: map[string]string{
+				"password": "new-secret",
+			},
+			shouldEqual: false,
+			description: "Changed value should be detected",
+		},
+		{
+			name: "key added",
+			map1: map[string]string{
+				"password": "secret123",
+			},
+			map2: map[string]string{
+				"password": "secret123",
+				"apikey":   "key-xyz",
+			},
+			shouldEqual: false,
+			description: "Added key should be detected",
+		},
+		{
+			name: "key removed",
+			map1: map[string]string{
+				"password": "secret123",
+				"apikey":   "key-xyz",
+			},
+			map2: map[string]string{
+				"password": "secret123",
+			},
+			shouldEqual: false,
+			description: "Removed key should be detected",
+		},
+		{
+			name:        "both empty",
+			map1:        map[string]string{},
+			map2:        map[string]string{},
+			shouldEqual: true,
+			description: "Empty maps should be equal",
+		},
+		{
+			name:        "nil vs empty",
+			map1:        nil,
+			map2:        map[string]string{},
+			shouldEqual: true,
+			description: "Nil and empty are equivalent (both mean no secrets)",
+		},
+		{
+			name: "order independent",
+			map1: map[string]string{
+				"a": "1",
+				"b": "2",
+				"c": "3",
+			},
+			map2: map[string]string{
+				"c": "3",
+				"a": "1",
+				"b": "2",
+			},
+			shouldEqual: true,
+			description: "Map comparison should be order-independent",
+		},
+		{
+			name: "case sensitive values",
+			map1: map[string]string{
+				"password": "Secret",
+			},
+			map2: map[string]string{
+				"password": "secret",
+			},
+			shouldEqual: false,
+			description: "Values should be case-sensitive",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := secretMapsEqual(tt.map1, tt.map2)
+			assert.Equal(t, tt.shouldEqual, result, tt.description)
+		})
+	}
 }

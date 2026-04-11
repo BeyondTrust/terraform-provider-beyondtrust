@@ -581,8 +581,51 @@ func (r *AwsDynamicSecretResource) ImportState(ctx context.Context, req resource
 	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("path"), fullPath)...)
 }
 
-// Helper function to validate and pretty-print JSON policy
+// Helper functions for AWS dynamic secret business logic
+
+// validateJSONPolicy validates AWS IAM policy JSON format
 func validateJSONPolicy(policy string) error {
-	var js json.RawMessage
-	return json.Unmarshal([]byte(policy), &js)
+	if policy == "" {
+		return fmt.Errorf("policy cannot be empty")
+	}
+
+	var js map[string]interface{}
+	err := json.Unmarshal([]byte(policy), &js)
+	if err != nil {
+		return err
+	}
+
+	// Must be an object, not array
+	if js == nil {
+		return fmt.Errorf("policy must be a JSON object, not array")
+	}
+
+	return nil
+}
+
+// validateAssumedRoleTTL validates TTL for assumed_role credential type
+// Valid range: 900-43200 seconds (15 minutes - 12 hours)
+func validateAssumedRoleTTL(ttl int64) bool {
+	return ttl >= 900 && ttl <= 43200
+}
+
+// validateAwsCredentialType validates AWS credential type
+// Currently only 'assumed_role' is supported
+func validateAwsCredentialType(credentialType string) bool {
+	// Currently only assumed_role is supported
+	// Future: iam_user, federation_token, session_token
+	return credentialType == "assumed_role"
+}
+
+// convertAwsTagsMap converts a Go map to AWS tags format (map with string pointers)
+// AWS API requires tags as map[string]*string for proper null handling
+func convertAwsTagsMap(tagsMap map[string]string) map[string]*string {
+	result := make(map[string]*string)
+
+	for key, value := range tagsMap {
+		v := value
+		result[key] = &v
+	}
+
+	return result
 }

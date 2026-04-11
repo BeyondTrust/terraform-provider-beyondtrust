@@ -344,3 +344,84 @@ func (r *AwsIntegrationResource) ImportState(ctx context.Context, req resource.I
 	// Import by name (integration name)
 	resource.ImportStatePassthroughID(ctx, path.Root("name"), req, resp)
 }
+
+// Helper functions for AWS integration business logic
+
+// validateAwsRoleArn validates AWS IAM role ARN format
+// Pattern: arn:aws:iam::[0-9]+:role/.+
+// Supports aws, aws-cn, aws-us-gov partitions
+func validateAwsRoleArn(arn string) bool {
+	if arn == "" {
+		return false
+	}
+
+	// Basic structure check: arn:partition:service:region:account-id:resource
+	parts := strings.Split(arn, ":")
+	if len(parts) < 6 {
+		return false
+	}
+
+	// Check prefix
+	if parts[0] != "arn" {
+		return false
+	}
+
+	// Check partition (aws, aws-cn, aws-us-gov, etc.)
+	if !strings.HasPrefix(parts[1], "aws") {
+		return false
+	}
+
+	// Check service
+	if parts[2] != "iam" {
+		return false
+	}
+
+	// Region should be empty for IAM
+	// parts[3] is empty
+
+	// Check account ID is numeric and 12 digits
+	if len(parts[4]) != 12 {
+		return false
+	}
+	for _, c := range parts[4] {
+		if c < '0' || c > '9' {
+			return false
+		}
+	}
+
+	// Check resource type and name
+	resourcePart := strings.Join(parts[5:], ":") // Handle case where resource contains ':'
+	if !strings.HasPrefix(resourcePart, "role/") {
+		return false
+	}
+
+	// Check role name exists (not just "role/")
+	roleName := strings.TrimPrefix(resourcePart, "role/")
+	if roleName == "" {
+		return false
+	}
+
+	return true
+}
+
+// validateAwsExternalId validates AWS external ID format
+// Must be 2-1224 characters, alphanumeric plus _+=,.@:\\/- characters
+func validateAwsExternalId(externalId string) bool {
+	if len(externalId) < 2 || len(externalId) > 1224 {
+		return false
+	}
+
+	// Check allowed characters: alphanumeric plus _+=,.@:\/-
+	for _, c := range externalId {
+		if !((c >= 'a' && c <= 'z') ||
+			(c >= 'A' && c <= 'Z') ||
+			(c >= '0' && c <= '9') ||
+			c == '_' || c == '+' || c == '=' || c == ',' ||
+			c == '.' || c == '@' || c == ':' || c == '\\' ||
+			c == '/' || c == '-') {
+			return false
+		}
+	}
+
+	return true
+}
