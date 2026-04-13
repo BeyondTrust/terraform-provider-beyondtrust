@@ -68,7 +68,8 @@ go test -v -run TestBuildFolderPath ./secrets/resources/
 ```
 
 **Expected output:**
-```
+
+```text
 ✅ 119 test cases pass
 ✅ Coverage: 13.1% (secrets/resources)
 ✅ Execution time: ~0.4 seconds
@@ -163,7 +164,7 @@ This creates a `coverage.html` file you can open in a browser.
 
 We use different suffixes to distinguish unit tests from acceptance tests:
 
-```
+```text
 secrets/resources/
 ├── *_test.go          → Unit tests (package resources)
 │   └── Test internal business logic helpers
@@ -634,7 +635,8 @@ go test -v -run 'Aws' ./secrets/resources/
 
 ## Best Practices
 
-### Unit Tests
+### Unit Test Best Practices
+
 1. **Test business logic helpers** - Extract and test pure functions
 2. **Use table-driven tests** - Test multiple scenarios with one test function
 3. **Focus on edge cases** - Empty strings, nil values, boundary conditions
@@ -642,7 +644,8 @@ go test -v -run 'Aws' ./secrets/resources/
 5. **Keep tests fast** - Unit tests should run in < 1 second total
 6. **Avoid mocking when possible** - Test pure functions without dependencies
 
-### Acceptance Tests
+### Acceptance Test Best Practices
+
 1. **Always use test helpers** from `internal/acctest/` for generating random names
 2. **Run tests in parallel** when possible using `resource.ParallelTest`
 3. **Clean up resources** - Implement proper `CheckDestroy` functions
@@ -651,7 +654,8 @@ go test -v -run 'Aws' ./secrets/resources/
 6. **Keep tests isolated** - Each test should be independent
 7. **Test import functionality** - Verify `terraform import` works
 
-### General
+### General Best Practices
+
 1. **Don't chase coverage** - Test valuable logic, not trivial code
 2. **Write tests for bugs** - When you find a bug, write a test first
 3. **Keep tests readable** - Future you will thank present you
@@ -661,12 +665,14 @@ go test -v -run 'Aws' ./secrets/resources/
 
 ## Performance Benchmarks
 
-### Unit Tests
+### Unit Test Performance
+
 - **Total execution:** ~0.4 seconds
 - **119 test cases** across 13 test functions
 - **100% pass rate**
 
-### Acceptance Tests
+### Acceptance Test Performance
+
 - **Total execution:** ~30-40 minutes
 - **20+ test scenarios** covering full CRUD lifecycle
 - **Requires:** Real SMOP instance + AWS account for integration tests
