@@ -79,6 +79,58 @@ go test -v -run TestBuildFolderPath ./secrets/resources/
 
 Acceptance tests require a running SMOP instance and proper environment variables.
 
+#### Local Development Setup
+
+**Recommended: Use direnv for automatic environment management**
+
+direnv automatically loads environment variables when you `cd` into the project directory. This is the industry standard for Terraform provider development.
+
+**Setup Steps:**
+
+1. **Install direnv:**
+   ```bash
+   # macOS
+   brew install direnv
+
+   # Linux
+   sudo apt install direnv  # Debian/Ubuntu
+   sudo yum install direnv  # RHEL/CentOS
+
+   # Add to shell (choose your shell)
+   echo 'eval "$(direnv hook bash)"' >> ~/.bashrc   # Bash
+   echo 'eval "$(direnv hook zsh)"' >> ~/.zshrc     # Zsh
+   ```
+
+2. **Copy example environment file:**
+   ```bash
+   cp .envrc.example .envrc
+   ```
+
+3. **Edit `.envrc` with your staging credentials:**
+   ```bash
+   export BEYONDTRUST_API_URL="https://staging.smop.beyondtrust.cloud"
+   export BEYONDTRUST_ACCESS_TOKEN="your-staging-token"
+   export BEYONDTRUST_SITE_ID="your-site-uuid"
+   export BEYONDTRUST_TEST_AWS_ROLE_ARN="arn:aws:iam::123456789012:role/test"
+   export BEYONDTRUST_TEST_AWS_TARGET_ROLE_ARN="arn:aws:iam::123456789012:role/target"
+   ```
+
+4. **Enable direnv:**
+   ```bash
+   direnv allow
+   ```
+
+5. **Run tests (environment is auto-loaded):**
+   ```bash
+   make test-acc
+   ```
+
+**Note:** `.envrc` is gitignored and never committed. Each developer maintains their own local copy.
+
+#### Manual Environment Setup (Alternative)
+
+If you prefer not to use direnv, you can manually export environment variables:
+
 #### Required Environment Variables
 
 ```bash
@@ -241,7 +293,6 @@ Full CRUD lifecycle tests against real SMOP API:
 **Test Helpers:**
 - `internal/acctest/helpers.go` - Shared test utilities
 - `internal/acctest/helpers_test.go` - Tests for test helpers
-- `internal/acctest/config.go` - Test configuration loader
 - `internal/acctest/aws_helpers.go` - AWS-specific test helpers
 
 ---
@@ -613,6 +664,60 @@ go test -v -run 'Aws' ./secrets/resources/
   - `BEYONDTRUST_ACCESS_TOKEN`
   - `BEYONDTRUST_SITE_ID`
 - Check `acctest.PreCheck(t)` for required variables
+
+### "Failed to load test configuration: BEYONDTRUST_API_URL is required"
+
+This error means environment variables aren't loaded. If you're using direnv:
+
+**Solution:**
+
+1. **Enable direnv for this directory:**
+   ```bash
+   direnv allow
+   ```
+
+2. **Verify it's working:**
+   ```bash
+   echo $BEYONDTRUST_API_URL
+   # Should print your API URL
+   ```
+
+3. **If still not working, check your shell hook:**
+   ```bash
+   # For zsh (macOS default):
+   grep direnv ~/.zshrc
+
+   # For bash:
+   grep direnv ~/.bashrc
+   ```
+
+4. **If no direnv hook found, add it:**
+   ```bash
+   # For zsh:
+   echo 'eval "$(direnv hook zsh)"' >> ~/.zshrc
+   source ~/.zshrc
+
+   # For bash:
+   echo 'eval "$(direnv hook bash)"' >> ~/.bashrc
+   source ~/.bashrc
+   ```
+
+5. **Then enable direnv and test:**
+   ```bash
+   direnv allow
+   echo $BEYONDTRUST_API_URL  # Should print your API URL
+   make test-unit  # Should work now
+   ```
+
+**Alternative (manual export):**
+
+If you prefer not to use direnv, manually export variables:
+```bash
+export BEYONDTRUST_API_URL="https://api.smop.local"
+export BEYONDTRUST_ACCESS_TOKEN="your-token"
+export BEYONDTRUST_SITE_ID="your-site-uuid"
+make test-acc
+```
 
 ### Tests timeout
 - Increase timeout: `-timeout=120m`
