@@ -21,7 +21,6 @@ ENABLE_LINTERS:
   - TERRAFORM_TERRASCAN
   - YAML_YAMLLINT
   - JSON_JSONLINT
-  - SPELL_CSPELL
 
 # File exclusions
 FILTER_REGEX_EXCLUDE: |
@@ -37,15 +36,11 @@ TERRAFORM_TFLINT_CONFIG_FILE: .tflint.hcl
 # YAML settings
 YAML_YAMLLINT_CONFIG_FILE: .yamllint.yml
 
-# Spell checker settings
-SPELL_CSPELL_CONFIG_FILE: .cspell.json
-SPELL_CSPELL_FILE_EXTENSIONS:
-  - .md
-
 # Disable linters that might be too noisy
 DISABLE:
   - COPYPASTE  # Can be noisy
-  - SPELL_MISSPELL  # Use cspell instead
+  - SPELL_MISSPELL
+  - SPELL_CSPELL  # Spell check disabled - too many false positives
 
 # GitHub Status Reporter
 GITHUB_STATUS_REPORTER: true

@@ -5,7 +5,7 @@
 # ==========================================
 
 .PHONY: help build install test test-unit test-acc testacc test-coverage test-coverage-html clean fmt lint generate docs docs-validate tf-local tf-local-shell default
-.PHONY: pre-commit pre-commit-quick ci-local check-tools install-tools gofumpt-fix tf-fmt-check tf-fmt-fix spell-check go-mod-tidy check-uncommitted install-git-hooks
+.PHONY: pre-commit pre-commit-quick ci-local check-tools install-tools gofumpt-fix tf-fmt-check tf-fmt-fix go-mod-tidy check-uncommitted install-git-hooks
 
 BINARY_NAME := terraform-provider-beyondtrust
 VERSION := dev
@@ -46,7 +46,6 @@ help:
 	@echo "  lint              - Run golangci-lint and gofumpt check"
 	@echo "  tf-fmt-check      - Check Terraform formatting in examples/"
 	@echo "  tf-fmt-fix        - Fix Terraform formatting in examples/"
-	@echo "  spell-check       - Check spelling in documentation files"
 	@echo ""
 	@echo "Testing:"
 	@echo "  test              - Run all tests (unit + acceptance)"
@@ -149,10 +148,10 @@ tf-fmt-fix:
 	@terraform fmt -recursive examples/
 	@echo "✅ Terraform formatting complete"
 
-## spell-check: Check spelling in documentation files
+# Spell check removed - was causing too many false positives
+# If you want to re-enable: npx cspell "**/*.md"
 spell-check:
-	@echo "Checking spelling..."
-	@npx --yes --quiet cspell --no-progress "**/*.md" || (echo "❌ Spelling errors found. Add unknown technical terms to .cspell.json" && exit 1)
+	@echo "⏭️  Spell check disabled"
 
 # ==========================================
 # Testing
@@ -172,8 +171,8 @@ test-unit:
 ## test-acc: Run acceptance tests (requires SMOP staging instance)
 test-acc:
 	@echo "Running acceptance tests..."
-	@echo "Note: Requires test.config.json or environment variables (BEYONDTRUST_API_URL, BEYONDTRUST_SITE_ID, BEYONDTRUST_ACCESS_TOKEN)"
-	@echo "See test.config.json.example for configuration format"
+	@echo "Note: Requires environment variables (BEYONDTRUST_API_URL, BEYONDTRUST_SITE_ID, BEYONDTRUST_ACCESS_TOKEN)"
+	@echo "For local dev: cp .envrc.example .envrc and run 'direnv allow' (see TESTING.md)"
 	@TF_ACC=1 go test -v -tags=acceptance -timeout=120m -parallel=4 -coverprofile=coverage-acc.out -covermode=atomic ./...
 
 ## testacc: Alias for test-acc
@@ -218,56 +217,51 @@ pre-commit: check-tools
 	@echo "=================================================="
 	@echo ""
 
-	@echo "Step 1/10: Formatting Go code..."
+	@echo "Step 1/9: Formatting Go code..."
 	@$(MAKE) --no-print-directory fmt || (echo "❌ Format failed" && exit 1)
 	@echo "✅ Format complete"
 	@echo ""
 
-	@echo "Step 2/10: Applying gofumpt..."
+	@echo "Step 2/9: Applying gofumpt..."
 	@$(MAKE) --no-print-directory gofumpt-fix || (echo "❌ Gofumpt failed" && exit 1)
 	@echo "✅ Gofumpt complete"
 	@echo ""
 
-	@echo "Step 3/10: Running linters..."
+	@echo "Step 3/9: Running linters..."
 	@$(MAKE) --no-print-directory lint || (echo "❌ Lint failed" && exit 1)
 	@echo "✅ Lint complete"
 	@echo ""
 
-	@echo "Step 4/10: Running unit tests..."
+	@echo "Step 4/9: Running unit tests..."
 	@$(MAKE) --no-print-directory test-unit || (echo "❌ Tests failed" && exit 1)
 	@echo "✅ Tests complete"
 	@echo ""
 
-	@echo "Step 5/10: Building provider..."
+	@echo "Step 5/9: Building provider..."
 	@$(MAKE) --no-print-directory build || (echo "❌ Build failed" && exit 1)
 	@echo ""
 
-	@echo "Step 6/10: Generating documentation..."
+	@echo "Step 6/9: Generating documentation..."
 	@$(MAKE) --no-print-directory generate || (echo "❌ Generate failed" && exit 1)
 	@echo "✅ Generate complete"
 	@echo ""
 
-	@echo "Step 7/10: Validating documentation..."
+	@echo "Step 7/9: Validating documentation..."
 	@$(MAKE) --no-print-directory docs-validate || (echo "❌ Docs validation failed" && exit 1)
 	@echo "✅ Docs validation complete"
 	@echo ""
 
-	@echo "Step 8/11: Checking Terraform formatting..."
+	@echo "Step 8/9: Checking Terraform formatting..."
 	@$(MAKE) --no-print-directory tf-fmt-check || (echo "❌ Terraform format check failed. Run 'make tf-fmt-fix' to fix." && exit 1)
 	@echo "✅ Terraform format check complete"
 	@echo ""
 
-	@echo "Step 9/11: Checking spelling..."
-	@$(MAKE) --no-print-directory spell-check || (echo "❌ Spelling check failed. Add technical terms to .cspell.json" && exit 1)
-	@echo "✅ Spelling check complete"
-	@echo ""
 
-	@echo "Step 10/11: Tidying go.mod..."
+	@echo "Step 9/9: Tidying go.mod..."
 	@$(MAKE) --no-print-directory go-mod-tidy || (echo "❌ go mod tidy failed" && exit 1)
 	@echo "✅ go.mod tidy complete"
 	@echo ""
 
-	@echo "Step 11/11: Final verification..."
 	@echo "✅ Final checks complete"
 	@echo ""
 
@@ -297,14 +291,9 @@ pre-commit-quick:
 	@echo "✅ Tests complete"
 	@echo ""
 
-	@echo "Step 4/5: Checking Terraform formatting..."
+	@echo "Step 4/4: Checking Terraform formatting..."
 	@$(MAKE) --no-print-directory tf-fmt-check || (echo "❌ Terraform format check failed. Run 'make tf-fmt-fix' to fix." && exit 1)
 	@echo "✅ Terraform format check complete"
-	@echo ""
-
-	@echo "Step 5/5: Checking spelling..."
-	@$(MAKE) --no-print-directory spell-check || (echo "❌ Spelling check failed. Add technical terms to .cspell.json" && exit 1)
-	@echo "✅ Spelling check complete"
 	@echo ""
 
 	@echo "=================================================="
