@@ -58,27 +58,35 @@ func TestAccFolderResource_update(t *testing.T) {
 		PreCheck:                 func() { acctest.PreCheck(t) },
 		ProtoV6ProviderFactories: acctest.ProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
-			// Step 1: Create
+			// Step 1: Create with tags
+			{
+				Config: testAccFolderConfig_withTags(cfg, folderName, map[string]string{
+					"env": "dev",
+				}),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr("beyondtrust_secrets_folder.test", "name", folderName),
+					resource.TestCheckResourceAttr("beyondtrust_secrets_folder.test", "tags.env", "dev"),
+				),
+			},
+			// Step 2: Update tags
+			{
+				Config: testAccFolderConfig_withTags(cfg, folderName, map[string]string{
+					"env":  "staging",
+					"team": "platform",
+				}),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr("beyondtrust_secrets_folder.test", "name", folderName),
+					resource.TestCheckResourceAttr("beyondtrust_secrets_folder.test", "tags.env", "staging"),
+					resource.TestCheckResourceAttr("beyondtrust_secrets_folder.test", "tags.team", "platform"),
+				),
+			},
+			// Step 3: Remove all tags
 			{
 				Config: testAccFolderConfig_basic(cfg, folderName),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("beyondtrust_secrets_folder.test", "name", folderName),
-					resource.TestCheckResourceAttr("beyondtrust_secrets_folder.test", "description", ""),
-				),
-			},
-			// Step 2: Update description
-			{
-				Config: testAccFolderConfig_withDescription(cfg, folderName, "Updated description"),
-				Check: resource.ComposeTestCheckFunc(
-					resource.TestCheckResourceAttr("beyondtrust_secrets_folder.test", "name", folderName),
-					resource.TestCheckResourceAttr("beyondtrust_secrets_folder.test", "description", "Updated description"),
-				),
-			},
-			// Step 3: Remove description
-			{
-				Config: testAccFolderConfig_basic(cfg, folderName),
-				Check: resource.ComposeTestCheckFunc(
-					resource.TestCheckResourceAttr("beyondtrust_secrets_folder.test", "description", ""),
+					resource.TestCheckNoResourceAttr("beyondtrust_secrets_folder.test", "tags.env"),
+					resource.TestCheckNoResourceAttr("beyondtrust_secrets_folder.test", "tags.team"),
 				),
 			},
 		},
@@ -150,12 +158,13 @@ func TestAccFolderResource_nested(t *testing.T) {
 			{
 				Config: testAccFolderConfig_nested(cfg, parentName, childName),
 				Check: resource.ComposeTestCheckFunc(
-					// Check parent folder
+					// Check parent folder (root level - folder attribute not set)
 					resource.TestCheckResourceAttr("beyondtrust_secrets_folder.parent", "name", parentName),
-					resource.TestCheckResourceAttr("beyondtrust_secrets_folder.parent", "folder", ""),
-					// Check child folder
+					resource.TestCheckResourceAttr("beyondtrust_secrets_folder.parent", "path", parentName),
+					// Check child folder (nested under parent)
 					resource.TestCheckResourceAttr("beyondtrust_secrets_folder.child", "name", childName),
 					resource.TestCheckResourceAttr("beyondtrust_secrets_folder.child", "folder", parentName),
+					resource.TestCheckResourceAttr("beyondtrust_secrets_folder.child", "path", fmt.Sprintf("%s/%s", parentName, childName)),
 				),
 			},
 		},
@@ -170,15 +179,6 @@ resource "beyondtrust_secrets_folder" "test" {
   name = %q
 }
 `, name)
-}
-
-func testAccFolderConfig_withDescription(cfg *acctest.TestConfig, name, description string) string {
-	return cfg.ProviderConfig() + fmt.Sprintf(`
-resource "beyondtrust_secrets_folder" "test" {
-  name        = %q
-  description = %q
-}
-`, name, description)
 }
 
 func testAccFolderConfig_withTags(cfg *acctest.TestConfig, name string, tags map[string]string) string {
