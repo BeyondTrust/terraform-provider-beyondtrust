@@ -145,7 +145,7 @@ This creates a `coverage.html` file you can open in a browser.
 **Overall: 68.1%** (focus on high-value business logic)
 
 | Package | Coverage | Status | Focus |
-|---------|----------|--------|-------|
+| --------- | ---------- | -------- | ------- |
 | **internal/client** | 84.3% | ✅ Excellent | HTTP client, error handling, CSRF |
 | **internal/provider** | 89.5% | ✅ Excellent | Provider configuration, env vars |
 | **secrets/resources** | 13.1% | ✅ Targeted | Business logic helpers only |
@@ -184,7 +184,7 @@ secrets/resources/
 Tests for business logic helpers and validators:
 
 | File | Lines | Tests | Coverage | Focus |
-|------|-------|-------|----------|-------|
+| ------ | ------- | ------- | ---------- | ------- |
 | `resource_helpers_test.go` | 412 | 5 functions, 30 cases | Shared helpers | Path, import, tags, queries, errors |
 | `folder_resource_test.go` | 20 | Helper only | N/A | stringPtr helper |
 | `static_secret_resource_test.go` | 204 | 2 functions, 14 cases | Secret-specific | Type conversion, change detection |
@@ -223,7 +223,7 @@ Tests for business logic helpers and validators:
 Full CRUD lifecycle tests against real SMOP API:
 
 | File | Lines | Tests | Focus |
-|------|-------|-------|-------|
+| ------ | ------- | ------- | ------- |
 | `folder_resource_acc_test.go` | 207 | 5+ test scenarios | Folders CRUD + import |
 | `static_secret_resource_acc_test.go` | 233 | 5+ test scenarios | Secrets CRUD + import |
 | `aws_integration_resource_acc_test.go` | 172 | 4+ test scenarios | AWS integration CRUD |
