@@ -1,0 +1,24 @@
+# BeyondTrust Terraform Provider - Development Environment
+#
+# This file contains environment variables needed for local development and testing.
+#
+# Setup Instructions:
+#   1. Install direnv: brew install direnv
+#   2. Copy this file: cp .envrc.example .envrc
+#   3. Edit .envrc with your staging credentials
+#   4. Enable direnv: direnv allow
+#   5. Environment variables will auto-load when you cd into this directory
+#
+# For CI/CD: Configure these same variables as GitHub Secrets
+
+# Required: BeyondTrust SMOP API Configuration
+export BEYONDTRUST_API_URL="https://api.smop.bt-platform.net"
+export BEYONDTRUST_ACCESS_TOKEN="your-staging-access-token-here"
+export BEYONDTRUST_SITE_ID="default"
+
+# Required for AWS Integration Tests
+export BEYONDTRUST_TEST_AWS_ROLE_ARN="arn:aws:iam::123456789012:role/staging-test-role"
+export BEYONDTRUST_TEST_AWS_TARGET_ROLE_ARN="arn:aws:iam::123456789012:role/staging-target-role"
+
+# Optional: Override API version (defaults to 2026-02-16)
+# export BEYONDTRUST_API_VERSION="2026-02-16"
