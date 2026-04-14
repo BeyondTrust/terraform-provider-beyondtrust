@@ -41,7 +41,7 @@ func PreCheck(t *testing.T) {
 
 	// Try to load test configuration from environment variables
 	if _, err := LoadTestConfig(); err != nil {
-		t.Fatalf("Failed to load test configuration: %v\n\nSet environment variables:\n  BEYONDTRUST_API_URL\n  BEYONDTRUST_SITE_ID\n  BEYONDTRUST_ACCESS_TOKEN\n\nFor local dev: cp .envrc.example .envrc (see TESTING.md)", err)
+		t.Fatalf("Failed to load test configuration: %v\n\nSet environment variables:\n  %s\n  %s\n  %s\n\nFor local dev: cp .envrc.example .envrc (see TESTING.md)", err, EnvAPIURL, EnvSiteID, EnvAccessToken)
 	}
 }
 
@@ -49,8 +49,8 @@ func PreCheck(t *testing.T) {
 func PreCheckAWS(t *testing.T) {
 	t.Helper()
 
-	if v := os.Getenv("BEYONDTRUST_TEST_AWS_ROLE_ARN"); v == "" {
-		t.Skip("BEYONDTRUST_TEST_AWS_ROLE_ARN must be set for AWS integration acceptance tests")
+	if v := os.Getenv(EnvTestAWSRoleARN); v == "" {
+		t.Skipf("%s must be set for AWS integration acceptance tests", EnvTestAWSRoleARN)
 	}
 }
 
@@ -58,7 +58,7 @@ func PreCheckAWS(t *testing.T) {
 func GetAWSRoleARN(t *testing.T) string {
 	t.Helper()
 
-	if v := os.Getenv("BEYONDTRUST_TEST_AWS_ROLE_ARN"); v != "" {
+	if v := os.Getenv(EnvTestAWSRoleARN); v != "" {
 		return v
 	}
 
@@ -70,7 +70,7 @@ func GetAWSRoleARN(t *testing.T) string {
 func GetAWSRoleARN2(t *testing.T) string {
 	t.Helper()
 
-	if v := os.Getenv("BEYONDTRUST_TEST_AWS_ROLE_ARN_2"); v != "" {
+	if v := os.Getenv(EnvTestAWSRoleARN2); v != "" {
 		return v
 	}
 
