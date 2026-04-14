@@ -29,22 +29,19 @@ func RegisterProviderFactory(name string, factory func() (tfprotov6.ProviderServ
 	ProtoV6ProviderFactories[name] = factory
 }
 
-// PreCheck validates that all required environment variables are set
-// before running acceptance tests.
+// PreCheck validates that required test configuration is available
+// before running acceptance tests via environment variables.
+//
+// For local development, use direnv:
+//  1. cp .envrc.example .envrc
+//  2. Edit .envrc with your credentials
+//  3. direnv allow
 func PreCheck(t *testing.T) {
 	t.Helper()
 
-	// Required environment variables for acceptance tests
-	requiredEnvVars := []string{
-		"BEYONDTRUST_API_URL",
-		"BEYONDTRUST_ACCESS_TOKEN",
-	}
-
-	// Check required variables
-	for _, envVar := range requiredEnvVars {
-		if v := os.Getenv(envVar); v == "" {
-			t.Fatalf("%s must be set for acceptance tests", envVar)
-		}
+	// Try to load test configuration from environment variables
+	if _, err := LoadTestConfig(); err != nil {
+		t.Fatalf("Failed to load test configuration: %v\n\nSet environment variables:\n  BEYONDTRUST_API_URL\n  BEYONDTRUST_SITE_ID\n  BEYONDTRUST_ACCESS_TOKEN\n\nFor local dev: cp .envrc.example .envrc (see TESTING.md)", err)
 	}
 }
 
