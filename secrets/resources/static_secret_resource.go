@@ -258,9 +258,11 @@ func (r *StaticSecretResource) Read(ctx context.Context, req resource.ReadReques
 	pathStr := buildFolderPath(name, parentFolder)
 	data.Path = types.StringValue(pathStr)
 
-	// Update tags if present in response
+	// Update tags - set to null if empty (framework requirement)
 	if len(metadataResp.Tags) > 0 {
 		data.Tags = convertTagsToTerraformMap(metadataResp.Tags)
+	} else {
+		data.Tags = types.MapNull(types.StringType)
 	}
 
 	// IMPORTANT: Secret value is not updated here - it remains from the plan
@@ -348,9 +350,11 @@ func (r *StaticSecretResource) Update(ctx context.Context, req resource.UpdateRe
 	data.CreatedAt = types.StringValue(metadataResp.CreatedAt)
 	// secret_wo_version already updated above when secret changed
 
-	// Update tags in state
+	// Update tags in state - set to null if empty (framework requirement)
 	if len(metadataResp.Tags) > 0 {
 		data.Tags = convertTagsToTerraformMap(metadataResp.Tags)
+	} else {
+		data.Tags = types.MapNull(types.StringType)
 	}
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
