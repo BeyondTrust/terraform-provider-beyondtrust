@@ -14,7 +14,7 @@
 # Required: BeyondTrust SMOP API Configuration
 export BEYONDTRUST_API_URL="https://api.beyondtrust.io"
 export BEYONDTRUST_ACCESS_TOKEN="your-access-token-here"
-export BEYONDTRUST_SITE_ID="default"
+export BEYONDTRUST_SITE_ID="your-site-uuid"
 
 # Required for AWS Integration Tests
 export BEYONDTRUST_TEST_AWS_ROLE_ARN="arn:aws:iam::123456789012:role/staging-test-role"
