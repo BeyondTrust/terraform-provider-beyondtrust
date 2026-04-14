@@ -86,13 +86,12 @@ func NewClient(cfg *Config) (*Client, error) {
 }
 
 // BuildPath constructs an API path with optional version segment
-// Note: /api prefix is added by CloudFront/load balancer, not included here
-// Adds /secrets prefix to all paths
+// Format: /site/{site-id}/secrets[/version]/endpoint
 func (c *Client) BuildPath(endpoint string) string {
 	if c.APIPathVersion == "" {
-		return "/secrets" + endpoint
+		return fmt.Sprintf("/site/%s/secrets%s", c.SiteID, endpoint)
 	}
-	return fmt.Sprintf("/secrets/%s%s", c.APIPathVersion, endpoint)
+	return fmt.Sprintf("/site/%s/secrets/%s%s", c.SiteID, c.APIPathVersion, endpoint)
 }
 
 // ValidateSession validates the access token by checking the session endpoint
