@@ -5,15 +5,15 @@
 # Setup Instructions:
 #   1. Install direnv: brew install direnv
 #   2. Copy this file: cp .envrc.example .envrc
-#   3. Edit .envrc with your staging credentials
+#   3. Edit .envrc with your credentials
 #   4. Enable direnv: direnv allow
 #   5. Environment variables will auto-load when you cd into this directory
 #
 # For CI/CD: Configure these same variables as GitHub Secrets
 
 # Required: BeyondTrust SMOP API Configuration
-export BEYONDTRUST_API_URL="https://api.smop.bt-platform.net"
-export BEYONDTRUST_ACCESS_TOKEN="your-staging-access-token-here"
+export BEYONDTRUST_API_URL="https://api.beyondtrust.io"
+export BEYONDTRUST_ACCESS_TOKEN="your-access-token-here"
 export BEYONDTRUST_SITE_ID="default"
 
 # Required for AWS Integration Tests
