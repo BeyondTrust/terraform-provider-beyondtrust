@@ -254,13 +254,18 @@ func (r *FolderResource) Read(ctx context.Context, req resource.ReadRequest, res
 	data.ID = types.StringValue(metadataResp.ID)
 	data.CreatedAt = types.StringValue(metadataResp.CreatedAt)
 
-	if metadataResp.DeletedAt != nil {
+	// CRITICAL: Set deletedAt to null if not present (framework requirement)
+	if metadataResp.DeletedAt != nil && *metadataResp.DeletedAt != "" {
 		data.DeletedAt = types.StringValue(*metadataResp.DeletedAt)
+	} else {
+		data.DeletedAt = types.StringNull()
 	}
 
-	// Update tags if present in response
+	// Update tags - set to null if empty (framework requirement)
 	if len(metadataResp.Tags) > 0 {
 		data.Tags = convertTagsToTerraformMap(metadataResp.Tags)
+	} else {
+		data.Tags = types.MapNull(types.StringType)
 	}
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
@@ -306,9 +311,18 @@ func (r *FolderResource) Update(ctx context.Context, req resource.UpdateRequest,
 		return
 	}
 
-	// Update tags in state
+	// Update tags in state - set to null if empty (framework requirement)
 	if len(metadataResp.Tags) > 0 {
 		data.Tags = convertTagsToTerraformMap(metadataResp.Tags)
+	} else {
+		data.Tags = types.MapNull(types.StringType)
+	}
+
+	// CRITICAL: Ensure deletedAt is set to null if not present (framework requirement)
+	if metadataResp.DeletedAt != nil && *metadataResp.DeletedAt != "" {
+		data.DeletedAt = types.StringValue(*metadataResp.DeletedAt)
+	} else {
+		data.DeletedAt = types.StringNull()
 	}
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
