@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/beyondtrust/terraform-provider-beyondtrust/internal/constants"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 )
 
@@ -29,22 +30,19 @@ func RegisterProviderFactory(name string, factory func() (tfprotov6.ProviderServ
 	ProtoV6ProviderFactories[name] = factory
 }
 
-// PreCheck validates that all required environment variables are set
-// before running acceptance tests.
+// PreCheck validates that required test configuration is available
+// before running acceptance tests via environment variables.
+//
+// For local development, use direnv:
+//  1. cp .envrc.example .envrc
+//  2. Edit .envrc with your credentials
+//  3. direnv allow
 func PreCheck(t *testing.T) {
 	t.Helper()
 
-	// Required environment variables for acceptance tests
-	requiredEnvVars := []string{
-		"BEYONDTRUST_API_URL",
-		"BEYONDTRUST_ACCESS_TOKEN",
-	}
-
-	// Check required variables
-	for _, envVar := range requiredEnvVars {
-		if v := os.Getenv(envVar); v == "" {
-			t.Fatalf("%s must be set for acceptance tests", envVar)
-		}
+	// Try to load test configuration from environment variables
+	if _, err := LoadTestConfig(); err != nil {
+		t.Fatalf("Failed to load test configuration: %v\n\nSet environment variables:\n  %s\n  %s\n  %s\n\nFor local dev: cp .envrc.example .envrc (see TESTING.md)", err, constants.EnvAPIURL, constants.EnvSiteID, constants.EnvAccessToken)
 	}
 }
 
@@ -52,8 +50,8 @@ func PreCheck(t *testing.T) {
 func PreCheckAWS(t *testing.T) {
 	t.Helper()
 
-	if v := os.Getenv("BEYONDTRUST_TEST_AWS_ROLE_ARN"); v == "" {
-		t.Skip("BEYONDTRUST_TEST_AWS_ROLE_ARN must be set for AWS integration acceptance tests")
+	if v := os.Getenv(EnvTestAWSRoleARN); v == "" {
+		t.Skipf("%s must be set for AWS integration acceptance tests", EnvTestAWSRoleARN)
 	}
 }
 
@@ -61,7 +59,7 @@ func PreCheckAWS(t *testing.T) {
 func GetAWSRoleARN(t *testing.T) string {
 	t.Helper()
 
-	if v := os.Getenv("BEYONDTRUST_TEST_AWS_ROLE_ARN"); v != "" {
+	if v := os.Getenv(EnvTestAWSRoleARN); v != "" {
 		return v
 	}
 
@@ -73,7 +71,7 @@ func GetAWSRoleARN(t *testing.T) string {
 func GetAWSRoleARN2(t *testing.T) string {
 	t.Helper()
 
-	if v := os.Getenv("BEYONDTRUST_TEST_AWS_ROLE_ARN_2"); v != "" {
+	if v := os.Getenv(EnvTestAWSRoleARN2); v != "" {
 		return v
 	}
 

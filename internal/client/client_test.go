@@ -25,7 +25,7 @@ func TestNewClient(t *testing.T) {
 				BaseURL:        "https://api.example.com",
 				AccessToken:    "test-token",
 				SiteID:         "test-site",
-				APIVersion:     "2026-02-16",
+				APIVersion:     "DefaultAPIVersion",
 				APIPathVersion: "v1",
 				Role:           "test-role",
 				Insecure:       false,
@@ -39,7 +39,7 @@ func TestNewClient(t *testing.T) {
 				BaseURL:     "https://api.example.com",
 				AccessToken: "test-token",
 				SiteID:      "test-site",
-				APIVersion:  "2026-02-16",
+				APIVersion:  "DefaultAPIVersion",
 				Timeout:     "30s",
 			},
 			wantErr: false,
@@ -197,7 +197,7 @@ func TestDoRequest(t *testing.T) {
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				// Verify headers that should always be set
 				assert.Equal(t, "Bearer test-token", r.Header.Get("Authorization"), "Authorization header")
-				assert.Equal(t, "2026-02-16", r.Header.Get("bt-secrets-api-version"), "API Version header")
+				assert.Equal(t, "DefaultAPIVersion", r.Header.Get("bt-secrets-api-version"), "API Version header")
 				assert.Equal(t, "test-site", r.Header.Get("X-BT-Site-ID"), "Site ID header")
 				// Content-Type is only set when there's a body, so we don't check it for GET
 
@@ -212,7 +212,7 @@ func TestDoRequest(t *testing.T) {
 				BaseURL:     server.URL,
 				AccessToken: "test-token",
 				SiteID:      "test-site",
-				APIVersion:  "2026-02-16",
+				APIVersion:  "DefaultAPIVersion",
 				Timeout:     "30s",
 			})
 			require.NoError(t, err)
@@ -240,7 +240,7 @@ func TestDoRequestWithHeaders(t *testing.T) {
 		// Verify all headers
 		assert.Equal(t, "Bearer test-token", r.Header.Get("Authorization"), "Authorization header")
 		assert.Equal(t, "application/json", r.Header.Get("Content-Type"), "Content-Type header")
-		assert.Equal(t, "2026-02-16", r.Header.Get("bt-secrets-api-version"), "API Version header")
+		assert.Equal(t, "DefaultAPIVersion", r.Header.Get("bt-secrets-api-version"), "API Version header")
 		assert.Equal(t, "test-site", r.Header.Get("X-BT-Site-ID"), "Site ID header")
 		assert.Equal(t, "test-role", r.Header.Get("X-BT-Role"), "Role header")
 		assert.Equal(t, "CUSTOM-IDP", r.Header.Get("X-BT-Auth-Type"), "Auth Type header")
@@ -255,7 +255,7 @@ func TestDoRequestWithHeaders(t *testing.T) {
 		BaseURL:     server.URL,
 		AccessToken: "test-token",
 		SiteID:      "test-site",
-		APIVersion:  "2026-02-16",
+		APIVersion:  "DefaultAPIVersion",
 		Role:        "test-role",
 		Timeout:     "30s",
 	})
@@ -284,7 +284,7 @@ func TestDoRequestWithoutRole(t *testing.T) {
 		BaseURL:     server.URL,
 		AccessToken: "test-token",
 		SiteID:      "test-site",
-		APIVersion:  "2026-02-16",
+		APIVersion:  "DefaultAPIVersion",
 		Role:        "", // No role
 		Timeout:     "30s",
 	})
@@ -348,7 +348,7 @@ func TestEnsureCSRFToken_FromHeader(t *testing.T) {
 		BaseURL:     server.URL,
 		AccessToken: "test-token",
 		SiteID:      "test-site",
-		APIVersion:  "2026-02-16",
+		APIVersion:  "DefaultAPIVersion",
 		Timeout:     "30s",
 	})
 	require.NoError(t, err)
@@ -374,7 +374,7 @@ func TestEnsureCSRFToken_Caching(t *testing.T) {
 		BaseURL:     server.URL,
 		AccessToken: "test-token",
 		SiteID:      "test-site",
-		APIVersion:  "2026-02-16",
+		APIVersion:  "DefaultAPIVersion",
 		Timeout:     "30s",
 	})
 	require.NoError(t, err)
@@ -405,7 +405,7 @@ func TestEnsureCSRFToken_NoToken(t *testing.T) {
 		BaseURL:     server.URL,
 		AccessToken: "test-token",
 		SiteID:      "test-site",
-		APIVersion:  "2026-02-16",
+		APIVersion:  "DefaultAPIVersion",
 		Timeout:     "30s",
 	})
 	require.NoError(t, err)
@@ -456,7 +456,7 @@ func TestHandleErrorResponse_StructuredJSON(t *testing.T) {
 				BaseURL:     server.URL,
 				AccessToken: "test-token",
 				SiteID:      "test-site",
-				APIVersion:  "2026-02-16",
+				APIVersion:  "DefaultAPIVersion",
 				Timeout:     "30s",
 			})
 			require.NoError(t, err)
@@ -481,7 +481,7 @@ func TestHandleErrorResponse_UnstructuredJSON(t *testing.T) {
 		BaseURL:     server.URL,
 		AccessToken: "test-token",
 		SiteID:      "test-site",
-		APIVersion:  "2026-02-16",
+		APIVersion:  "DefaultAPIVersion",
 		Timeout:     "30s",
 	})
 	require.NoError(t, err)
@@ -509,7 +509,7 @@ func TestValidateSession_Success(t *testing.T) {
 		BaseURL:     server.URL,
 		AccessToken: "test-token",
 		SiteID:      "test-site",
-		APIVersion:  "2026-02-16",
+		APIVersion:  "DefaultAPIVersion",
 		Timeout:     "30s",
 	})
 	require.NoError(t, err)
@@ -537,7 +537,7 @@ func TestValidateSession_Unauthorized(t *testing.T) {
 		BaseURL:     server.URL,
 		AccessToken: "invalid-token",
 		SiteID:      "test-site",
-		APIVersion:  "2026-02-16",
+		APIVersion:  "DefaultAPIVersion",
 		Timeout:     "30s",
 	})
 	require.NoError(t, err)
@@ -563,7 +563,7 @@ func TestMergePatchRequest(t *testing.T) {
 		BaseURL:     server.URL,
 		AccessToken: "test-token",
 		SiteID:      "test-site",
-		APIVersion:  "2026-02-16",
+		APIVersion:  "DefaultAPIVersion",
 		Timeout:     "30s",
 	})
 	require.NoError(t, err)
@@ -611,7 +611,7 @@ func TestHTTPMethods(t *testing.T) {
 				BaseURL:     server.URL,
 				AccessToken: "test-token",
 				SiteID:      "test-site",
-				APIVersion:  "2026-02-16",
+				APIVersion:  "DefaultAPIVersion",
 				Timeout:     "30s",
 			})
 			require.NoError(t, err)
@@ -633,7 +633,7 @@ func TestDoRequest_NoContent(t *testing.T) {
 		BaseURL:     server.URL,
 		AccessToken: "test-token",
 		SiteID:      "test-site",
-		APIVersion:  "2026-02-16",
+		APIVersion:  "DefaultAPIVersion",
 		Timeout:     "30s",
 	})
 	require.NoError(t, err)
@@ -658,7 +658,7 @@ func TestDoRequest_QueryParameters(t *testing.T) {
 		BaseURL:     server.URL,
 		AccessToken: "test-token",
 		SiteID:      "test-site",
-		APIVersion:  "2026-02-16",
+		APIVersion:  "DefaultAPIVersion",
 		Timeout:     "30s",
 	})
 	require.NoError(t, err)
