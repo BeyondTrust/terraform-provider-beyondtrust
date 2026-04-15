@@ -12,6 +12,9 @@ import (
 	"time"
 )
 
+// DefaultAPIVersion is the default API version header value
+const DefaultAPIVersion = "2026-02-16"
+
 // Client is the BeyondTrust API client
 type Client struct {
 	BaseURL        string
