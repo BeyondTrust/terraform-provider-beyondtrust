@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/beyondtrust/terraform-provider-beyondtrust/internal/constants"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 )
 
@@ -41,7 +42,7 @@ func PreCheck(t *testing.T) {
 
 	// Try to load test configuration from environment variables
 	if _, err := LoadTestConfig(); err != nil {
-		t.Fatalf("Failed to load test configuration: %v\n\nSet environment variables:\n  %s\n  %s\n  %s\n\nFor local dev: cp .envrc.example .envrc (see TESTING.md)", err, EnvAPIURL, EnvSiteID, EnvAccessToken)
+		t.Fatalf("Failed to load test configuration: %v\n\nSet environment variables:\n  %s\n  %s\n  %s\n\nFor local dev: cp .envrc.example .envrc (see TESTING.md)", err, constants.EnvAPIURL, constants.EnvSiteID, constants.EnvAccessToken)
 	}
 }
 

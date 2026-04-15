@@ -13,6 +13,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/beyondtrust/terraform-provider-beyondtrust/internal/client"
+	"github.com/beyondtrust/terraform-provider-beyondtrust/internal/constants"
 	"github.com/beyondtrust/terraform-provider-beyondtrust/secrets/datasources"
 	ephemeralresources "github.com/beyondtrust/terraform-provider-beyondtrust/secrets/ephemeral"
 	"github.com/beyondtrust/terraform-provider-beyondtrust/secrets/resources"
@@ -24,12 +25,8 @@ var (
 	_ provider.ProviderWithEphemeralResources = &BeyondTrustProvider{}
 )
 
-// Environment variable names for provider configuration
+// Environment variable names for provider-specific configuration
 const (
-	EnvAPIURL         = "BEYONDTRUST_API_URL"
-	EnvSiteID         = "BEYONDTRUST_SITE_ID"
-	EnvAccessToken    = "BEYONDTRUST_ACCESS_TOKEN"
-	EnvAPIVersion     = "BEYONDTRUST_API_VERSION"
 	EnvAPIPathVersion = "BEYONDTRUST_API_PATH_VERSION"
 	EnvRole           = "BEYONDTRUST_ROLE"
 	EnvInsecure       = "BEYONDTRUST_INSECURE"
@@ -66,20 +63,20 @@ func (p *BeyondTrustProvider) Schema(ctx context.Context, req provider.SchemaReq
 		Description: "The BeyondTrust provider allows you to manage BeyondTrust resources (SMOP, PRA, etc.) using infrastructure as code.",
 		Attributes: map[string]schema.Attribute{
 			"api_url": schema.StringAttribute{
-				Description: "The base URL for the BeyondTrust API (e.g., https://api.smop.example.com). Can also be set via " + EnvAPIURL + " environment variable.",
+				Description: "The base URL for the BeyondTrust API (e.g., https://api.smop.example.com). Can also be set via " + constants.EnvAPIURL + " environment variable.",
 				Optional:    true,
 			},
 			"access_token": schema.StringAttribute{
-				Description: "The API access token for authentication. Can also be set via " + EnvAccessToken + " environment variable.",
+				Description: "The API access token for authentication. Can also be set via " + constants.EnvAccessToken + " environment variable.",
 				Optional:    true,
 				Sensitive:   true,
 			},
 			"site_id": schema.StringAttribute{
-				Description: "The site/tenant ID (UUID format). Required for multi-tenant deployments. Can also be set via " + EnvSiteID + " environment variable.",
+				Description: "The site/tenant ID (UUID format). Required for multi-tenant deployments. Can also be set via " + constants.EnvSiteID + " environment variable.",
 				Optional:    true,
 			},
 			"api_version": schema.StringAttribute{
-				Description: "The API header version (date-based, e.g., '" + client.DefaultAPIVersion + "'). Defaults to '" + client.DefaultAPIVersion + "'. Can also be set via " + EnvAPIVersion + " environment variable.",
+				Description: "The API header version (date-based, e.g., '" + client.DefaultAPIVersion + "'). Defaults to '" + client.DefaultAPIVersion + "'. Can also be set via " + constants.EnvAPIVersion + " environment variable.",
 				Optional:    true,
 			},
 			"api_path_version": schema.StringAttribute{
@@ -112,10 +109,10 @@ func (p *BeyondTrustProvider) Configure(ctx context.Context, req provider.Config
 	}
 
 	// Default values and environment variable fallbacks
-	apiUrl := os.Getenv(EnvAPIURL)
-	accessToken := os.Getenv(EnvAccessToken)
-	siteId := os.Getenv(EnvSiteID)
-	apiVersion := os.Getenv(EnvAPIVersion)
+	apiUrl := os.Getenv(constants.EnvAPIURL)
+	accessToken := os.Getenv(constants.EnvAccessToken)
+	siteId := os.Getenv(constants.EnvSiteID)
+	apiVersion := os.Getenv(constants.EnvAPIVersion)
 	apiPathVersion := os.Getenv(EnvAPIPathVersion)
 	role := os.Getenv(EnvRole)
 	insecure := os.Getenv(EnvInsecure) == "true"
@@ -168,7 +165,7 @@ func (p *BeyondTrustProvider) Configure(ctx context.Context, req provider.Config
 		resp.Diagnostics.AddAttributeError(
 			path.Root("api_url"),
 			"Missing API URL",
-			"The provider requires an API URL. Set the api_url attribute or "+EnvAPIURL+" environment variable.",
+			"The provider requires an API URL. Set the api_url attribute or "+constants.EnvAPIURL+" environment variable.",
 		)
 	}
 
@@ -176,7 +173,7 @@ func (p *BeyondTrustProvider) Configure(ctx context.Context, req provider.Config
 		resp.Diagnostics.AddAttributeError(
 			path.Root("access_token"),
 			"Missing Access Token",
-			"The provider requires an access token for authentication. Set the access_token attribute or "+EnvAccessToken+" environment variable.",
+			"The provider requires an access token for authentication. Set the access_token attribute or "+constants.EnvAccessToken+" environment variable.",
 		)
 	}
 
@@ -184,7 +181,7 @@ func (p *BeyondTrustProvider) Configure(ctx context.Context, req provider.Config
 		resp.Diagnostics.AddAttributeError(
 			path.Root("site_id"),
 			"Missing Site ID",
-			"The provider requires a site ID for multi-tenant isolation. Set the site_id attribute or "+EnvSiteID+" environment variable.",
+			"The provider requires a site ID for multi-tenant isolation. Set the site_id attribute or "+constants.EnvSiteID+" environment variable.",
 		)
 	}
 

@@ -52,7 +52,7 @@ func GetAWSAccountID(t *testing.T, sess *session.Session) string {
 func GetOrGenerateExternalID(t *testing.T) string {
 	t.Helper()
 
-	if externalID := os.Getenv("BEYONDTRUST_TEST_AWS_EXTERNAL_ID"); externalID != "" {
+	if externalID := os.Getenv(EnvTestAWSExternalID); externalID != "" {
 		return externalID
 	}
 
@@ -66,15 +66,15 @@ func GetBeyondTrustAWSAccountID(t *testing.T) string {
 	t.Helper()
 
 	// Check if set in environment
-	if accountID := os.Getenv("BEYONDTRUST_AWS_ACCOUNT_ID"); accountID != "" {
+	if accountID := os.Getenv(EnvAWSAccountID); accountID != "" {
 		return accountID
 	}
 
 	// If not set, skip the test and provide instructions
-	t.Skip("BEYONDTRUST_AWS_ACCOUNT_ID must be set to run AWS integration tests.\n" +
+	t.Skip(EnvAWSAccountID + " must be set to run AWS integration tests.\n" +
 		"This is the AWS account ID that your BeyondTrust SMOP instance uses to assume roles.\n" +
 		"You can find this in your SMOP console under AWS integration settings.\n" +
-		"Example: export BEYONDTRUST_AWS_ACCOUNT_ID=123456789012")
+		"Example: export " + EnvAWSAccountID + "=123456789012")
 
 	return ""
 }
@@ -210,7 +210,7 @@ func SetupAWSTestRoles(t *testing.T) (roleARN1, roleARN2, externalID string, cle
 	t.Helper()
 
 	// Check if user provided pre-created roles
-	if roleARN := os.Getenv("BEYONDTRUST_TEST_AWS_ROLE_ARN"); roleARN != "" {
+	if roleARN := os.Getenv(EnvTestAWSRoleARN); roleARN != "" {
 		roleARN2 := GetAWSRoleARN2(t)
 		externalID := GetOrGenerateExternalID(t)
 		t.Logf("Using pre-created AWS role: %s", roleARN)

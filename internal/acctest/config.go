@@ -5,18 +5,15 @@ import (
 	"os"
 
 	"github.com/beyondtrust/terraform-provider-beyondtrust/internal/client"
+	"github.com/beyondtrust/terraform-provider-beyondtrust/internal/constants"
 )
 
-// Environment variable names for acceptance tests
+// Environment variable names for AWS-specific acceptance tests
 const (
-	EnvAPIURL      = "BEYONDTRUST_API_URL"
-	EnvSiteID      = "BEYONDTRUST_SITE_ID"
-	EnvAccessToken = "BEYONDTRUST_ACCESS_TOKEN"
-	EnvAPIVersion  = "BEYONDTRUST_API_VERSION"
-
-	// AWS-specific test environment variables
-	EnvTestAWSRoleARN  = "BEYONDTRUST_TEST_AWS_ROLE_ARN"
-	EnvTestAWSRoleARN2 = "BEYONDTRUST_TEST_AWS_ROLE_ARN_2"
+	EnvTestAWSRoleARN    = "BEYONDTRUST_TEST_AWS_ROLE_ARN"
+	EnvTestAWSRoleARN2   = "BEYONDTRUST_TEST_AWS_ROLE_ARN_2"
+	EnvTestAWSExternalID = "BEYONDTRUST_TEST_AWS_EXTERNAL_ID"
+	EnvAWSAccountID      = "BEYONDTRUST_AWS_ACCOUNT_ID"
 )
 
 // TestConfig holds configuration for acceptance tests
@@ -30,10 +27,10 @@ type TestConfig struct {
 // LoadTestConfig loads test configuration from environment variables
 func LoadTestConfig() (*TestConfig, error) {
 	cfg := &TestConfig{
-		APIURL:      os.Getenv(EnvAPIURL),
-		SiteID:      os.Getenv(EnvSiteID),
-		AccessToken: os.Getenv(EnvAccessToken),
-		APIVersion:  os.Getenv(EnvAPIVersion),
+		APIURL:      os.Getenv(constants.EnvAPIURL),
+		SiteID:      os.Getenv(constants.EnvSiteID),
+		AccessToken: os.Getenv(constants.EnvAccessToken),
+		APIVersion:  os.Getenv(constants.EnvAPIVersion),
 	}
 
 	// Set default API version if not specified
@@ -52,13 +49,13 @@ func LoadTestConfig() (*TestConfig, error) {
 // Validate checks that all required fields are present
 func (c *TestConfig) Validate() error {
 	if c.APIURL == "" {
-		return fmt.Errorf("%s is required", EnvAPIURL)
+		return fmt.Errorf("%s is required", constants.EnvAPIURL)
 	}
 	if c.SiteID == "" {
-		return fmt.Errorf("%s is required", EnvSiteID)
+		return fmt.Errorf("%s is required", constants.EnvSiteID)
 	}
 	if c.AccessToken == "" {
-		return fmt.Errorf("%s is required", EnvAccessToken)
+		return fmt.Errorf("%s is required", constants.EnvAccessToken)
 	}
 	return nil
 }
