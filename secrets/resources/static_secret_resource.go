@@ -190,7 +190,9 @@ func (r *StaticSecretResource) Create(ctx context.Context, req resource.CreateRe
 
 	// Update the model with response data (but NOT the secret value)
 	data.ID = types.StringValue(createResp.Metadata.ID)
-	data.Path = types.StringValue(createResp.Path)
+	// Compute path from name and folder
+	pathStr := buildFolderPath(name, parentFolder)
+	data.Path = types.StringValue(pathStr)
 	data.SecretWoVersion = types.Int64Value(createResp.Metadata.Version)
 	data.CreatedAt = types.StringValue(createResp.Metadata.CreatedAt)
 
