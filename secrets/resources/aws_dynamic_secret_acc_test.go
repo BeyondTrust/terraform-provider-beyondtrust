@@ -1,7 +1,7 @@
 //go:build acceptance
 // +build acceptance
 
-package resources
+package resources_test
 
 import (
 	"fmt"
@@ -11,7 +11,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 
 	"github.com/beyondtrust/terraform-provider-beyondtrust/internal/acctest"
-	_ "github.com/beyondtrust/terraform-provider-beyondtrust/internal/provider" // Import to trigger init()
+	_ "github.com/beyondtrust/terraform-provider-beyondtrust/internal/provider"
 )
 
 func TestAccAwsDynamicSecretResource_basic(t *testing.T) {
