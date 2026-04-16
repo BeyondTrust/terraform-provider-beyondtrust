@@ -284,7 +284,7 @@ Tests run automatically on:
 - Pull requests to main/develop branches
 - Pushes to main/develop branches
 
-See `.github/workflows/test.yml` for CI configuration.
+See `.github/workflows/tests.yml` for CI configuration.
 
 ### CI Test Matrix
 

@@ -42,13 +42,13 @@ Based on comprehensive multi-persona audit (Security, SRE/DevOps, Open Source Re
   - Effort: 80-120 hours (2-3 weeks)
   - Owner: Development team
 
-- [ ] **No CI/CD Workflows** (SRE, Open Source - BLOCKER)
-  - Status: `.github/workflows/` directory is empty
-  - Action: Create GitHub Actions workflows
-  - Files needed:
-    - [ ] `.github/workflows/test.yml` (run tests on PR)
-    - [ ] `.github/workflows/lint.yml` (run linters)
-    - [ ] `.github/workflows/release.yml` (automated releases)
+- [x] **No CI/CD Workflows** (SRE, Open Source - BLOCKER)
+  - Status: Workflows implemented
+  - Files:
+    - [x] `.github/workflows/tests.yml` (run tests on PR)
+    - [x] `.github/workflows/lint.yml` (run linters)
+    - [x] `.github/workflows/build-candidate.yaml` (build and stage release candidate)
+    - [x] `.github/workflows/promote.yml` (SBOM, JFrog promotion, Terraform Registry publish)
   - Effort: 8 hours
   - Owner: DevOps
 
