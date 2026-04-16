@@ -16,7 +16,7 @@ env:
 
 jobs:
   build-service:
-    if: ${{ github.actor == 'beyondtrust-release-app[bot]' }}
+    # if: ${{ github.actor == 'beyondtrust-release-app[bot]' }}
     runs-on: ubuntu-latest
     permissions:
       actions: read
