@@ -3,8 +3,6 @@ name: Tests
 on:
   pull_request:
     branches: [main, develop]
-  push:
-    branches: [main, develop]
 
 permissions:
   contents: read
@@ -25,10 +23,8 @@ jobs:
           check-latest: true
           cache-dependency-path: |
             **/go.sum
-
       - name: Run unit tests
         run: make test-unit
-
       - name: Upload coverage
         uses: codecov/codecov-action@v6
         if: always()
@@ -56,7 +52,6 @@ jobs:
           check-latest: true
           cache-dependency-path: |
             **/go.sum
-
       - name: Run acceptance tests
         run: make test-acc
         env:
@@ -65,7 +60,6 @@ jobs:
           BEYONDTRUST_SITE_ID: ${{ secrets.BEYONDTRUST_SITE_ID }}
           BEYONDTRUST_TEST_AWS_ROLE_ARN: ${{ secrets.BEYONDTRUST_TEST_AWS_ROLE_ARN }}
           TF_ACC: "1"
-
       - name: Upload coverage
         uses: codecov/codecov-action@v6
         if: always()
