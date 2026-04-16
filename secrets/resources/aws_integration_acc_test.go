@@ -14,6 +14,18 @@ import (
 	_ "github.com/beyondtrust/terraform-provider-beyondtrust/internal/provider"
 )
 
+func getTestRoleArn(t *testing.T) string {
+	return acctest.GetAWSRoleARN(t)
+}
+
+func getTestRoleArn2(t *testing.T) string {
+	return acctest.GetAWSRoleARN2(t)
+}
+
+func getTestTargetRoleArn(t *testing.T) string {
+	return getTestRoleArn(t)
+}
+
 func TestAccAwsIntegrationResource_basic(t *testing.T) {
 	integrationName := acctest.RandomIntegrationName()
 	roleArn := getTestRoleArn(t)
@@ -131,18 +143,6 @@ func TestAccAwsIntegrationResource_nameImmutable(t *testing.T) {
 			},
 		},
 	})
-}
-
-func getTestRoleArn(t *testing.T) string {
-	return acctest.GetAWSRoleARN(t)
-}
-
-func getTestRoleArn2(t *testing.T) string {
-	return acctest.GetAWSRoleARN2(t)
-}
-
-func getTestTargetRoleArn(t *testing.T) string {
-	return getTestRoleArn(t)
 }
 
 func testAccCheckAwsIntegrationDestroy(s *terraform.State) error {
