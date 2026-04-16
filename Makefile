@@ -173,7 +173,7 @@ test-unit:
 test-acc:
 	@echo "Running acceptance tests..."
 	@echo "Note: Set TF_ACC=1 and required environment variables"
-	TF_ACC=1 go test -v -cover -timeout=120m -parallel=4 -coverprofile=coverage-acc.out -covermode=atomic ./...
+	@TF_ACC=1 go test -v -cover -timeout=120m -parallel=4 -tags acceptance -coverprofile=coverage-acc.out -covermode=atomic ./...
 
 ## testacc: Alias for test-acc
 testacc: test-acc
