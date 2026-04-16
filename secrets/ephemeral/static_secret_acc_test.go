@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/tfversion"
 
 	"github.com/beyondtrust/terraform-provider-beyondtrust/internal/acctest"
 	_ "github.com/beyondtrust/terraform-provider-beyondtrust/internal/provider" // Import to trigger init()
@@ -20,6 +21,9 @@ func TestAccStaticSecretEphemeral_basic(t *testing.T) {
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck:                 func() { acctest.PreCheck(t) },
 		ProtoV6ProviderFactories: acctest.ProtoV6ProviderFactories,
+		TerraformVersionChecks: []tfversion.TerraformVersionCheck{
+			tfversion.SkipBelow(tfversion.Version1_10_0),
+		},
 		Steps: []resource.TestStep{
 			{
 				Config: testAccStaticSecretEphemeralConfig_basic(secretName, secretValue),
@@ -43,6 +47,9 @@ func TestAccStaticSecretEphemeral_inFolder(t *testing.T) {
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck:                 func() { acctest.PreCheck(t) },
 		ProtoV6ProviderFactories: acctest.ProtoV6ProviderFactories,
+		TerraformVersionChecks: []tfversion.TerraformVersionCheck{
+			tfversion.SkipBelow(tfversion.Version1_10_0),
+		},
 		Steps: []resource.TestStep{
 			{
 				Config: testAccStaticSecretEphemeralConfig_inFolder(folderName, secretName, secretValue),
@@ -63,6 +70,9 @@ func TestAccStaticSecretEphemeral_specificVersion(t *testing.T) {
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck:                 func() { acctest.PreCheck(t) },
 		ProtoV6ProviderFactories: acctest.ProtoV6ProviderFactories,
+		TerraformVersionChecks: []tfversion.TerraformVersionCheck{
+			tfversion.SkipBelow(tfversion.Version1_10_0),
+		},
 		Steps: []resource.TestStep{
 			{
 				// Read version 1
