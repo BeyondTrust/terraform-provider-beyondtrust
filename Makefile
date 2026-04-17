@@ -173,7 +173,7 @@ test-unit:
 ## test-acc: Run acceptance tests (requires SMOP instance)
 test-acc:
 	@echo "Running acceptance tests..."
-	@echo "Note: Set TF_ACC=1 and required environment variables"
+	@echo "Note: Set the required environment variables"
 	@TF_ACC=1 TFENV_TERRAFORM_VERSION=$(TERRAFORM_VERSION) go test -v -cover -timeout=120m -parallel=4 -tags acceptance -coverprofile=coverage-acc.out -covermode=atomic ./...
 
 ## testacc: Alias for test-acc
