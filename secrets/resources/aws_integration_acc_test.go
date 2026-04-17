@@ -57,7 +57,11 @@ func TestAccAwsIntegrationResource_basic(t *testing.T) {
 					if !ok {
 						return "", fmt.Errorf("resource not found in state")
 					}
-					return rs.Primary.Attributes["name"], nil
+					name, ok := rs.Primary.Attributes["name"]
+					if !ok || name == "" {
+						return "", fmt.Errorf("resource has no name attribute in state")
+					}
+					return name, nil
 				},
 				// external_id is sensitive and not returned by the API
 				// created_at precision differs between create and read responses (API inconsistency)
