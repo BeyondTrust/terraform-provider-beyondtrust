@@ -36,18 +36,18 @@ The tests will **automatically create and cleanup IAM roles** using your AWS cre
    }
    ```
 
-3. **BeyondTrust AWS Account ID** - Set the AWS account ID that your BeyondTrust SMOP uses:
+3. **BeyondTrust AWS Account ID** - Set the AWS account ID that your BeyondTrust Workload Credentials uses:
    ```bash
    export BEYONDTRUST_AWS_ACCOUNT_ID="999999999999"  # Replace with actual ID
    ```
 
-   > **Where to find this**: Check your BeyondTrust SMOP console under AWS Integration settings, or ask your BeyondTrust administrator.
+   > **Where to find this**: Check your BeyondTrust Workload Credentials console under AWS Integration settings, or ask your BeyondTrust administrator.
 
 ### Running Tests
 
 ```bash
 # Set required environment variables
-export BEYONDTRUST_API_URL="https://your-smop-instance.com"
+export BEYONDTRUST_API_URL="https://your-workload-credentials-instance.com"
 export BEYONDTRUST_ACCESS_TOKEN="your-token"
 export BEYONDTRUST_AWS_ACCOUNT_ID="999999999999"
 
@@ -143,7 +143,7 @@ func TestAccAwsIntegrationResource_basic(t *testing.T) {
 
 ### "BEYONDTRUST_AWS_ACCOUNT_ID must be set"
 
-The tests need to know which AWS account BeyondTrust uses to assume roles. Check your SMOP console or contact your BeyondTrust administrator.
+The tests need to know which AWS account BeyondTrust uses to assume roles. Check your Workload Credentials console or contact your BeyondTrust administrator.
 
 ### "Failed to create AWS session"
 
@@ -275,7 +275,7 @@ jobs:
 
 | Variable                           | Required | Default       | Description                           |
 |------------------------------------|----------|---------------|---------------------------------------|
-| `BEYONDTRUST_AWS_ACCOUNT_ID`       | Yes      | -             | BeyondTrust SMOP's AWS account ID     |
+| `BEYONDTRUST_AWS_ACCOUNT_ID`       | Yes      | -             | BeyondTrust Workload Credentials's AWS account ID     |
 | `BEYONDTRUST_TEST_AWS_ROLE_ARN`    | No       | Auto-created  | Pre-created test role ARN             |
 | `BEYONDTRUST_TEST_AWS_ROLE_ARN_2`  | No       | Auto-created  | Second test role ARN                  |
 | `BEYONDTRUST_TEST_AWS_EXTERNAL_ID` | No       | Auto-generated| External ID for role trust            |
