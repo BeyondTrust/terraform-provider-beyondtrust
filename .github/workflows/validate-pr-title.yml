@@ -1,5 +1,6 @@
 ---
 name: "Validate PR Title"
+
 on:
   pull_request:
     types:

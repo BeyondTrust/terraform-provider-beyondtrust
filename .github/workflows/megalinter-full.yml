@@ -3,7 +3,8 @@ name: Megalinter Full Lint
 
 on:
   pull_request:
-    branches: [main, develop]
+    branches:
+      - main
     # if any of the linter workflows have changed (e.g. dependabot PR), lint the full code base
     # to ensure we do not accumulate unknown linter tech-debt
     paths:
