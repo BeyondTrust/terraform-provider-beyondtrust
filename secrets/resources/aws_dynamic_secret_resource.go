@@ -197,6 +197,9 @@ func (r *AwsDynamicSecretResource) Schema(ctx context.Context, req resource.Sche
 			"deleted_at": schema.StringAttribute{
 				Description: "The timestamp when the dynamic secret was soft-deleted (if applicable).",
 				Computed:    true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
 			},
 		},
 	}
@@ -523,6 +526,12 @@ func (r *AwsDynamicSecretResource) Update(ctx context.Context, req resource.Upda
 	data.IntegrationId = types.StringValue(secretResp.Config.IntegrationId)
 	data.TTL = types.Int64Value(secretResp.Config.TTL)
 	data.RoleArn = types.StringValue(secretResp.Config.RoleArn)
+
+	if secretResp.Metadata.DeletedAt != nil {
+		data.DeletedAt = types.StringValue(*secretResp.Metadata.DeletedAt)
+	} else {
+		data.DeletedAt = types.StringNull()
+	}
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }

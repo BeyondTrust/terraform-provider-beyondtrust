@@ -138,6 +138,6 @@ func updateResourceTags(ctx context.Context, client *client.Client, resourcePath
 	// Convert Terraform tags to map
 	tagsMap := convertTerraformTagsToMap(tags)
 
-	// Use PATCH to update tags
-	return client.Patch(ctx, apiPath, query, tagsMap)
+	// Use PUT to update tags
+	return client.Put(ctx, apiPath, query, tagsMap)
 }
