@@ -1,6 +1,6 @@
 module github.com/beyondtrust/terraform-provider-beyondtrust
 
-go 1.25.0
+go 1.25.8
 
 require (
 	github.com/aws/aws-sdk-go v1.55.8
