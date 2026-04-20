@@ -1,22 +1,60 @@
-# Terraform Provider for BeyondTrust
+<a href="https://www.beyondtrust.com">
+    <img src=".github/beyondtrust_logo.svg" alt="BeyondTrust" title="BeyondTrust" align="right" height="50">
+</a>
 
-[![Tests](https://github.com/beyondtrust/terraform-provider-beyondtrust/actions/workflows/test.yml/badge.svg)](https://github.com/beyondtrust/terraform-provider-beyondtrust/actions/workflows/test.yml)
+# BeyondTrust Workload Credentials Terraform Provider
+
+[![Tests](https://github.com/beyondtrust/terraform-provider-beyondtrust/actions/workflows/tests.yml/badge.svg)](https://github.com/beyondtrust/terraform-provider-beyondtrust/actions/workflows/tests.yml)
 [![Release](https://github.com/beyondtrust/terraform-provider-beyondtrust/actions/workflows/release.yml/badge.svg)](https://github.com/beyondtrust/terraform-provider-beyondtrust/actions/workflows/release.yml)
 
-The BeyondTrust Terraform provider allows you to manage BeyondTrust resources using infrastructure as code.
+The [BeyondTrust Workload Credentials Provider](https://registry.terraform.io/providers/beyondtrust/beyondtrust/latest/docs) allows [Terraform](https://terraform.io) to manage secrets and credentials for [BeyondTrust Workload Credentials](https://www.beyondtrust.com/workload-credentials). This provider enables infrastructure-as-code management of secrets, folders, AWS integrations, and dynamic credential templates.
+
+See the Workload Credentials Provider documentation in the Terraform Registry as well as your BeyondTrust instance documentation for more information on supported endpoints and parameters.
+
+This provider requires BeyondTrust Workload Credentials. Using this provider with other BeyondTrust products is not supported.
 
 ## Requirements
 
 - [Terraform](https://www.terraform.io/downloads.html) >= 1.10 (for ephemeral resources) or >= 1.0 (for basic functionality)
 - [Go](https://golang.org/doc/install) >= 1.25 (for development)
+- BeyondTrust Workload Credentials instance with API access
 
 > **Note**: This provider uses **ephemeral resources** for secure secret handling, which require Terraform 1.10 or later.
 > Ephemeral resources ensure sensitive values are never persisted in state or plan files.
 > See [TERRAFORM_VERSION_REQUIREMENTS.md](TERRAFORM_VERSION_REQUIREMENTS.md) for details on version compatibility.
 
-## Using the Provider
+## Use Cases
 
-```hcl
+The primary use case for this provider is to manage secrets and credentials for all workloads managed within your Terraform infrastructure, integrated with BeyondTrust Workload Credentials.
+
+This provider enables:
+* **Secret Management** - Create and manage static secrets with ephemeral access (never stored in state)
+* **Folder Organization** - Organize secrets into a hierarchical folder structure
+* **AWS Integration** - Configure AWS integrations for dynamic credential generation
+* **Dynamic Secrets** - Provision short-lived AWS credentials on-demand for specific roles
+* **Credential Rotation** - Leverage automatic credential rotation and lifecycle management
+* **Access Control** - Manage tags and metadata for access policies
+
+Examples for all of these use cases can be found in the [examples](https://github.com/beyondtrust/terraform-provider-beyondtrust/tree/main/examples) directory.
+
+## Configuration
+
+To use the provider, you need:
+1. Your BeyondTrust Workload Credentials instance API URL
+2. An API access token
+3. Your site/tenant ID
+
+The recommended approach is to set these via environment variables:
+
+```bash
+export BEYONDTRUST_API_URL="https://api.workload-credentials.example.com"
+export BEYONDTRUST_ACCESS_TOKEN="your-access-token"
+export BEYONDTRUST_SITE_ID="your-site-id"
+```
+
+Then configure the provider in your Terraform configuration:
+
+```terraform
 terraform {
   required_providers {
     beyondtrust = {
@@ -27,42 +65,120 @@ terraform {
 }
 
 provider "beyondtrust" {
-  api_url      = "https://api.smop.example.com"
-  access_token = var.beyondtrust_access_token
+  # Configuration will be read from environment variables:
+  # - BEYONDTRUST_API_URL
+  # - BEYONDTRUST_ACCESS_TOKEN
+  # - BEYONDTRUST_SITE_ID
+}
+```
+
+While not recommended, you can also set values directly in the configuration:
+
+```terraform
+provider "beyondtrust" {
+  api_url      = "https://api.workload-credentials.example.com"
+  access_token = var.beyondtrust_access_token  # Use variables for sensitive values
   site_id      = var.beyondtrust_site_id
 }
 ```
+
+## Supported Resources
+
+### Managed Resources
+
+- `beyondtrust_secrets_folder` - Manage folder hierarchy for organizing secrets
+- `beyondtrust_secrets_static_secret` - Manage static secrets (write-only, use ephemeral to read)
+- `beyondtrust_secrets_aws_integration` - Manage AWS integrations for dynamic credentials
+- `beyondtrust_secrets_aws_dynamic_secret` - Configure AWS dynamic secret templates
+
+### Ephemeral Resources
+
+- `beyondtrust_secrets_static_secret` - Read secret values (never persisted to state)
+
+### Data Sources
+
+- `beyondtrust_secrets_aws_integration` - Read AWS integration details
+
+## Example Usage
+
+### Creating a Static Secret
+
+```terraform
+# Create a folder
+resource "beyondtrust_secrets_folder" "production" {
+  name        = "production"
+  description = "Production environment secrets"
+}
+
+# Store a secret (write-only)
+resource "beyondtrust_secrets_static_secret" "db_password" {
+  name   = "database-password"
+  folder = beyondtrust_secrets_folder.production.path
+  secret_wo = {
+    password = "super-secret-password"
+  }
+  tags = {
+    environment = "production"
+    service     = "database"
+  }
+}
+
+# Read secret value (ephemeral - requires Terraform 1.10+)
+ephemeral "beyondtrust_secrets_static_secret" "db_password" {
+  name   = "database-password"
+  folder = "production"
+}
+
+# Use the secret in another resource
+resource "kubernetes_secret" "db" {
+  metadata {
+    name = "database-credentials"
+  }
+  data = {
+    password = ephemeral.beyondtrust_secrets_static_secret.db_password.secret["password"]
+  }
+}
+```
+
+### AWS Dynamic Credentials
+
+```terraform
+# Create AWS integration
+resource "beyondtrust_secrets_aws_integration" "main" {
+  name        = "production-aws"
+  role_arn    = "arn:aws:iam::123456789012:role/beyondtrust-role"
+  external_id = "unique-external-id"
+}
+
+# Configure dynamic secret for a specific role
+resource "beyondtrust_secrets_aws_dynamic_secret" "readonly" {
+  name           = "readonly-access"
+  folder         = beyondtrust_secrets_folder.production.path
+  integration_id = beyondtrust_secrets_aws_integration.main.id
+
+  role_arn = "arn:aws:iam::123456789012:role/readonly-role"
+  ttl      = 3600  # 1 hour
+}
+```
+
+For complete examples, see:
+- [AWS Integration Setup](./examples/aws-integration/) - Complete example with AWS IAM configuration
+- [Basic Examples](./examples/) - Additional resource examples
 
 ## Documentation
 
 Full documentation is available on the [Terraform Registry](https://registry.terraform.io/providers/beyondtrust/beyondtrust/latest/docs).
 
-## Supported Resources
-
-### SMOP (Secrets Manager Operations Platform)
-
-- `beyondtrust_secrets_folder` - Manage folder hierarchy
-- `beyondtrust_secrets_aws_integration` - Manage AWS integrations
-- `beyondtrust_secrets_aws_dynamic_secret` - Configure AWS dynamic secrets
-
-### Data Sources
-
-- `beyondtrust_secrets_aws_integration` - Read AWS integration details
-- `beyondtrust_secrets_aws_dynamic_secret` - Read dynamic secret configuration
-- `beyondtrust_secrets_lease` - Read lease information
-
-## Example Usage
-
-See the [examples](./examples/) directory for complete examples:
-
-- [AWS Integration Setup](./examples/aws-integration/) - Complete example with AWS IAM configuration
-- [Dynamic Secrets](./examples/dynamic-secrets/) - AWS dynamic secret examples
+For development documentation, see:
+- [DEVELOPMENT.md](DEVELOPMENT.md) - Local development setup and workflow
+- [TESTING.md](TESTING.md) - Running tests
+- [CONTRIBUTING.md](CONTRIBUTING.md) - Contribution guidelines
 
 ## Development
 
 ### Quick Start
 
-Before committing or pushing code, run local checks to catch issues:
+Before committing or pushing code, run local checks:
 
 ```bash
 make pre-commit        # Full checks (~8s)
@@ -79,8 +195,6 @@ make install-git-hooks
 
 ```bash
 make build
-# or
-go build -o terraform-provider-beyondtrust
 ```
 
 ### Testing
@@ -88,39 +202,34 @@ go build -o terraform-provider-beyondtrust
 ```bash
 # Run unit tests
 make test-unit
-# or
-go test ./...
 
-# Run acceptance tests (requires SMOP instance)
+# Run acceptance tests (requires Workload Credentials instance)
 make test-acc
-# or
-TF_ACC=1 \
-  BEYONDTRUST_API_URL=https://api.smop.local \
-  BEYONDTRUST_ACCESS_TOKEN=xxx \
-  BEYONDTRUST_SITE_ID=xxx \
-  go test ./... -v
 ```
-
-### Local Development
-
-1. Build the provider:
-```bash
-make build
-```
-
-2. Start a shell with local provider override:
-```bash
-make tf-local-shell
-```
-
-3. Run Terraform commands in your test configuration directory.
 
 For more details, see [DEVELOPMENT.md](DEVELOPMENT.md).
 
+## Getting Help
+
+For assistance or to report any issues, please:
+- Review the [Documentation](https://registry.terraform.io/providers/beyondtrust/beyondtrust/latest/docs)
+- Check [existing issues](https://github.com/beyondtrust/terraform-provider-beyondtrust/issues)
+- Contact [BeyondTrust Support](https://www.beyondtrust.com/support)
+
 ## Contributing
 
-Contributions are welcome! Please open an issue or pull request.
+Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+
+## Security
+
+For security vulnerabilities, please see our [Security Policy](SECURITY.md).
+
+## Support
+
+See [SUPPORT.md](SUPPORT.md) for support information.
 
 ## License
 
 Copyright (c) BeyondTrust. All rights reserved.
+
+See [LICENSE](LICENSE) for license information.
