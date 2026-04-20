@@ -180,13 +180,13 @@ module "beyondtrust" {
   count  = var.skip_beyondtrust ? 0 : 1
   source = "./modules/beyondtrust-integration"
 
-  external_id               = local.external_id
-  integration_name          = "production-aws-account"
+  external_id                               = local.external_id
+  integration_name                          = "production-aws-account"
   workload_credentials_integration_role_arn = aws_iam_role.workload_credentials_integration.arn
-  developer_role_arn        = aws_iam_role.developer_readonly.arn
-  admin_role_arn            = aws_iam_role.admin.arn
-  developer_policy_arns     = ["arn:${data.aws_partition.current.partition}:iam::aws:policy/ReadOnlyAccess"]
-  environment               = var.environment
+  developer_role_arn                        = aws_iam_role.developer_readonly.arn
+  admin_role_arn                            = aws_iam_role.admin.arn
+  developer_policy_arns                     = ["arn:${data.aws_partition.current.partition}:iam::aws:policy/ReadOnlyAccess"]
+  environment                               = var.environment
 }
 
 # ============================================================================

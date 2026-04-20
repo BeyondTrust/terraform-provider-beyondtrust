@@ -57,11 +57,11 @@ Download from: <https://www.terraform.io/downloads>
 
 ### Option C: Environment-Specific Endpoints
 
-| Environment | API URL                                          |
-|-------------|--------------------------------------------------|
-| Production  | `https://api.workload-credentials.your-company.com` |
-| Sandbox/Dev | Contact your Workload Credentials administrator |
-| Self-Hosted | Your custom Workload Credentials API endpoint    |
+| Environment | API URL                                                      |
+|-------------|--------------------------------------------------------------|
+| Production  | `https://api.workload-credentials.your-company.com`          |
+| Sandbox/Dev | Contact your Workload Credentials administrator              |
+| Self-Hosted | Your custom Workload Credentials API endpoint                |
 
 ## Step 2: Configure Provider
 
