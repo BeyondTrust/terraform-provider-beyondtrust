@@ -61,7 +61,7 @@ representative at an online or offline event.
 Instances of abusive, harassing, or otherwise unacceptable behavior may be
 reported to the community leaders responsible for enforcement at
 [BeyondTrust Support](https://www.beyondtrust.com/support) or by emailing
-opensource@beyondtrust.com.
+<opensource@beyondtrust.com>.
 
 All complaints will be reviewed and investigated promptly and fairly.
 

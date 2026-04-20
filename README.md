@@ -1,13 +1,18 @@
+<!-- markdownlint-disable MD041 -->
 <a href="https://www.beyondtrust.com">
     <img src=".github/beyondtrust_logo.svg" alt="BeyondTrust" title="BeyondTrust" align="right" height="50">
 </a>
 
 # BeyondTrust Workload Credentials Terraform Provider
+<!-- markdownlint-enable MD041 -->
 
 [![Tests](https://github.com/beyondtrust/terraform-provider-beyondtrust/actions/workflows/tests.yml/badge.svg)](https://github.com/beyondtrust/terraform-provider-beyondtrust/actions/workflows/tests.yml)
 [![Release](https://github.com/beyondtrust/terraform-provider-beyondtrust/actions/workflows/release.yml/badge.svg)](https://github.com/beyondtrust/terraform-provider-beyondtrust/actions/workflows/release.yml)
 
-The [BeyondTrust Workload Credentials Provider](https://registry.terraform.io/providers/beyondtrust/beyondtrust/latest/docs) allows [Terraform](https://terraform.io) to manage secrets and credentials for [BeyondTrust Workload Credentials](https://www.beyondtrust.com/workload-credentials). This provider enables infrastructure-as-code management of secrets, folders, AWS integrations, and dynamic credential templates.
+The [BeyondTrust Workload Credentials Provider](https://registry.terraform.io/providers/beyondtrust/beyondtrust/latest/docs)
+allows [Terraform](https://terraform.io) to manage secrets and credentials for
+[BeyondTrust Workload Credentials](https://www.beyondtrust.com/workload-credentials).
+This provider enables infrastructure-as-code management of secrets, folders, AWS integrations, and dynamic credential templates.
 
 See the Workload Credentials Provider documentation in the Terraform Registry as well as your BeyondTrust instance documentation for more information on supported endpoints and parameters.
 

@@ -2,7 +2,7 @@
 
 ## Questions
 
-Please direct all inquiries to support@beyondtrust.com to ensure your question does not get lost!
+Please direct all inquiries to <support@beyondtrust.com> to ensure your question does not get lost!
 
 ## Contributions
 
