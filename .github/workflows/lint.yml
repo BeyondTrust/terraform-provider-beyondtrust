@@ -24,7 +24,7 @@ jobs:
           cache: true
           check-latest: true
       - name: Install tfplugindocs
-        run: go install github.com/hashicorp/terraform-plugin-docs/cmd/tfplugindocs@latest
+        run: go install github.com/hashicorp/terraform-plugin-docs/cmd/tfplugindocs@v0.24.0
       - name: Validate documentation
         run: make docs-validate
 

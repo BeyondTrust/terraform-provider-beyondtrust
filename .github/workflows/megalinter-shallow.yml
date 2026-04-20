@@ -7,7 +7,7 @@ on:
       - main
     # Do not lint the full codebase if the linter workflows have not been updated
     paths-ignore:
-      - .github/workflows/megalinter*.yaml
+      - .github/workflows/megalinter*.yml
       - .mega-linter.yml
       - .github/linters/**
 

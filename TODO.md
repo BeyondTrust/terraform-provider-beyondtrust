@@ -47,7 +47,7 @@ Based on comprehensive multi-persona audit (Security, SRE/DevOps, Open Source Re
   - Files:
     - [x] `.github/workflows/tests.yml` (run tests on PR)
     - [x] `.github/workflows/lint.yml` (run linters)
-    - [x] `.github/workflows/build-candidate.yaml` (build and stage release candidate)
+    - [x] `.github/workflows/build-candidate.yml` (build and stage release candidate)
     - [x] `.github/workflows/promote.yml` (SBOM, JFrog promotion, Terraform Registry publish)
   - Effort: 8 hours
   - Owner: DevOps

@@ -8,7 +8,7 @@ on:
     # if any of the linter workflows have changed (e.g. dependabot PR), lint the full code base
     # to ensure we do not accumulate unknown linter tech-debt
     paths:
-      - .github/workflows/megalinter*.yaml
+      - .github/workflows/megalinter*.yml
       - .mega-linter.yml
       - .github/linters/**
 

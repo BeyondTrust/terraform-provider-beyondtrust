@@ -56,7 +56,7 @@ jobs:
             EXT=""
             [[ "$GOOS" == "windows" ]] && EXT=".exe"
             BINARY="terraform-provider-beyondtrust_v${VERSION}${EXT}"
-            go build -v \
+            GOOS="$GOOS" GOARCH="$GOARCH" go build -v \
               -ldflags="-X main.version=${VERSION}" \
               -o "dist/${BINARY}"
             ZIP="terraform-provider-beyondtrust_${VERSION}_${GOOS}_${GOARCH}.zip"
@@ -72,6 +72,13 @@ jobs:
       - name: Deploy provider artifacts to Artifactory
         run: |
           VERSION="${{ steps.info.outputs.version }}"
+          MANIFEST_SOURCE="terraform-registry-manifest.json"
+          MANIFEST_TARGET="dist/terraform-provider-beyondtrust_${VERSION}_manifest.json"
+          if [ ! -f "${MANIFEST_SOURCE}" ]; then
+            echo "Expected Terraform Registry manifest not found: ${MANIFEST_SOURCE}" >&2
+            exit 1
+          fi
+          cp "${MANIFEST_SOURCE}" "${MANIFEST_TARGET}"
           jf rt u "dist/terraform-provider-beyondtrust_*" \
             "eng-tf-provider-dev-local/beyondtrust/beyondtrust/${VERSION}/" \
             --flat=true
