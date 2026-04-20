@@ -16,7 +16,7 @@ This provider requires BeyondTrust Workload Credentials. Using this provider wit
 ## Requirements
 
 - [Terraform](https://www.terraform.io/downloads.html) >= 1.10 (for ephemeral resources) or >= 1.0 (for basic functionality)
-- [Go](https://golang.org/doc/install) >= 1.25 (for development)
+- [Go](https://golang.org/doc/install) >= 1.25.8 (for development)
 - BeyondTrust Workload Credentials instance with API access
 
 > **Note**: This provider uses **ephemeral resources** for secure secret handling, which require Terraform 1.10 or later.
