@@ -1,6 +1,6 @@
 # Terraform Provider Code Generator
 
-This directory contains tooling for auto-generating Terraform provider code from the SMOP OpenAPI specification.
+This directory contains tooling for auto-generating Terraform provider code from the Workload Credentials OpenAPI specification.
 
 ## Overview
 
@@ -29,7 +29,7 @@ go run tools/codegen/main.go generate \
 
 ## Features
 
-The generator handles SMOP-specific patterns:
+The generator handles Workload Credentials-specific patterns:
 - Path-based resources (name + folder query parameter)
 - Merge patch semantics (RFC 7396)
 - Soft deletes
