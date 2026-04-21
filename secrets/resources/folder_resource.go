@@ -280,15 +280,13 @@ func (r *FolderResource) Update(ctx context.Context, req resource.UpdateRequest,
 		return
 	}
 
-	// Folders can only have tags updated (name and folder are ForceNew)
-	if !data.Tags.IsNull() {
-		if err := r.updateTags(ctx, data.Name.ValueString(), data.Folder.ValueString(), data.Tags); err != nil {
-			resp.Diagnostics.AddError(
-				"Error Updating Tags",
-				fmt.Sprintf("Could not update folder tags: %s", err.Error()),
-			)
-			return
-		}
+	// Always update tags — passing null/empty clears them via PUT
+	if err := r.updateTags(ctx, data.Name.ValueString(), data.Folder.ValueString(), data.Tags); err != nil {
+		resp.Diagnostics.AddError(
+			"Error Updating Tags",
+			fmt.Sprintf("Could not update folder tags: %s", err.Error()),
+		)
+		return
 	}
 
 	// Read back the updated folder metadata

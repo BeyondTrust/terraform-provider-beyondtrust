@@ -328,6 +328,11 @@ func (c *Client) Post(ctx context.Context, path string, query url.Values, body i
 	return c.DoRequest(ctx, "POST", path, query, body, result)
 }
 
+// Put performs a PUT request and either creates a resource or replaces an existing one with what is provided
+func (c *Client) Put(ctx context.Context, path string, query url.Values, body interface{}) error {
+	return c.DoRequest(ctx, "PUT", path, query, body, nil)
+}
+
 // Patch performs a PATCH request with merge-patch+json semantics
 func (c *Client) Patch(ctx context.Context, path string, query url.Values, body interface{}) error {
 	return c.DoRequest(ctx, "PATCH", path, query, body, nil)
