@@ -18,6 +18,7 @@ export BEYONDTRUST_SITE_ID="your-site-uuid"
 
 # Required for AWS Integration Tests
 export BEYONDTRUST_TEST_AWS_ROLE_ARN="arn:aws:iam::123456789012:role/staging-test-role"
+export BEYONDTRUST_TEST_AWS_ROLE_ARN_2="arn:aws:iam::123456789012:role/second-staging-test-role"
 export BEYONDTRUST_TEST_AWS_TARGET_ROLE_ARN="arn:aws:iam::123456789012:role/staging-target-role"
 
 # Optional: Override API version (defaults to 2026-02-16)
