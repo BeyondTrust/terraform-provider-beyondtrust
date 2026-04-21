@@ -68,6 +68,7 @@ jobs:
           BEYONDTRUST_ACCESS_TOKEN: ${{ secrets.BEYONDTRUST_ACCESS_TOKEN }}
           BEYONDTRUST_SITE_ID: ${{ secrets.BEYONDTRUST_SITE_ID }}
           BEYONDTRUST_TEST_AWS_ROLE_ARN: ${{ secrets.BEYONDTRUST_TEST_AWS_ROLE_ARN }}
+          BEYONDTRUST_TEST_AWS_ROLE_ARN_2: ${{ secrets.BEYONDTRUST_TEST_AWS_ROLE_ARN_2 }}
           TF_ACC: "1"
 
       - name: Upload coverage
