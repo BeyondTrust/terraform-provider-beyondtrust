@@ -4,7 +4,7 @@ This document explains how to use the code generation tools for the BeyondTrust 
 
 ## Overview
 
-The provider includes code generation tools that automatically create Terraform resource implementations from the SMOP OpenAPI specification.
+The provider includes code generation tools that automatically create Terraform resource implementations from the Workload Credentials OpenAPI specification.
 
 ## Quick Start
 
@@ -46,9 +46,9 @@ make validate-generated
 | array        | ListAttribute   |
 | object       | MapAttribute    |
 
-### SMOP Pattern Recognition
+### Workload Credentials Pattern Recognition
 
-The generator recognizes SMOP-specific patterns:
+The generator recognizes Workload Credentials-specific patterns:
 - Path-based resources (name + folder query parameter)
 - Merge patch semantics (RFC 7396)
 - Soft deletes (permanent query parameter)

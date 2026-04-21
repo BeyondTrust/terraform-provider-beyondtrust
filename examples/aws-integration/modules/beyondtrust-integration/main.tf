@@ -3,7 +3,7 @@
 # Note: Provider is configured via dev_overrides, no required_providers needed
 
 # ============================================================================
-# Step 2: Store External ID in SMOP (Write-Only Pattern)
+# Step 2: Store External ID in Workload Credentials (Write-Only Pattern)
 # ============================================================================
 
 resource "beyondtrust_secrets_folder" "aws" {
@@ -50,7 +50,7 @@ ephemeral "beyondtrust_secrets_static_secret" "external_id_reader" {
 resource "beyondtrust_secrets_aws_integration" "main" {
   name = var.integration_name
 
-  role_arn = var.smop_integration_role_arn
+  role_arn = var.workload_credentials_integration_role_arn
 
   # External ID is stored in state (required for AWS and BeyondTrust integration)
   # The write-only secret in BeyondTrust is for retrieval via CLI/API, not for Terraform state management

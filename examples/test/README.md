@@ -4,7 +4,7 @@ This directory contains a test configuration to validate the BeyondTrust Terrafo
 
 ## Prerequisites
 
-1. Running SMOP instance (local dev at <https://api.smop.local>)
+1. Running Workload Credentials instance (local dev at <https://api.workload-credentials.local>)
 2. Valid API access token
 3. Site ID (UUID)
 
@@ -52,12 +52,12 @@ terraform validate
 terraform plan
 ```
 
-4. Apply the configuration (creates folders in SMOP):
+4. Apply the configuration (creates folders in Workload Credentials):
 ```bash
 terraform apply
 ```
 
-5. Verify the folders were created in SMOP UI or CLI
+5. Verify the folders were created in Workload Credentials UI or CLI
 
 6. Clean up:
 ```bash
@@ -86,7 +86,7 @@ Make sure:
 Check:
 - Your access token is valid
 - Your site_id is correct (UUID format)
-- SMOP API is accessible at the configured URL
+- Workload Credentials API is accessible at the configured URL
 - If using local dev, `insecure = true` is set for self-signed certs
 
 ### TLS certificate errors

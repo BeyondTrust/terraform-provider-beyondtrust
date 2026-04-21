@@ -11,7 +11,7 @@
 #
 # For CI/CD: Configure these same variables as GitHub Secrets
 
-# Required: BeyondTrust SMOP API Configuration
+# Required: BeyondTrust Workload Credentials API Configuration
 export BEYONDTRUST_API_URL="https://api.beyondtrust.io"
 export BEYONDTRUST_ACCESS_TOKEN="your-access-token-here"
 export BEYONDTRUST_SITE_ID="your-site-uuid"
