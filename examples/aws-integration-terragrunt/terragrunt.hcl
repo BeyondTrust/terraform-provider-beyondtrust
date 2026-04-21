@@ -9,11 +9,11 @@ locals {
   tags = {
     ManagedBy   = "Terraform"
     Environment = "Development"
-    Purpose     = "SMOP-Integration-Example"
+    Purpose     = "Workload-Credentials-Integration-Example"
   }
 
-  # BeyondTrust SMOP bridge account ID
-  smop_bridge_account_id = "109876543210"  # Sandbox/dev bridge account
+  # BeyondTrust Workload Credentials bridge account ID
+  beyondtrust_bridge_account_id = "109876543210"  # Sandbox/dev bridge account
 }
 
 # This is left intentionally minimal - provider configs are generated per-module

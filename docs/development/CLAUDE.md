@@ -4,7 +4,7 @@ This file provides development guidance for working with the BeyondTrust Terrafo
 
 ## Project Overview
 
-A Terraform provider for BeyondTrust's Secrets Manager Operations Platform (SMOP). Built using the Terraform Plugin Framework (not SDK v2), this provider enables infrastructure-as-code management of secrets, folders, AWS integrations, and dynamic credential templates.
+A Terraform provider for BeyondTrust Workload Credentials. Built using the Terraform Plugin Framework (not SDK v2), this provider enables infrastructure-as-code management of secrets, folders, AWS integrations, and dynamic credential templates.
 
 **Current Implementation:**
 - 4 managed resources (folder, static secret, AWS integration, AWS dynamic secret)
@@ -34,7 +34,7 @@ terraform-provider-beyondtrust/
 │   │   ├── provider_test.go         # Provider unit tests
 │   │   └── testing.go               # Test provider configuration
 │   ├── client/
-│   │   ├── client.go                # HTTP client with SMOP conventions
+│   │   ├── client.go                # HTTP client with Workload Credentials conventions
 │   │   ├── client_test.go           # Client unit tests
 │   │   ├── mock_client.go           # Mock client for testing
 │   │   └── mock_client_test.go      # Mock client tests
@@ -78,7 +78,7 @@ internal/provider/provider.go
   └── EphemeralResources() → registers ephemeral resources
   ↓
 internal/client/client.go
-  ├── HTTP client with SMOP API conventions
+  ├── HTTP client with Workload Credentials API conventions
   ├── Header management (auth, API version, site ID)
   ├── CSRF token handling (currently disabled)
   └── Merge-patch request building
@@ -161,7 +161,7 @@ make install-git-hooks   # Runs pre-commit-quick on every commit
 | `make pre-commit-quick` | Fast checks (fmt, lint, test, tf-fmt) | ~4s |
 | `make pre-commit` | Full checks (quick + build + docs + tidy) | ~8s |
 | `make test-unit` | Run unit tests | ~2s |
-| `make test-acc` | Run acceptance tests (requires SMOP) | varies |
+| `make test-acc` | Run acceptance tests (requires Workload Credentials) | varies |
 | `make test-coverage` | Generate coverage report | ~3s |
 | `make fmt` | Format Go code | ~1s |
 | `make lint` | Run golangci-lint + gofumpt | ~2s |
@@ -171,9 +171,9 @@ make install-git-hooks   # Runs pre-commit-quick on every commit
 | `make tf-fmt-fix` | Fix Terraform formatting | <1s |
 | `make clean` | Remove build artifacts | <1s |
 
-## SMOP API Conventions
+## Workload Credentials API Conventions
 
-The BeyondTrust SMOP API has specific patterns that the provider implements.
+The BeyondTrust Workload Credentials API has specific patterns that the provider implements.
 
 ### Path Construction
 
@@ -581,11 +581,11 @@ make test-coverage-html  # Opens in browser
 
 ### Acceptance Tests
 
-Require a running SMOP instance:
+Require a running Workload Credentials instance:
 
 ```bash
 # Set environment variables
-export BEYONDTRUST_API_URL="https://api.smop.local"
+export BEYONDTRUST_API_URL="https://api.workload-credentials.local"
 export BEYONDTRUST_ACCESS_TOKEN="your-token"
 export BEYONDTRUST_SITE_ID="your-site-uuid"
 export BEYONDTRUST_API_VERSION="2026-02-16"  # Optional
@@ -667,7 +667,7 @@ All API calls require `X-BT-Site-ID` header for tenant isolation:
 ```go
 // Provider configuration
 provider "beyondtrust" {
-  api_url      = "https://api.smop.example.com"
+  api_url      = "https://api.workload-credentials.example.com"
   access_token = var.access_token
   site_id      = "550e8400-e29b-41d4-a716-446655440000"  // Required
 }
