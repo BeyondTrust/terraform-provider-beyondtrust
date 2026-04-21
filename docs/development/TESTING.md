@@ -7,18 +7,18 @@ This document describes how to run tests for the BeyondTrust Terraform Provider.
 The provider includes three types of tests:
 
 1. **Unit Tests** - Fast tests that don't require external dependencies
-2. **Acceptance Tests** - End-to-end tests that run against a real BeyondTrust SMOP instance
+2. **Acceptance Tests** - End-to-end tests that run against a real BeyondTrust Workload Credentials instance
 3. **Integration Tests** - Tests that verify the provider works with Terraform CLI
 
 ## Prerequisites
 
 ### For Unit Tests
-- Go 1.25 or later
+- Go 1.25.8 or later
 - No external dependencies required
 
 ### For Acceptance Tests
-- Go 1.25 or later
-- Access to a BeyondTrust SMOP instance (local or remote)
+- Go 1.25.8 or later
+- Access to a BeyondTrust Workload Credentials instance (local or remote)
 - Valid API credentials
 
 ## Running Tests
@@ -39,12 +39,12 @@ go test -v -cover ./internal/... ./secrets/...
 
 ### Acceptance Tests
 
-Acceptance tests require a running SMOP instance and proper environment variables.
+Acceptance tests require a running Workload Credentials instance and proper environment variables.
 
 #### Required Environment Variables
 
 ```bash
-export BEYONDTRUST_API_URL="https://api.smop.local"
+export BEYONDTRUST_API_URL="https://api.workload-credentials.local"
 export BEYONDTRUST_ACCESS_TOKEN="your-access-token"
 ```
 
@@ -339,7 +339,7 @@ TF_ACC=1 go test -v -timeout=30m -run '^TestAccFolderResource_basic$' ./secrets/
 
 ### Tests timeout
 - Increase timeout: `-timeout=120m`
-- Check if SMOP instance is accessible
+- Check if Workload Credentials instance is accessible
 - Verify network connectivity
 
 ### Import errors

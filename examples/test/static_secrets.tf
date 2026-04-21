@@ -6,7 +6,7 @@ resource "random_password" "external_id" {
   special = true
 }
 
-# Store in SMOP with write-only pattern
+# Store in Workload Credentials with write-only pattern
 resource "beyondtrust_secrets_static_secret" "external_id" {
   name   = "aws-integration-external-id"
   folder = ""
@@ -43,6 +43,6 @@ output "external_id_value" {
 
 # Output secret path
 output "external_id_path" {
-  description = "Path to the external ID secret in SMOP"
+  description = "Path to the external ID secret in Workload Credentials"
   value       = beyondtrust_secrets_static_secret.external_id.path
 }
