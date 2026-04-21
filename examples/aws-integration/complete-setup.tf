@@ -47,12 +47,12 @@ locals {
 data "aws_caller_identity" "current" {}
 data "aws_partition" "current" {}
 
-# Integration Role - SMOP assumes this to access your AWS account
+# Integration Role - Workload Credentials assumes this to access your AWS account
 # Name must match pattern: btp-account-role-* or btp-org-role-* (required by bridge role policy)
-resource "aws_iam_role" "smop_integration" {
-  name        = "btp-account-role-for-smop"
+resource "aws_iam_role" "workload_credentials_integration" {
+  name        = "btp-account-role-for-workload-credentials"
   path        = "/beyondtrust/"
-  description = "Role for BeyondTrust SMOP to access this AWS account"
+  description = "Role for BeyondTrust Workload Credentials to access this AWS account"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -60,7 +60,7 @@ resource "aws_iam_role" "smop_integration" {
       {
         Effect = "Allow"
         Principal = {
-          AWS = "arn:${data.aws_partition.current.partition}:iam::${var.smop_bridge_account_id}:role/secrets-integration-customer-bridge-link"
+          AWS = "arn:${data.aws_partition.current.partition}:iam::${var.workload_credentials_bridge_account_id}:role/secrets-integration-customer-bridge-link"
         }
         Action = "sts:AssumeRole"
         Condition = {
@@ -77,16 +77,16 @@ resource "aws_iam_role" "smop_integration" {
   tags = merge(
     var.tags,
     {
-      Name        = "SMOP Integration Role"
-      Description = "Allows SMOP to assume roles for dynamic credential generation"
+      Name        = "Workload Credentials Integration Role"
+      Description = "Allows Workload Credentials to assume roles for dynamic credential generation"
     }
   )
 }
 
 # Policy allowing the integration role to assume other roles
-resource "aws_iam_role_policy" "smop_assume_roles" {
-  name = "smop-assume-target-roles"
-  role = aws_iam_role.smop_integration.id
+resource "aws_iam_role_policy" "workload_credentials_assume_roles" {
+  name = "workload-credentials-assume-target-roles"
+  role = aws_iam_role.workload_credentials_integration.id
 
   policy = jsonencode({
     Version = "2012-10-17"
@@ -106,14 +106,14 @@ resource "aws_iam_role_policy" "smop_assume_roles" {
 }
 
 # ============================================================================
-# Step 5: Target Roles (What SMOP Can Assume)
+# Step 5: Target Roles (What Workload Credentials Can Assume)
 # ============================================================================
 
 # Developer Read-Only Access
 resource "aws_iam_role" "developer_readonly" {
   name        = "DeveloperReadOnlyRole"
   path        = "/beyondtrust/"
-  description = "Read-only access for developers via SMOP"
+  description = "Read-only access for developers via Workload Credentials"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -121,7 +121,7 @@ resource "aws_iam_role" "developer_readonly" {
       {
         Effect = "Allow"
         Principal = {
-          AWS = aws_iam_role.smop_integration.arn
+          AWS = aws_iam_role.workload_credentials_integration.arn
         }
         Action = ["sts:AssumeRole", "sts:TagSession"]
       }
@@ -143,7 +143,7 @@ resource "aws_iam_role_policy_attachment" "developer_readonly" {
 resource "aws_iam_role" "admin" {
   name        = "AdminRole"
   path        = "/beyondtrust/"
-  description = "Administrative access via SMOP"
+  description = "Administrative access via Workload Credentials"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -151,7 +151,7 @@ resource "aws_iam_role" "admin" {
       {
         Effect = "Allow"
         Principal = {
-          AWS = aws_iam_role.smop_integration.arn
+          AWS = aws_iam_role.workload_credentials_integration.arn
         }
         Action = ["sts:AssumeRole", "sts:TagSession"]
       }
@@ -180,22 +180,22 @@ module "beyondtrust" {
   count  = var.skip_beyondtrust ? 0 : 1
   source = "./modules/beyondtrust-integration"
 
-  external_id               = local.external_id
-  integration_name          = "production-aws-account"
-  smop_integration_role_arn = aws_iam_role.smop_integration.arn
-  developer_role_arn        = aws_iam_role.developer_readonly.arn
-  admin_role_arn            = aws_iam_role.admin.arn
-  developer_policy_arns     = ["arn:${data.aws_partition.current.partition}:iam::aws:policy/ReadOnlyAccess"]
-  environment               = var.environment
+  external_id                               = local.external_id
+  integration_name                          = "production-aws-account"
+  workload_credentials_integration_role_arn = aws_iam_role.workload_credentials_integration.arn
+  developer_role_arn                        = aws_iam_role.developer_readonly.arn
+  admin_role_arn                            = aws_iam_role.admin.arn
+  developer_policy_arns                     = ["arn:${data.aws_partition.current.partition}:iam::aws:policy/ReadOnlyAccess"]
+  environment                               = var.environment
 }
 
 # ============================================================================
 # Outputs
 # ============================================================================
 
-output "smop_integration_role_arn" {
-  description = "ARN of the IAM role for SMOP integration"
-  value       = aws_iam_role.smop_integration.arn
+output "workload_credentials_integration_role_arn" {
+  description = "ARN of the IAM role for Workload Credentials integration"
+  value       = aws_iam_role.workload_credentials_integration.arn
 }
 
 output "external_id_version" {
@@ -204,7 +204,7 @@ output "external_id_version" {
 }
 
 output "external_id_path" {
-  description = "Path to external ID secret in SMOP"
+  description = "Path to external ID secret in Workload Credentials"
   value       = try(module.beyondtrust[0].external_id_path, null)
 }
 

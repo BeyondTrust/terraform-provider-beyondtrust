@@ -1,21 +1,21 @@
-# BeyondTrust SMOP + AWS Integration Example
+# BeyondTrust Workload Credentials + AWS Integration Example
 
-This directory contains a complete example of setting up BeyondTrust Secrets Manager Operations Platform (SMOP) with AWS dynamic secrets.
+This directory contains a complete example of setting up BeyondTrust BeyondTrust Workload Credentials with AWS dynamic secrets.
 
 ## Overview
 
 This example demonstrates:
 
 1. **AWS IAM Setup**: Creating the necessary IAM roles in your AWS account
-2. **BeyondTrust Configuration**: Setting up folder structure and AWS integration in SMOP
+2. **BeyondTrust Configuration**: Setting up folder structure and AWS integration in Workload Credentials
 3. **Dynamic Secrets**: Configuring multiple dynamic secrets with different access patterns
 4. **Security Best Practices**: External ID for confused deputy prevention, least privilege, short TTLs
 
 ## Prerequisites
 
-### 1. BeyondTrust SMOP
+### 1. BeyondTrust Workload Credentials
 
-- SMOP instance running and accessible
+- Workload Credentials instance running and accessible
 - Valid access token (obtain via `secrets login` or API key generation)
 - Site/tenant ID (UUID)
 
@@ -44,7 +44,7 @@ openssl rand -base64 32
 uuidgen
 ```
 
-Save this value securely - you'll need it for both AWS and SMOP configuration.
+Save this value securely - you'll need it for both AWS and Workload Credentials configuration.
 
 ### Step 2: Configure Variables
 
@@ -57,9 +57,9 @@ cp terraform.tfvars.example terraform.tfvars
 Edit `terraform.tfvars` with your values:
 
 ```hcl
-smop_api_url       = "https://api.smop.example.com"
-smop_access_token  = "your-access-token"
-smop_site_id       = "your-site-uuid"
+beyondtrust_api_url       = "https://api.workload-credentials.example.com"
+beyondtrust_access_token  = "your-access-token"
+beyondtrust_site_id       = "your-site-uuid"
 external_id        = "your-generated-external-id"
 admin_external_id  = "your-admin-external-id"  # Optional
 ```
@@ -82,7 +82,7 @@ terraform plan -var-file=terraform.tfvars
 
 Expected resources to be created:
 - **AWS**: 3 IAM roles (integration, developer, admin) + policies
-- **SMOP**: 2 folders + 1 integration + 3 dynamic secrets
+- **Workload Credentials**: 2 folders + 1 integration + 3 dynamic secrets
 
 ### Step 5: Apply
 
@@ -138,7 +138,7 @@ aws s3 ls
 
 - **Unique per integration**: Use different external IDs for each AWS account
 - **Secure generation**: Use cryptographically secure random generator
-- **Rotation**: Periodically rotate external IDs (requires updating both AWS and SMOP)
+- **Rotation**: Periodically rotate external IDs (requires updating both AWS and Workload Credentials)
 - **Storage**: Store securely (e.g., in a secrets manager, not version control)
 
 ### 2. TTL Configuration
@@ -165,9 +165,9 @@ Shorter TTLs = better security, but more frequent credential regeneration.
 If you use `aws_tags` in your dynamic secrets for CloudTrail tracking, the integration role **must** have `sts:TagSession` permission:
 
 ```hcl
-resource "aws_iam_role_policy" "smop_assume_roles" {
-  name = "smop-assume-target-roles"
-  role = aws_iam_role.smop_integration.id
+resource "aws_iam_role_policy" "workload_credentials_assume_roles" {
+  name = "workload-credentials-assume-target-roles"
+  role = aws_iam_role.workload_credentials_integration.id
 
   policy = jsonencode({
     Version = "2012-10-17"
@@ -190,7 +190,7 @@ Without this permission, credential generation will fail with `AccessDenied: not
 ### 5. Monitoring and Auditing
 
 - **Enable CloudTrail**: Log all `AssumeRole` calls
-- **Monitor SMOP audit logs**: Track credential generations
+- **Monitor Workload Credentials audit logs**: Track credential generations
 - **Set up alerts**: Notify on unusual access patterns
 - **Review regularly**: Audit who is generating credentials and for what
 - **Use AWS tags**: Leverage `aws_tags` in dynamic secrets for better CloudTrail attribution
@@ -199,13 +199,13 @@ Without this permission, credential generation will fail with `AccessDenied: not
 
 ### Issue: "Unable to assume role"
 
-**Symptoms**: SMOP fails to create integration or generate credentials
+**Symptoms**: Workload Credentials fails to create integration or generate credentials
 
 **Possible causes**:
 1. External ID mismatch
 2. Role doesn't exist
 3. Trust relationship incorrect
-4. SMOP bridge account ID wrong
+4. Workload Credentials bridge account ID wrong
 5. IAM role not fully propagated (eventual consistency)
 
 **Resolution**:
@@ -215,8 +215,8 @@ aws iam get-role --role-name btp-account-role-YOUR_ACCOUNT_ID \
   --query 'Role.AssumeRolePolicyDocument' | jq
 
 # Check external ID matches
-# Check SMOP bridge account ID
-# Verify role ARN in SMOP integration
+# Check Workload Credentials bridge account ID
+# Verify role ARN in Workload Credentials integration
 
 # For eventual consistency issues, wait 10-15 seconds and retry
 ```
@@ -261,14 +261,14 @@ aws iam simulate-principal-policy \
 To destroy all resources:
 
 ```bash
-# Destroy SMOP and AWS resources
+# Destroy Workload Credentials and AWS resources
 terraform destroy -var-file=terraform.tfvars
 ```
 
 **Warning**: This will:
 - Delete all dynamic secrets (existing leases remain valid until expiration)
 - Delete the AWS integration
-- Delete folders in SMOP (soft delete)
+- Delete folders in Workload Credentials (soft delete)
 - Delete IAM roles in AWS
 
 ## Additional Resources

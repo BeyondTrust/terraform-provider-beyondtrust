@@ -52,7 +52,7 @@ help:
 	@echo "Testing:"
 	@echo "  test              - Run all tests (unit + acceptance)"
 	@echo "  test-unit         - Run unit tests only"
-	@echo "  test-acc          - Run acceptance tests (requires SMOP instance)"
+	@echo "  test-acc          - Run acceptance tests (requires Workload Credentials instance)"
 	@echo "  test-coverage     - Generate coverage report"
 	@echo "  test-coverage-html - Generate HTML coverage report"
 	@echo ""
@@ -170,7 +170,7 @@ test-unit:
 	@echo "Running unit tests..."
 	@go test -v -cover -timeout=120s -parallel=10 -coverprofile=coverage-unit.out -covermode=atomic ./internal/...
 
-## test-acc: Run acceptance tests (requires SMOP instance)
+## test-acc: Run acceptance tests (requires Workload Credentials instance)
 test-acc:
 	@echo "Running acceptance tests..."
 	@echo "Note: Set the required environment variables"

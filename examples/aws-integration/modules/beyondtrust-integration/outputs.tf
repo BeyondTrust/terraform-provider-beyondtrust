@@ -6,7 +6,7 @@ output "external_id_version" {
 }
 
 output "external_id_path" {
-  description = "Path to external ID secret in SMOP"
+  description = "Path to external ID secret in Workload Credentials"
   value       = beyondtrust_secrets_static_secret.external_id.path
 }
 
