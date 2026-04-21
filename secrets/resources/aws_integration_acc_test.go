@@ -47,13 +47,25 @@ func TestAccAwsIntegrationResource_basic(t *testing.T) {
 					resource.TestCheckResourceAttrSet("beyondtrust_secrets_aws_integration.test", "created_at"),
 				),
 			},
-			// ImportState testing
+			// ImportState testing - import by name since the API identifies integrations by name, not UUID
 			{
 				ResourceName:      "beyondtrust_secrets_aws_integration.test",
 				ImportState:       true,
 				ImportStateVerify: true,
+				ImportStateIdFunc: func(s *terraform.State) (string, error) {
+					rs, ok := s.RootModule().Resources["beyondtrust_secrets_aws_integration.test"]
+					if !ok {
+						return "", fmt.Errorf("resource not found in state")
+					}
+					name, ok := rs.Primary.Attributes["name"]
+					if !ok || name == "" {
+						return "", fmt.Errorf("resource has no name attribute in state")
+					}
+					return name, nil
+				},
 				// external_id is sensitive and not returned by the API
-				ImportStateVerifyIgnore: []string{"external_id"},
+				// created_at precision differs between create and read responses (API inconsistency)
+				ImportStateVerifyIgnore: []string{"external_id", "created_at"},
 			},
 		},
 	})
