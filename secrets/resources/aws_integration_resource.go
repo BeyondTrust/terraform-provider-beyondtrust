@@ -88,7 +88,7 @@ func (r *AwsIntegrationResource) Schema(ctx context.Context, req resource.Schema
 				},
 			},
 			"role_arn": schema.StringAttribute{
-				Description: "The ARN of the IAM role in the customer AWS account that SMOP will assume. Must match pattern: arn:aws:iam::[0-9]+:role/.+",
+				Description: "The ARN of the IAM role in the customer AWS account that Workload Credentials will assume. Must match pattern: arn:aws:iam::[0-9]+:role/.+",
 				Required:    true,
 			},
 			"external_id": schema.StringAttribute{

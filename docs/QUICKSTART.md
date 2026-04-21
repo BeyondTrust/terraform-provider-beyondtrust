@@ -4,9 +4,9 @@ Get started with the BeyondTrust Terraform Provider in 5 minutes.
 
 ## Prerequisites
 
-### 1. BeyondTrust SMOP Access
+### 1. BeyondTrust Workload Credentials Access
 
-You need access to a BeyondTrust Secrets Manager Operations Platform (SMOP) instance.
+You need access to a BeyondTrust BeyondTrust Workload Credentials instance.
 
 **If you don't have access yet:**
 - **Existing BeyondTrust Customer**: Contact your BeyondTrust account manager or support team
@@ -31,13 +31,13 @@ Download from: <https://www.terraform.io/downloads>
 
 1. Install the BeyondTrust CLI:
    ```bash
-   # Installation instructions from your SMOP administrator
+   # Installation instructions from your Workload Credentials administrator
    # Or download from BeyondTrust support portal
    ```
 
-2. Login to SMOP:
+2. Login to Workload Credentials:
    ```bash
-   secrets login --api-url https://api.smop.example.com
+   secrets login --api-url https://api.workload-credentials.example.com
    ```
 
 3. Extract credentials:
@@ -47,9 +47,9 @@ Download from: <https://www.terraform.io/downloads>
    export BEYONDTRUST_SITE_ID=$(secrets config get site-id)
    ```
 
-### Option B: Using the SMOP Web Console
+### Option B: Using the Workload Credentials Web Console
 
-1. Log in to your SMOP web console
+1. Log in to your Workload Credentials web console
 2. Navigate to **Settings** → **API Keys** (or **User Settings** → **Access Tokens**)
 3. Click **Generate New API Key/Token**
 4. Copy the access token (you won't be able to see it again!)
@@ -57,11 +57,11 @@ Download from: <https://www.terraform.io/downloads>
 
 ### Option C: Environment-Specific Endpoints
 
-| Environment | API URL                                  |
-|-------------|------------------------------------------|
-| Production  | `https://api.smop.your-company.com`      |
-| Sandbox/Dev | Contact your SMOP administrator          |
-| Self-Hosted | Your custom SMOP API endpoint            |
+| Environment | API URL                                                      |
+|-------------|--------------------------------------------------------------|
+| Production  | `https://api.workload-credentials.your-company.com`          |
+| Sandbox/Dev | Contact your Workload Credentials administrator              |
+| Self-Hosted | Your custom Workload Credentials API endpoint                |
 
 ## Step 2: Configure Provider
 
@@ -98,7 +98,7 @@ provider "beyondtrust" {
 
 ```hcl
 provider "beyondtrust" {
-  api_url      = "https://api.smop.example.com"
+  api_url      = "https://api.workload-credentials.example.com"
   access_token = var.beyondtrust_access_token  # Use variables for sensitive data
   site_id      = var.beyondtrust_site_id
 }
@@ -144,9 +144,9 @@ terraform apply
 
 Type `yes` when prompted.
 
-## Step 5: Verify in SMOP
+## Step 5: Verify in Workload Credentials
 
-1. Log in to your SMOP web console
+1. Log in to your Workload Credentials web console
 2. Navigate to **Secrets** → **Folders**
 3. You should see your new folder: `my-first-folder`
 
@@ -257,7 +257,7 @@ curl -H "Authorization: Bearer ${BEYONDTRUST_ACCESS_TOKEN}" \
 **Error**: `Resource not found` during import
 
 **Solutions**:
-- Verify the resource exists in SMOP
+- Verify the resource exists in Workload Credentials
 - Check the import path format (use forward slashes: `folder/subfolder/name`)
 - Ensure you have permissions to access the resource
 
@@ -279,7 +279,7 @@ curl -H "Authorization: Bearer ${BEYONDTRUST_ACCESS_TOKEN}" \
 - **Documentation**: Full docs in the `docs/` directory
 - **Examples**: Working examples in the `examples/` directory
 - **Issues**: Report bugs at [GitHub Issues](https://github.com/beyondtrust/terraform-provider-beyondtrust/issues)
-- **Support**: Contact BeyondTrust support for SMOP-related questions
+- **Support**: Contact BeyondTrust support for Workload Credentials-related questions
 
 ## Terraform Version Requirements
 

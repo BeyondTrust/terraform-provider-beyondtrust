@@ -18,7 +18,7 @@ func main() {
 
 var rootCmd = &cobra.Command{
 	Use:     "codegen",
-	Short:   "Terraform provider code generator for BeyondTrust SMOP",
+	Short:   "Terraform provider code generator for BeyondTrust Workload Credentials",
 	Version: version,
 }
 
