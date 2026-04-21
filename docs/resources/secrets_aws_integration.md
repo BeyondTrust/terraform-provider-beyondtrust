@@ -15,7 +15,7 @@ Manages an AWS integration in BeyondTrust Secrets Manager. This integration prov
 # AWS Integration for dynamic credential generation
 resource "beyondtrust_secrets_aws_integration" "production" {
   name        = "production-aws-account"
-  role_arn    = "arn:aws:iam::123456789012:role/beyondtrust/btp-account-role-for-smop"
+  role_arn    = "arn:aws:iam::123456789012:role/beyondtrust/btp-account-role-for-workload-credentials"
   external_id = var.external_id
 }
 
@@ -38,7 +38,7 @@ resource "beyondtrust_secrets_static_secret" "external_id" {
 
 resource "beyondtrust_secrets_aws_integration" "production_secure" {
   name        = "production-aws-secure"
-  role_arn    = "arn:aws:iam::123456789012:role/beyondtrust/btp-account-role-for-smop"
+  role_arn    = "arn:aws:iam::123456789012:role/beyondtrust/btp-account-role-for-workload-credentials"
   external_id = random_password.external_id.result
 }
 ```
@@ -50,7 +50,7 @@ resource "beyondtrust_secrets_aws_integration" "production_secure" {
 
 - `external_id` (String, Sensitive) The external ID for the role trust relationship. Required for confused deputy prevention. Must be 2-1224 characters, alphanumeric plus _+=,.@:\/- characters.
 - `name` (String) The name of the integration. Must match pattern: ^[a-zA-Z0-9\-_@~\*\^%]+$ (max 100 chars). This is the resource identifier.
-- `role_arn` (String) The ARN of the IAM role in the customer AWS account that SMOP will assume. Must match pattern: arn:aws:iam::[0-9]+:role/.+
+- `role_arn` (String) The ARN of the IAM role in the customer AWS account that Workload Credentials will assume. Must match pattern: arn:aws:iam::[0-9]+:role/.+
 
 ### Read-Only
 

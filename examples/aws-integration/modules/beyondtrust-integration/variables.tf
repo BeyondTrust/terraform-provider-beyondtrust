@@ -11,8 +11,8 @@ variable "integration_name" {
   type        = string
 }
 
-variable "smop_integration_role_arn" {
-  description = "ARN of the AWS IAM role for SMOP integration"
+variable "workload_credentials_integration_role_arn" {
+  description = "ARN of the AWS IAM role for Workload Credentials integration"
   type        = string
 }
 

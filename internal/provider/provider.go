@@ -60,10 +60,10 @@ func (p *BeyondTrustProvider) Metadata(ctx context.Context, req provider.Metadat
 
 func (p *BeyondTrustProvider) Schema(ctx context.Context, req provider.SchemaRequest, resp *provider.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "The BeyondTrust provider allows you to manage BeyondTrust resources (SMOP, PRA, etc.) using infrastructure as code.",
+		Description: "The BeyondTrust provider allows you to manage BeyondTrust resources (Workload Credentials and other BeyondTrust services) using infrastructure as code.",
 		Attributes: map[string]schema.Attribute{
 			"api_url": schema.StringAttribute{
-				Description: "The base URL for the BeyondTrust API (e.g., https://api.smop.example.com). Can also be set via " + constants.EnvAPIURL + " environment variable.",
+				Description: "The base URL for the BeyondTrust API (e.g., https://api.workload-credentials.example.com). Can also be set via " + constants.EnvAPIURL + " environment variable.",
 				Optional:    true,
 			},
 			"access_token": schema.StringAttribute{

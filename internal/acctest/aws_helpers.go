@@ -61,7 +61,7 @@ func GetOrGenerateExternalID(t *testing.T) string {
 }
 
 // GetBeyondTrustAWSAccountID returns the BeyondTrust AWS account ID
-// This is the account that BeyondTrust SMOP uses to assume customer roles
+// This is the account that BeyondTrust Workload Credentials uses to assume customer roles
 func GetBeyondTrustAWSAccountID(t *testing.T) string {
 	t.Helper()
 
@@ -72,8 +72,8 @@ func GetBeyondTrustAWSAccountID(t *testing.T) string {
 
 	// If not set, skip the test and provide instructions
 	t.Skip(EnvAWSAccountID + " must be set to run AWS integration tests.\n" +
-		"This is the AWS account ID that your BeyondTrust SMOP instance uses to assume roles.\n" +
-		"You can find this in your SMOP console under AWS integration settings.\n" +
+		"This is the AWS account ID that your BeyondTrust Workload Credentials instance uses to assume roles.\n" +
+		"You can find this in your Workload Credentials console under AWS integration settings.\n" +
 		"Example: export " + EnvAWSAccountID + "=123456789012")
 
 	return ""

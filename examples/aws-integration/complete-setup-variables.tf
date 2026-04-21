@@ -6,14 +6,14 @@ variable "aws_region" {
   default     = "us-east-1"
 }
 
-variable "smop_bridge_account_id" {
-  description = "AWS account ID of the SMOP bridge account"
+variable "workload_credentials_bridge_account_id" {
+  description = "AWS account ID of the Workload Credentials bridge account"
   type        = string
   default     = "615299755251" # Sandbox/dev bridge account
   # Use "071882751376" for production
 
   validation {
-    condition     = can(regex("^[0-9]{12}$", var.smop_bridge_account_id))
+    condition     = can(regex("^[0-9]{12}$", var.workload_credentials_bridge_account_id))
     error_message = "Bridge account ID must be a 12-digit AWS account ID"
   }
 }
@@ -35,7 +35,7 @@ variable "tags" {
   default = {
     ManagedBy   = "Terraform"
     Environment = "Production"
-    Purpose     = "SMOP-Integration"
+    Purpose     = "Workload-Credentials-Integration"
   }
 }
 
