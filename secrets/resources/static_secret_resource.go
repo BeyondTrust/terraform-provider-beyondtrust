@@ -318,9 +318,6 @@ func (r *StaticSecretResource) Update(ctx context.Context, req resource.UpdateRe
 			)
 			return
 		}
-
-		// Update secret_wo_version from response
-		data.SecretWoVersion = types.Int64Value(updateResp.Metadata.Version)
 	}
 
 	// Check if tags changed
@@ -350,7 +347,7 @@ func (r *StaticSecretResource) Update(ctx context.Context, req resource.UpdateRe
 	// Update state with metadata
 	data.ID = types.StringValue(metadataResp.ID)
 	data.CreatedAt = types.StringValue(metadataResp.CreatedAt)
-	// secret_wo_version already updated above when secret changed
+	data.SecretWoVersion = types.Int64Value(metadataResp.Version)
 
 	// Update tags in state - set to null if empty (framework requirement)
 	if len(metadataResp.Tags) > 0 {
