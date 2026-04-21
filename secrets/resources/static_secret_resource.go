@@ -190,7 +190,9 @@ func (r *StaticSecretResource) Create(ctx context.Context, req resource.CreateRe
 
 	// Update the model with response data (but NOT the secret value)
 	data.ID = types.StringValue(createResp.Metadata.ID)
-	data.Path = types.StringValue(createResp.Path)
+	// Compute path from name and folder
+	pathStr := buildFolderPath(name, parentFolder)
+	data.Path = types.StringValue(pathStr)
 	data.SecretWoVersion = types.Int64Value(createResp.Metadata.Version)
 	data.CreatedAt = types.StringValue(createResp.Metadata.CreatedAt)
 
@@ -316,9 +318,6 @@ func (r *StaticSecretResource) Update(ctx context.Context, req resource.UpdateRe
 			)
 			return
 		}
-
-		// Update secret_wo_version from response
-		data.SecretWoVersion = types.Int64Value(updateResp.Metadata.Version)
 	}
 
 	// Check if tags changed
@@ -348,7 +347,7 @@ func (r *StaticSecretResource) Update(ctx context.Context, req resource.UpdateRe
 	// Update state with metadata
 	data.ID = types.StringValue(metadataResp.ID)
 	data.CreatedAt = types.StringValue(metadataResp.CreatedAt)
-	// secret_wo_version already updated above when secret changed
+	data.SecretWoVersion = types.Int64Value(metadataResp.Version)
 
 	// Update tags in state - set to null if empty (framework requirement)
 	if len(metadataResp.Tags) > 0 {
@@ -404,8 +403,14 @@ func (r *StaticSecretResource) ImportState(ctx context.Context, req resource.Imp
 	name, parentFolder := parseImportPath(fullPath)
 
 	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("name"), name)...)
-	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("folder"), parentFolder)...)
 	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("path"), fullPath)...)
+
+	// Set folder to null when empty so it matches Optional-unset state from config
+	if parentFolder != "" {
+		resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("folder"), parentFolder)...)
+	} else {
+		resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("folder"), types.StringNull())...)
+	}
 
 	// Note: Secret value must be provided in config after import
 	resp.Diagnostics.AddWarning(

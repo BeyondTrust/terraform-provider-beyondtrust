@@ -1,13 +1,14 @@
 //go:build acceptance
 // +build acceptance
 
-package resources
+package resources_test
 
 import (
 	"fmt"
 	"testing"
 
 	"github.com/beyondtrust/terraform-provider-beyondtrust/internal/acctest"
+	_ "github.com/beyondtrust/terraform-provider-beyondtrust/internal/provider"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 )
 
