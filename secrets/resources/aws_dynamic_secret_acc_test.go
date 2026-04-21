@@ -1,7 +1,7 @@
 //go:build acceptance
 // +build acceptance
 
-package resources
+package resources_test
 
 import (
 	"fmt"
@@ -11,7 +11,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 
 	"github.com/beyondtrust/terraform-provider-beyondtrust/internal/acctest"
-	_ "github.com/beyondtrust/terraform-provider-beyondtrust/internal/provider" // Import to trigger init()
+	_ "github.com/beyondtrust/terraform-provider-beyondtrust/internal/provider"
 )
 
 func TestAccAwsDynamicSecretResource_basic(t *testing.T) {
@@ -41,13 +41,25 @@ func TestAccAwsDynamicSecretResource_basic(t *testing.T) {
 					resource.TestCheckResourceAttrSet("beyondtrust_secrets_aws_dynamic_secret.test", "created_at"),
 				),
 			},
-			// ImportState testing
+			// ImportState testing - import by path since the API identifies dynamic secrets by path, not UUID
 			{
 				ResourceName:      "beyondtrust_secrets_aws_dynamic_secret.test",
 				ImportState:       true,
 				ImportStateVerify: true,
+				ImportStateIdFunc: func(s *terraform.State) (string, error) {
+					rs, ok := s.RootModule().Resources["beyondtrust_secrets_aws_dynamic_secret.test"]
+					if !ok {
+						return "", fmt.Errorf("resource not found in state")
+					}
+					p, ok := rs.Primary.Attributes["path"]
+					if !ok || p == "" {
+						return "", fmt.Errorf("resource has no path attribute in state")
+					}
+					return p, nil
+				},
 				// external_id is sensitive and not returned by the API
-				ImportStateVerifyIgnore: []string{"external_id"},
+				// created_at precision differs between create and read responses (API inconsistency)
+				ImportStateVerifyIgnore: []string{"external_id", "created_at"},
 			},
 		},
 	})

@@ -1,7 +1,7 @@
 //go:build acceptance
 // +build acceptance
 
-package resources
+package resources_test
 
 import (
 	"fmt"
@@ -11,8 +11,20 @@ import (
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 
 	"github.com/beyondtrust/terraform-provider-beyondtrust/internal/acctest"
-	_ "github.com/beyondtrust/terraform-provider-beyondtrust/internal/provider" // Import to trigger init()
+	_ "github.com/beyondtrust/terraform-provider-beyondtrust/internal/provider"
 )
+
+func getTestRoleArn(t *testing.T) string {
+	return acctest.GetAWSRoleARN(t)
+}
+
+func getTestRoleArn2(t *testing.T) string {
+	return acctest.GetAWSRoleARN2(t)
+}
+
+func getTestTargetRoleArn(t *testing.T) string {
+	return getTestRoleArn(t)
+}
 
 func TestAccAwsIntegrationResource_basic(t *testing.T) {
 	integrationName := acctest.RandomIntegrationName()
@@ -35,13 +47,25 @@ func TestAccAwsIntegrationResource_basic(t *testing.T) {
 					resource.TestCheckResourceAttrSet("beyondtrust_secrets_aws_integration.test", "created_at"),
 				),
 			},
-			// ImportState testing
+			// ImportState testing - import by name since the API identifies integrations by name, not UUID
 			{
 				ResourceName:      "beyondtrust_secrets_aws_integration.test",
 				ImportState:       true,
 				ImportStateVerify: true,
+				ImportStateIdFunc: func(s *terraform.State) (string, error) {
+					rs, ok := s.RootModule().Resources["beyondtrust_secrets_aws_integration.test"]
+					if !ok {
+						return "", fmt.Errorf("resource not found in state")
+					}
+					name, ok := rs.Primary.Attributes["name"]
+					if !ok || name == "" {
+						return "", fmt.Errorf("resource has no name attribute in state")
+					}
+					return name, nil
+				},
 				// external_id is sensitive and not returned by the API
-				ImportStateVerifyIgnore: []string{"external_id"},
+				// created_at precision differs between create and read responses (API inconsistency)
+				ImportStateVerifyIgnore: []string{"external_id", "created_at"},
 			},
 		},
 	})
@@ -131,18 +155,6 @@ func TestAccAwsIntegrationResource_nameImmutable(t *testing.T) {
 			},
 		},
 	})
-}
-
-func getTestRoleArn(t *testing.T) string {
-	return acctest.GetAWSRoleARN(t)
-}
-
-func getTestRoleArn2(t *testing.T) string {
-	return acctest.GetAWSRoleARN2(t)
-}
-
-func getTestTargetRoleArn(t *testing.T) string {
-	return getTestRoleArn(t)
 }
 
 func testAccCheckAwsIntegrationDestroy(s *terraform.State) error {

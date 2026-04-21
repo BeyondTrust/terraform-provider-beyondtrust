@@ -13,6 +13,7 @@ HOSTNAME := registry.terraform.io
 NAMESPACE := beyondtrust
 NAME := beyondtrust
 OS_ARCH := $(shell go env GOOS)_$(shell go env GOARCH)
+TERRAFORM_VERSION := $(shell cat .terraform-version 2>/dev/null | tr -d '[:space:]')
 
 # ==========================================
 # Default Target
@@ -172,8 +173,8 @@ test-unit:
 ## test-acc: Run acceptance tests (requires Workload Credentials instance)
 test-acc:
 	@echo "Running acceptance tests..."
-	@echo "Note: Set TF_ACC=1 and required environment variables"
-	TF_ACC=1 go test -v -cover -timeout=120m -parallel=4 -coverprofile=coverage-acc.out -covermode=atomic ./...
+	@echo "Note: Set the required environment variables"
+	@TF_ACC=1 TFENV_TERRAFORM_VERSION=$(TERRAFORM_VERSION) go test -v -cover -timeout=120m -parallel=4 -tags acceptance -coverprofile=coverage-acc.out -covermode=atomic ./...
 
 ## testacc: Alias for test-acc
 testacc: test-acc
