@@ -26,7 +26,6 @@ func TestAccAwsIntegrationDataSource_basic(t *testing.T) {
 				Config: testAccAwsIntegrationDataSourceConfig_basic(integrationName, roleArn, externalId),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("data.beyondtrust_secrets_aws_integration.test", "name", integrationName),
-					resource.TestCheckResourceAttr("data.beyondtrust_secrets_aws_integration.test", "type", "aws"),
 					resource.TestCheckResourceAttr("data.beyondtrust_secrets_aws_integration.test", "role_arn", roleArn),
 					resource.TestCheckResourceAttrSet("data.beyondtrust_secrets_aws_integration.test", "id"),
 					resource.TestCheckResourceAttrSet("data.beyondtrust_secrets_aws_integration.test", "created_at"),

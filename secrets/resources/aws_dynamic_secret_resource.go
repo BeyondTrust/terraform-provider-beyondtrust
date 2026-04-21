@@ -197,6 +197,9 @@ func (r *AwsDynamicSecretResource) Schema(ctx context.Context, req resource.Sche
 			"deleted_at": schema.StringAttribute{
 				Description: "The timestamp when the dynamic secret was soft-deleted (if applicable).",
 				Computed:    true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
 			},
 		},
 	}
@@ -524,6 +527,12 @@ func (r *AwsDynamicSecretResource) Update(ctx context.Context, req resource.Upda
 	data.TTL = types.Int64Value(secretResp.Config.TTL)
 	data.RoleArn = types.StringValue(secretResp.Config.RoleArn)
 
+	if secretResp.Metadata.DeletedAt != nil {
+		data.DeletedAt = types.StringValue(*secretResp.Metadata.DeletedAt)
+	} else {
+		data.DeletedAt = types.StringNull()
+	}
+
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
@@ -577,8 +586,14 @@ func (r *AwsDynamicSecretResource) ImportState(ctx context.Context, req resource
 	}
 
 	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("name"), name)...)
-	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("folder"), parentFolder)...)
 	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("path"), fullPath)...)
+
+	// Set folder to null when empty so it matches Optional-unset state from config
+	if parentFolder != "" {
+		resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("folder"), parentFolder)...)
+	} else {
+		resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("folder"), types.StringNull())...)
+	}
 }
 
 // Helper functions for AWS dynamic secret business logic
