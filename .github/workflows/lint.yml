@@ -2,19 +2,46 @@ name: Lint
 
 on:
   pull_request:
-    branches: [main, develop]
-  push:
-    branches: [main, develop]
+    branches:
+      - main
 
-permissions:
-  contents: read
+permissions: {}
 
 jobs:
+  docs-validation:
+    name: Validate Documentation
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: "Checkout code"
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: "Configure Go"
+        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
+        with:
+          go-version-file: "go.mod"
+          cache: true
+          check-latest: true
+      - name: "Read Terraform version"
+        id: terraform-version
+        run: echo "version=$(tr -d '\r\n' < .terraform-version)" >> "$GITHUB_OUTPUT"
+      - name: "Setup Terraform"
+        uses: hashicorp/setup-terraform@5e8dbf3c6d9deaf4193ca7a8fb23f2ac83bb6c85 # v4.0.0
+        with:
+          terraform_version: ${{ steps.terraform-version.outputs.version }}
+      - name: Install tfplugindocs
+        run: go install github.com/hashicorp/terraform-plugin-docs/cmd/tfplugindocs@v0.24.0
+      - name: Validate documentation
+        run: make docs-validate
+
   golangci-lint:
     if: github.actor != 'dependabot[bot]'
     name: golangci-lint
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
@@ -26,3 +53,19 @@ jobs:
         run: go install mvdan.cc/gofumpt@v0.8.0
       - name: "Run make lint"
         run: make lint
+
+  terraform-fmt:
+    name: Terraform Format Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - name: Check out code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@5e8dbf3c6d9deaf4193ca7a8fb23f2ac83bb6c85 # v4.0.0
+        with:
+          terraform_version: "1.10.x"
+      - name: Check Terraform formatting
+        run: terraform fmt -check -recursive examples/

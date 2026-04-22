@@ -1,0 +1,25 @@
+---
+name: Megalinter Shallow Lint
+
+on:
+  pull_request:
+    branches:
+      - main
+    # Do not lint the full codebase if the linter workflows have not been updated
+    paths-ignore:
+      - .github/workflows/megalinter*.yml
+      - .mega-linter.yml
+      - .github/linters/**
+
+permissions: {}
+
+jobs:
+  lint:
+    permissions:
+      actions: read
+      contents: read
+      pull-requests: write
+      security-events: write
+    uses: ./.github/workflows/megalinter.yaml
+    with:
+      full: false
