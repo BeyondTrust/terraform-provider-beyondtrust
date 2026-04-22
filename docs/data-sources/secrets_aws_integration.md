@@ -2,12 +2,12 @@
 page_title: "Data Source beyondtrust_secrets_aws_integration - beyondtrust"
 subcategory: ""
 description: |-
-  Reads an existing AWS integration from BeyondTrust Secrets Manager.
+  Reads an existing AWS integration from BeyondTrust Workload Credentials.
 ---
 
 # beyondtrust_secrets_aws_integration (Data Source)
 
-Reads an existing AWS integration from BeyondTrust Secrets Manager.
+Reads an existing AWS integration from BeyondTrust Workload Credentials.
 
 ## Example Usage
 

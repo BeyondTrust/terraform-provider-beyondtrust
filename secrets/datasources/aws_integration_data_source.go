@@ -54,7 +54,7 @@ func (d *AwsIntegrationDataSource) Metadata(ctx context.Context, req datasource.
 
 func (d *AwsIntegrationDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "Reads an existing AWS integration from BeyondTrust Secrets Manager.",
+		Description: "Reads an existing AWS integration from BeyondTrust Workload Credentials.",
 
 		Attributes: map[string]schema.Attribute{
 			"name": schema.StringAttribute{

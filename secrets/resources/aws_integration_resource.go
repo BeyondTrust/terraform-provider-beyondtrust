@@ -77,7 +77,7 @@ func (r *AwsIntegrationResource) Metadata(ctx context.Context, req resource.Meta
 
 func (r *AwsIntegrationResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "Manages an AWS integration in BeyondTrust Secrets Manager. This integration provides credentials for accessing a customer AWS account to generate dynamic credentials.",
+		Description: "Manages an AWS integration in BeyondTrust Workload Credentials. This integration provides credentials for accessing a customer AWS account to generate dynamic credentials.",
 
 		Attributes: map[string]schema.Attribute{
 			"name": schema.StringAttribute{

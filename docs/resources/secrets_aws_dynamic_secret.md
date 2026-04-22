@@ -2,12 +2,12 @@
 page_title: "Resource beyondtrust_secrets_aws_dynamic_secret - beyondtrust"
 subcategory: ""
 description: |-
-  Manages an AWS dynamic secret configuration in BeyondTrust Secrets Manager. Dynamic secrets generate temporary AWS credentials on-demand with configurable TTL and permissions.
+  Manages an AWS dynamic secret configuration in BeyondTrust Workload Credentials. Dynamic secrets generate temporary AWS credentials on-demand with configurable TTL and permissions.
 ---
 
 # beyondtrust_secrets_aws_dynamic_secret (Resource)
 
-Manages an AWS dynamic secret configuration in BeyondTrust Secrets Manager. Dynamic secrets generate temporary AWS credentials on-demand with configurable TTL and permissions.
+Manages an AWS dynamic secret configuration in BeyondTrust Workload Credentials. Dynamic secrets generate temporary AWS credentials on-demand with configurable TTL and permissions.
 
 ## Example Usage
 

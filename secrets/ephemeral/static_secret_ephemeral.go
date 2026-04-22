@@ -55,7 +55,7 @@ func (e *StaticSecretEphemeral) Metadata(ctx context.Context, req ephemeral.Meta
 
 func (e *StaticSecretEphemeral) Schema(ctx context.Context, req ephemeral.SchemaRequest, resp *ephemeral.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Ephemeral resource for reading static secret values from BeyondTrust Secrets Manager. Secret values are never stored in Terraform state or plan files.",
+		Description: "Ephemeral resource for reading static secret values from BeyondTrust Workload Credentials. Secret values are never stored in Terraform state or plan files.",
 
 		Attributes: map[string]schema.Attribute{
 			"name": schema.StringAttribute{

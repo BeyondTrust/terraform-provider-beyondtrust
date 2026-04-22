@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Initial release of the BeyondTrust Secrets Terraform Provider
+- Initial release of the BeyondTrust Workload Credentials Terraform Provider
 - **Resources:**
   - `beyondtrust_secrets_folder` - Manage folder hierarchy
   - `beyondtrust_secrets_static_secret` - Manage static secrets (managed resource)

@@ -66,7 +66,7 @@ func (r *FolderResource) Metadata(ctx context.Context, req resource.MetadataRequ
 
 func (r *FolderResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "Manages a folder in BeyondTrust Secrets Manager for organizing secrets and dynamic secrets.",
+		Description: "Manages a folder in BeyondTrust Workload Credentials for organizing secrets and dynamic secrets.",
 
 		Attributes: map[string]schema.Attribute{
 			"name": schema.StringAttribute{

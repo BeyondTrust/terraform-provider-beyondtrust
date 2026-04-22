@@ -2,12 +2,12 @@
 page_title: "Resource beyondtrust_secrets_aws_integration - beyondtrust"
 subcategory: ""
 description: |-
-  Manages an AWS integration in BeyondTrust Secrets Manager. This integration provides credentials for accessing a customer AWS account to generate dynamic credentials.
+  Manages an AWS integration in BeyondTrust Workload Credentials. This integration provides credentials for accessing a customer AWS account to generate dynamic credentials.
 ---
 
 # beyondtrust_secrets_aws_integration (Resource)
 
-Manages an AWS integration in BeyondTrust Secrets Manager. This integration provides credentials for accessing a customer AWS account to generate dynamic credentials.
+Manages an AWS integration in BeyondTrust Workload Credentials. This integration provides credentials for accessing a customer AWS account to generate dynamic credentials.
 
 ## Example Usage
 

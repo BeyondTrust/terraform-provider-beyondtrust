@@ -2,12 +2,12 @@
 page_title: "Ephemeral Resource beyondtrust_secrets_static_secret - beyondtrust"
 subcategory: ""
 description: |-
-  Ephemeral resource for reading static secret values from BeyondTrust Secrets Manager. Secret values are never stored in Terraform state or plan files.
+  Ephemeral resource for reading static secret values from BeyondTrust Workload Credentials. Secret values are never stored in Terraform state or plan files.
 ---
 
 # beyondtrust_secrets_static_secret (Ephemeral Resource)
 
-Ephemeral resource for reading static secret values from BeyondTrust Secrets Manager. Secret values are never stored in Terraform state or plan files.
+Ephemeral resource for reading static secret values from BeyondTrust Workload Credentials. Secret values are never stored in Terraform state or plan files.
 
 ~> **Important:** Ephemeral resources are available in Terraform 1.10+. Secret values are never stored in Terraform state or plan files.
 

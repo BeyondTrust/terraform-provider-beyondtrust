@@ -24,7 +24,6 @@
         "golangci",
         "tfplugindocs",
         "tfsdk",
-        "SMOP",
         "CSRF",
         "codegen",
         "CODEGEN",

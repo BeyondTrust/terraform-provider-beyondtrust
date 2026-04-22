@@ -112,7 +112,7 @@ func (r *AwsDynamicSecretResource) Metadata(ctx context.Context, req resource.Me
 
 func (r *AwsDynamicSecretResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "Manages an AWS dynamic secret configuration in BeyondTrust Secrets Manager. Dynamic secrets generate temporary AWS credentials on-demand with configurable TTL and permissions.",
+		Description: "Manages an AWS dynamic secret configuration in BeyondTrust Workload Credentials. Dynamic secrets generate temporary AWS credentials on-demand with configurable TTL and permissions.",
 
 		Attributes: map[string]schema.Attribute{
 			"name": schema.StringAttribute{

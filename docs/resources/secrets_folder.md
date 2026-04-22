@@ -2,12 +2,12 @@
 page_title: "Resource beyondtrust_secrets_folder - beyondtrust"
 subcategory: ""
 description: |-
-  Manages a folder in BeyondTrust Secrets Manager for organizing secrets and dynamic secrets.
+  Manages a folder in BeyondTrust Workload Credentials for organizing secrets and dynamic secrets.
 ---
 
 # beyondtrust_secrets_folder (Resource)
 
-Manages a folder in BeyondTrust Secrets Manager for organizing secrets and dynamic secrets.
+Manages a folder in BeyondTrust Workload Credentials for organizing secrets and dynamic secrets.
 
 ## Example Usage
 

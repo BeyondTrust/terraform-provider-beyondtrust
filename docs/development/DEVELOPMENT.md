@@ -6,7 +6,7 @@ This guide explains how to develop and test the BeyondTrust Terraform provider l
 
 - Go 1.21 or later
 - Terraform 1.0 or later
-- Access to a BeyondTrust Secrets Safe instance (for acceptance tests)
+- Access to a BeyondTrust Workload Credentials instance (for acceptance tests)
 
 ## Quick Start
 
@@ -326,4 +326,4 @@ The project uses GitHub Actions for continuous integration. See `.github/workflo
 
 - [Terraform Plugin Framework](https://developer.hashicorp.com/terraform/plugin/framework)
 - [Terraform Provider Development](https://developer.hashicorp.com/terraform/plugin)
-- [BeyondTrust Secrets Safe API Documentation](https://www.beyondtrust.com/docs/secrets-safe/api/index.htm)
+- [BeyondTrust Workload Credentials API Documentation](https://www.beyondtrust.com/docs/secrets-safe/api/index.htm)
