@@ -7,7 +7,7 @@
 <!-- markdownlint-enable MD041 -->
 
 [![Tests](https://github.com/beyondtrust/terraform-provider-beyondtrust/actions/workflows/tests.yml/badge.svg)](https://github.com/beyondtrust/terraform-provider-beyondtrust/actions/workflows/tests.yml)
-[![Release](https://github.com/beyondtrust/terraform-provider-beyondtrust/actions/workflows/release.yml/badge.svg)](https://github.com/beyondtrust/terraform-provider-beyondtrust/actions/workflows/release.yml)
+[![Release](https://github.com/beyondtrust/terraform-provider-beyondtrust/actions/workflows/promote.yml/badge.svg)](https://github.com/beyondtrust/terraform-provider-beyondtrust/actions/workflows/promote.yml)
 
 The [BeyondTrust Workload Credentials Provider](https://registry.terraform.io/providers/beyondtrust/beyondtrust/latest/docs)
 allows [Terraform](https://terraform.io) to manage secrets and credentials for

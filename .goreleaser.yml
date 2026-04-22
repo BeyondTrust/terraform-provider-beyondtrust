@@ -1,0 +1,126 @@
+# GoReleaser configuration for Terraform Provider
+# Documentation: https://goreleaser.com
+# Terraform Registry: https://www.terraform.io/docs/registry/providers/publishing.html
+
+version: 2
+
+before:
+  hooks:
+    # Ensure dependencies are tidy
+    - go mod tidy
+    # Run tests before building
+    - go test -short ./...
+
+builds:
+  - id: terraform-provider-beyondtrust
+    binary: "{{ .ProjectName }}_v{{ .Version }}"
+    main: .
+    env:
+      - CGO_ENABLED=0
+    mod_timestamp: '{{ .CommitTimestamp }}'
+    flags:
+      - -trimpath
+    ldflags:
+      - '-s -w -X main.version={{.Version}} -X main.commit={{.Commit}}'
+    goos:
+      - darwin
+      - freebsd
+      - linux
+      - windows
+    goarch:
+      - '386'
+      - amd64
+      - arm
+      - arm64
+    ignore:
+      # macOS doesn't support 32-bit or arm
+      - goos: darwin
+        goarch: '386'
+      - goos: darwin
+        goarch: arm
+      # FreeBSD arm64 not commonly used
+      - goos: freebsd
+        goarch: arm64
+
+archives:
+  - format: zip
+    name_template: '{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}'
+    files:
+      - LICENSE
+      - README.md
+      - CHANGELOG.md
+
+checksum:
+  name_template: '{{ .ProjectName }}_{{ .Version }}_SHA256SUMS'
+  algorithm: sha256
+
+# GPG signing required for Terraform Registry
+signs:
+  - cmd: gpg
+    env:
+      - GPG_TTY=$(tty)
+    args:
+      - "--batch"
+      - "--local-user"
+      - "{{ .Env.GPG_FINGERPRINT }}"
+      - "--output"
+      - "${signature}"
+      - "--detach-sign"
+      - "${artifact}"
+    artifacts: checksum
+    signature: "${artifact}.sig"
+
+release:
+  draft: false
+  mode: append
+  header: |
+    ## What's Changed
+
+    See the [CHANGELOG](https://github.com/beyondtrust/terraform-provider-beyondtrust/blob/main/CHANGELOG.md) for detailed changes.
+  footer: |
+    ## Installation
+
+    This provider is published to the [Terraform Registry](https://registry.terraform.io/providers/beyondtrust/beyondtrust).
+
+    ```hcl
+    terraform {
+      required_providers {
+        beyondtrust = {
+          source  = "beyondtrust/beyondtrust"
+          version = "~> {{ .Version }}"
+        }
+      }
+    }
+    ```
+  extra_files:
+    - glob: 'terraform-registry-manifest.json'
+      name_template: '{{ .ProjectName }}_{{ .Version }}_manifest.json'
+
+changelog:
+  use: github
+  sort: asc
+  abbrev: 0
+  groups:
+    - title: '🎉 New Features'
+      regexp: '^.*?feat(\([[:word:]]+\))??!?:.+$'
+      order: 0
+    - title: '🐛 Bug Fixes'
+      regexp: '^.*?fix(\([[:word:]]+\))??!?:.+$'
+      order: 1
+    - title: '⚡ Performance Improvements'
+      regexp: '^.*?perf(\([[:word:]]+\))??!?:.+$'
+      order: 2
+    - title: '📖 Documentation'
+      regexp: '^.*?docs(\([[:word:]]+\))??!?:.+$'
+      order: 3
+    - title: '🔧 Other Changes'
+      order: 999
+  filters:
+    exclude:
+      - '^test:'
+      - '^chore:'
+      - '^ci:'
+      - '^build:'
+      - Merge pull request
+      - Merge remote-tracking branch
+      - Merge branch
