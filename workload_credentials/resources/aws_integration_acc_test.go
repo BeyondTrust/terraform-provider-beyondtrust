@@ -40,20 +40,20 @@ func TestAccAwsIntegrationResource_basic(t *testing.T) {
 			{
 				Config: testAccAwsIntegrationResourceConfig_basic(integrationName, roleArn, externalId),
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("beyondtrust_secrets_aws_integration.test", "name", integrationName),
-					resource.TestCheckResourceAttr("beyondtrust_secrets_aws_integration.test", "role_arn", roleArn),
-					resource.TestCheckResourceAttr("beyondtrust_secrets_aws_integration.test", "external_id", externalId),
-					resource.TestCheckResourceAttrSet("beyondtrust_secrets_aws_integration.test", "id"),
-					resource.TestCheckResourceAttrSet("beyondtrust_secrets_aws_integration.test", "created_at"),
+					resource.TestCheckResourceAttr("beyondtrust_workload_credentials_aws_integration.test", "name", integrationName),
+					resource.TestCheckResourceAttr("beyondtrust_workload_credentials_aws_integration.test", "role_arn", roleArn),
+					resource.TestCheckResourceAttr("beyondtrust_workload_credentials_aws_integration.test", "external_id", externalId),
+					resource.TestCheckResourceAttrSet("beyondtrust_workload_credentials_aws_integration.test", "id"),
+					resource.TestCheckResourceAttrSet("beyondtrust_workload_credentials_aws_integration.test", "created_at"),
 				),
 			},
 			// ImportState testing - import by name since the API identifies integrations by name, not UUID
 			{
-				ResourceName:      "beyondtrust_secrets_aws_integration.test",
+				ResourceName:      "beyondtrust_workload_credentials_aws_integration.test",
 				ImportState:       true,
 				ImportStateVerify: true,
 				ImportStateIdFunc: func(s *terraform.State) (string, error) {
-					rs, ok := s.RootModule().Resources["beyondtrust_secrets_aws_integration.test"]
+					rs, ok := s.RootModule().Resources["beyondtrust_workload_credentials_aws_integration.test"]
 					if !ok {
 						return "", fmt.Errorf("resource not found in state")
 					}
@@ -86,14 +86,14 @@ func TestAccAwsIntegrationResource_updateRole(t *testing.T) {
 			{
 				Config: testAccAwsIntegrationResourceConfig_basic(integrationName, roleArn1, externalId),
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("beyondtrust_secrets_aws_integration.test", "role_arn", roleArn1),
+					resource.TestCheckResourceAttr("beyondtrust_workload_credentials_aws_integration.test", "role_arn", roleArn1),
 				),
 			},
 			// Update to second role
 			{
 				Config: testAccAwsIntegrationResourceConfig_basic(integrationName, roleArn2, externalId),
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("beyondtrust_secrets_aws_integration.test", "role_arn", roleArn2),
+					resource.TestCheckResourceAttr("beyondtrust_workload_credentials_aws_integration.test", "role_arn", roleArn2),
 				),
 			},
 		},
@@ -115,14 +115,14 @@ func TestAccAwsIntegrationResource_updateExternalId(t *testing.T) {
 			{
 				Config: testAccAwsIntegrationResourceConfig_basic(integrationName, roleArn, externalId1),
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("beyondtrust_secrets_aws_integration.test", "external_id", externalId1),
+					resource.TestCheckResourceAttr("beyondtrust_workload_credentials_aws_integration.test", "external_id", externalId1),
 				),
 			},
 			// Update to second external ID
 			{
 				Config: testAccAwsIntegrationResourceConfig_basic(integrationName, roleArn, externalId2),
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("beyondtrust_secrets_aws_integration.test", "external_id", externalId2),
+					resource.TestCheckResourceAttr("beyondtrust_workload_credentials_aws_integration.test", "external_id", externalId2),
 				),
 			},
 		},
@@ -143,13 +143,13 @@ func TestAccAwsIntegrationResource_nameImmutable(t *testing.T) {
 			{
 				Config: testAccAwsIntegrationResourceConfig_basic(integrationName1, roleArn, externalId),
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("beyondtrust_secrets_aws_integration.test", "name", integrationName1),
+					resource.TestCheckResourceAttr("beyondtrust_workload_credentials_aws_integration.test", "name", integrationName1),
 				),
 			},
 			{
 				Config: testAccAwsIntegrationResourceConfig_basic(integrationName2, roleArn, externalId),
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("beyondtrust_secrets_aws_integration.test", "name", integrationName2),
+					resource.TestCheckResourceAttr("beyondtrust_workload_credentials_aws_integration.test", "name", integrationName2),
 				),
 				// This should trigger a replacement (destroy then create)
 			},
@@ -161,7 +161,7 @@ func testAccCheckAwsIntegrationDestroy(s *terraform.State) error {
 	// TODO: Implement actual destroy check by querying the API
 	// For now, we'll just verify the resource is no longer in state
 	for _, rs := range s.RootModule().Resources {
-		if rs.Type != "beyondtrust_secrets_aws_integration" {
+		if rs.Type != "beyondtrust_workload_credentials_aws_integration" {
 			continue
 		}
 
@@ -178,7 +178,7 @@ func testAccCheckAwsIntegrationDestroy(s *terraform.State) error {
 // testAccAwsIntegrationResourceConfig_basic returns a basic AWS integration resource configuration
 func testAccAwsIntegrationResourceConfig_basic(name, roleArn, externalId string) string {
 	return fmt.Sprintf(`
-resource "beyondtrust_secrets_aws_integration" "test" {
+resource "beyondtrust_workload_credentials_aws_integration" "test" {
   name        = %[1]q
   role_arn    = %[2]q
   external_id = %[3]q

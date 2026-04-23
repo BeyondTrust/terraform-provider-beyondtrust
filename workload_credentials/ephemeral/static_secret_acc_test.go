@@ -29,8 +29,8 @@ func TestAccStaticSecretEphemeral_basic(t *testing.T) {
 			{
 				Config: testAccStaticSecretResourceConfig_setup(secretName, secretValue),
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("beyondtrust_secrets_static_secret.setup", "name", secretName),
-					resource.TestCheckResourceAttr("beyondtrust_secrets_static_secret.setup", "path", secretName),
+					resource.TestCheckResourceAttr("beyondtrust_workload_credentials_static_secret.setup", "name", secretName),
+					resource.TestCheckResourceAttr("beyondtrust_workload_credentials_static_secret.setup", "path", secretName),
 				),
 			},
 			// Step 2: Read with ephemeral resource (verify no errors = success)
@@ -57,9 +57,9 @@ func TestAccStaticSecretEphemeral_inFolder(t *testing.T) {
 			{
 				Config: testAccStaticSecretResourceConfig_inFolder(folderName, secretName, secretValue),
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("beyondtrust_secrets_folder.setup", "name", folderName),
-					resource.TestCheckResourceAttr("beyondtrust_secrets_static_secret.setup", "name", secretName),
-					resource.TestCheckResourceAttr("beyondtrust_secrets_static_secret.setup", "path", fmt.Sprintf("%s/%s", folderName, secretName)),
+					resource.TestCheckResourceAttr("beyondtrust_workload_credentials_folder.setup", "name", folderName),
+					resource.TestCheckResourceAttr("beyondtrust_workload_credentials_static_secret.setup", "name", secretName),
+					resource.TestCheckResourceAttr("beyondtrust_workload_credentials_static_secret.setup", "path", fmt.Sprintf("%s/%s", folderName, secretName)),
 				),
 			},
 			// Step 2: Read with ephemeral resource (verify no errors = success)
@@ -86,14 +86,14 @@ func TestAccStaticSecretEphemeral_specificVersion(t *testing.T) {
 			{
 				Config: testAccStaticSecretResourceConfig_setup(secretName, secretValue1),
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("beyondtrust_secrets_static_secret.setup", "name", secretName),
+					resource.TestCheckResourceAttr("beyondtrust_workload_credentials_static_secret.setup", "name", secretName),
 				),
 			},
 			// Step 2: Update secret to create version 2
 			{
 				Config: testAccStaticSecretResourceConfig_setup(secretName, secretValue2),
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("beyondtrust_secrets_static_secret.setup", "name", secretName),
+					resource.TestCheckResourceAttr("beyondtrust_workload_credentials_static_secret.setup", "name", secretName),
 				),
 			},
 			// Step 3: Read version 1 with ephemeral resource (verify no errors = success)
@@ -107,7 +107,7 @@ func TestAccStaticSecretEphemeral_specificVersion(t *testing.T) {
 // testAccStaticSecretResourceConfig_setup returns a managed resource configuration (no ephemeral)
 func testAccStaticSecretResourceConfig_setup(name, value string) string {
 	return fmt.Sprintf(`
-resource "beyondtrust_secrets_static_secret" "setup" {
+resource "beyondtrust_workload_credentials_static_secret" "setup" {
   name = %[1]q
   secret_wo = {
     value = %[2]q
@@ -119,13 +119,13 @@ resource "beyondtrust_secrets_static_secret" "setup" {
 // testAccStaticSecretResourceConfig_inFolder returns folder + managed resource configuration (no ephemeral)
 func testAccStaticSecretResourceConfig_inFolder(folderName, secretName, value string) string {
 	return fmt.Sprintf(`
-resource "beyondtrust_secrets_folder" "setup" {
+resource "beyondtrust_workload_credentials_folder" "setup" {
   name = %[1]q
 }
 
-resource "beyondtrust_secrets_static_secret" "setup" {
+resource "beyondtrust_workload_credentials_static_secret" "setup" {
   name   = %[2]q
-  folder = beyondtrust_secrets_folder.setup.path
+  folder = beyondtrust_workload_credentials_folder.setup.path
   secret_wo = {
     value = %[3]q
   }
@@ -137,14 +137,14 @@ resource "beyondtrust_secrets_static_secret" "setup" {
 // The test verifies the ephemeral resource can be read without errors
 func testAccStaticSecretEphemeralConfig_basic(name, value string) string {
 	return fmt.Sprintf(`
-resource "beyondtrust_secrets_static_secret" "setup" {
+resource "beyondtrust_workload_credentials_static_secret" "setup" {
   name = %[1]q
   secret_wo = {
     value = %[2]q
   }
 }
 
-ephemeral "beyondtrust_secrets_static_secret" "test" {
+ephemeral "beyondtrust_workload_credentials_static_secret" "test" {
   name = %[1]q
 }
 `, name, value)
@@ -153,19 +153,19 @@ ephemeral "beyondtrust_secrets_static_secret" "test" {
 // testAccStaticSecretEphemeralConfig_inFolder returns folder + managed + ephemeral configuration
 func testAccStaticSecretEphemeralConfig_inFolder(folderName, secretName, value string) string {
 	return fmt.Sprintf(`
-resource "beyondtrust_secrets_folder" "setup" {
+resource "beyondtrust_workload_credentials_folder" "setup" {
   name = %[1]q
 }
 
-resource "beyondtrust_secrets_static_secret" "setup" {
+resource "beyondtrust_workload_credentials_static_secret" "setup" {
   name   = %[2]q
-  folder = beyondtrust_secrets_folder.setup.path
+  folder = beyondtrust_workload_credentials_folder.setup.path
   secret_wo = {
     value = %[3]q
   }
 }
 
-ephemeral "beyondtrust_secrets_static_secret" "test" {
+ephemeral "beyondtrust_workload_credentials_static_secret" "test" {
   name   = %[2]q
   folder = %[1]q
 }
@@ -175,14 +175,14 @@ ephemeral "beyondtrust_secrets_static_secret" "test" {
 // testAccStaticSecretEphemeralConfig_withVersion returns managed + ephemeral with version configuration
 func testAccStaticSecretEphemeralConfig_withVersion(name, currentValue, version string) string {
 	return fmt.Sprintf(`
-resource "beyondtrust_secrets_static_secret" "setup" {
+resource "beyondtrust_workload_credentials_static_secret" "setup" {
   name = %[1]q
   secret_wo = {
     value = %[2]q
   }
 }
 
-ephemeral "beyondtrust_secrets_static_secret" "test_v1" {
+ephemeral "beyondtrust_workload_credentials_static_secret" "test_v1" {
   name    = %[1]q
   version = %[3]q
 }

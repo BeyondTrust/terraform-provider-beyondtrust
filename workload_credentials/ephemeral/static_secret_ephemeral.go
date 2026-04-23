@@ -50,7 +50,7 @@ type StaticSecretResponse struct {
 }
 
 func (e *StaticSecretEphemeral) Metadata(ctx context.Context, req ephemeral.MetadataRequest, resp *ephemeral.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_secrets_static_secret"
+	resp.TypeName = req.ProviderTypeName + "_workload_credentials_static_secret"
 }
 
 func (e *StaticSecretEphemeral) Schema(ctx context.Context, req ephemeral.SchemaRequest, resp *ephemeral.SchemaResponse) {

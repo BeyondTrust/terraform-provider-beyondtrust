@@ -72,7 +72,7 @@ type AwsIntegrationUpdateRequest struct {
 }
 
 func (r *AwsIntegrationResource) Metadata(ctx context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_secrets_aws_integration"
+	resp.TypeName = req.ProviderTypeName + "_workload_credentials_aws_integration"
 }
 
 func (r *AwsIntegrationResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {

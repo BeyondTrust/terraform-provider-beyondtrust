@@ -70,7 +70,7 @@ type StaticSecretResponse struct {
 }
 
 func (r *StaticSecretResource) Metadata(ctx context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_secrets_static_secret"
+	resp.TypeName = req.ProviderTypeName + "_workload_credentials_static_secret"
 }
 
 func (r *StaticSecretResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {

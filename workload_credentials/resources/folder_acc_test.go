@@ -29,14 +29,14 @@ func TestAccFolderResource_basic(t *testing.T) {
 			{
 				Config: testAccFolderConfig_basic(cfg, folderName),
 				Check: resource.ComposeTestCheckFunc(
-					resource.TestCheckResourceAttr("beyondtrust_secrets_folder.test", "name", folderName),
-					resource.TestCheckResourceAttrSet("beyondtrust_secrets_folder.test", "id"),
-					resource.TestCheckResourceAttrSet("beyondtrust_secrets_folder.test", "created_at"),
+					resource.TestCheckResourceAttr("beyondtrust_workload_credentials_folder.test", "name", folderName),
+					resource.TestCheckResourceAttrSet("beyondtrust_workload_credentials_folder.test", "id"),
+					resource.TestCheckResourceAttrSet("beyondtrust_workload_credentials_folder.test", "created_at"),
 				),
 			},
 			// Step 2: Import
 			{
-				ResourceName:      "beyondtrust_secrets_folder.test",
+				ResourceName:      "beyondtrust_workload_credentials_folder.test",
 				ImportState:       true,
 				ImportStateVerify: true,
 				ImportStateId:     folderName, // Import by path, not ID
@@ -65,8 +65,8 @@ func TestAccFolderResource_update(t *testing.T) {
 					"env": "dev",
 				}),
 				Check: resource.ComposeTestCheckFunc(
-					resource.TestCheckResourceAttr("beyondtrust_secrets_folder.test", "name", folderName),
-					resource.TestCheckResourceAttr("beyondtrust_secrets_folder.test", "tags.env", "dev"),
+					resource.TestCheckResourceAttr("beyondtrust_workload_credentials_folder.test", "name", folderName),
+					resource.TestCheckResourceAttr("beyondtrust_workload_credentials_folder.test", "tags.env", "dev"),
 				),
 			},
 			// Step 2: Update tags
@@ -76,18 +76,18 @@ func TestAccFolderResource_update(t *testing.T) {
 					"team": "platform",
 				}),
 				Check: resource.ComposeTestCheckFunc(
-					resource.TestCheckResourceAttr("beyondtrust_secrets_folder.test", "name", folderName),
-					resource.TestCheckResourceAttr("beyondtrust_secrets_folder.test", "tags.env", "staging"),
-					resource.TestCheckResourceAttr("beyondtrust_secrets_folder.test", "tags.team", "platform"),
+					resource.TestCheckResourceAttr("beyondtrust_workload_credentials_folder.test", "name", folderName),
+					resource.TestCheckResourceAttr("beyondtrust_workload_credentials_folder.test", "tags.env", "staging"),
+					resource.TestCheckResourceAttr("beyondtrust_workload_credentials_folder.test", "tags.team", "platform"),
 				),
 			},
 			// Step 3: Remove all tags
 			{
 				Config: testAccFolderConfig_basic(cfg, folderName),
 				Check: resource.ComposeTestCheckFunc(
-					resource.TestCheckResourceAttr("beyondtrust_secrets_folder.test", "name", folderName),
-					resource.TestCheckNoResourceAttr("beyondtrust_secrets_folder.test", "tags.env"),
-					resource.TestCheckNoResourceAttr("beyondtrust_secrets_folder.test", "tags.team"),
+					resource.TestCheckResourceAttr("beyondtrust_workload_credentials_folder.test", "name", folderName),
+					resource.TestCheckNoResourceAttr("beyondtrust_workload_credentials_folder.test", "tags.env"),
+					resource.TestCheckNoResourceAttr("beyondtrust_workload_credentials_folder.test", "tags.team"),
 				),
 			},
 		},
@@ -113,8 +113,8 @@ func TestAccFolderResource_tags(t *testing.T) {
 					"team": "platform",
 				}),
 				Check: resource.ComposeTestCheckFunc(
-					resource.TestCheckResourceAttr("beyondtrust_secrets_folder.test", "tags.env", "staging"),
-					resource.TestCheckResourceAttr("beyondtrust_secrets_folder.test", "tags.team", "platform"),
+					resource.TestCheckResourceAttr("beyondtrust_workload_credentials_folder.test", "tags.env", "staging"),
+					resource.TestCheckResourceAttr("beyondtrust_workload_credentials_folder.test", "tags.team", "platform"),
 				),
 			},
 			// Step 2: Update tags
@@ -125,18 +125,18 @@ func TestAccFolderResource_tags(t *testing.T) {
 					"managed": "terraform",
 				}),
 				Check: resource.ComposeTestCheckFunc(
-					resource.TestCheckResourceAttr("beyondtrust_secrets_folder.test", "tags.env", "production"),
-					resource.TestCheckResourceAttr("beyondtrust_secrets_folder.test", "tags.team", "platform"),
-					resource.TestCheckResourceAttr("beyondtrust_secrets_folder.test", "tags.managed", "terraform"),
+					resource.TestCheckResourceAttr("beyondtrust_workload_credentials_folder.test", "tags.env", "production"),
+					resource.TestCheckResourceAttr("beyondtrust_workload_credentials_folder.test", "tags.team", "platform"),
+					resource.TestCheckResourceAttr("beyondtrust_workload_credentials_folder.test", "tags.managed", "terraform"),
 				),
 			},
 			// Step 3: Remove all tags
 			{
 				Config: testAccFolderConfig_basic(cfg, folderName),
 				Check: resource.ComposeTestCheckFunc(
-					resource.TestCheckNoResourceAttr("beyondtrust_secrets_folder.test", "tags.env"),
-					resource.TestCheckNoResourceAttr("beyondtrust_secrets_folder.test", "tags.team"),
-					resource.TestCheckNoResourceAttr("beyondtrust_secrets_folder.test", "tags.managed"),
+					resource.TestCheckNoResourceAttr("beyondtrust_workload_credentials_folder.test", "tags.env"),
+					resource.TestCheckNoResourceAttr("beyondtrust_workload_credentials_folder.test", "tags.team"),
+					resource.TestCheckNoResourceAttr("beyondtrust_workload_credentials_folder.test", "tags.managed"),
 				),
 			},
 		},
@@ -160,12 +160,12 @@ func TestAccFolderResource_nested(t *testing.T) {
 				Config: testAccFolderConfig_nested(cfg, parentName, childName),
 				Check: resource.ComposeTestCheckFunc(
 					// Check parent folder (root level - folder attribute not set)
-					resource.TestCheckResourceAttr("beyondtrust_secrets_folder.parent", "name", parentName),
-					resource.TestCheckResourceAttr("beyondtrust_secrets_folder.parent", "path", parentName),
+					resource.TestCheckResourceAttr("beyondtrust_workload_credentials_folder.parent", "name", parentName),
+					resource.TestCheckResourceAttr("beyondtrust_workload_credentials_folder.parent", "path", parentName),
 					// Check child folder (nested under parent)
-					resource.TestCheckResourceAttr("beyondtrust_secrets_folder.child", "name", childName),
-					resource.TestCheckResourceAttr("beyondtrust_secrets_folder.child", "folder", parentName),
-					resource.TestCheckResourceAttr("beyondtrust_secrets_folder.child", "path", fmt.Sprintf("%s/%s", parentName, childName)),
+					resource.TestCheckResourceAttr("beyondtrust_workload_credentials_folder.child", "name", childName),
+					resource.TestCheckResourceAttr("beyondtrust_workload_credentials_folder.child", "folder", parentName),
+					resource.TestCheckResourceAttr("beyondtrust_workload_credentials_folder.child", "path", fmt.Sprintf("%s/%s", parentName, childName)),
 				),
 			},
 		},
@@ -176,7 +176,7 @@ func TestAccFolderResource_nested(t *testing.T) {
 
 func testAccFolderConfig_basic(cfg *acctest.TestConfig, name string) string {
 	return cfg.ProviderConfig() + fmt.Sprintf(`
-resource "beyondtrust_secrets_folder" "test" {
+resource "beyondtrust_workload_credentials_folder" "test" {
   name = %q
 }
 `, name)
@@ -184,7 +184,7 @@ resource "beyondtrust_secrets_folder" "test" {
 
 func testAccFolderConfig_withTags(cfg *acctest.TestConfig, name string, tags map[string]string) string {
 	config := cfg.ProviderConfig() + fmt.Sprintf(`
-resource "beyondtrust_secrets_folder" "test" {
+resource "beyondtrust_workload_credentials_folder" "test" {
   name = %q
   tags = {
 `, name)
@@ -199,13 +199,13 @@ resource "beyondtrust_secrets_folder" "test" {
 
 func testAccFolderConfig_nested(cfg *acctest.TestConfig, parentName, childName string) string {
 	return cfg.ProviderConfig() + fmt.Sprintf(`
-resource "beyondtrust_secrets_folder" "parent" {
+resource "beyondtrust_workload_credentials_folder" "parent" {
   name = %q
 }
 
-resource "beyondtrust_secrets_folder" "child" {
+resource "beyondtrust_workload_credentials_folder" "child" {
   name   = %q
-  folder = beyondtrust_secrets_folder.parent.name
+  folder = beyondtrust_workload_credentials_folder.parent.name
 }
 `, parentName, childName)
 }

@@ -61,7 +61,7 @@ type FolderCreateResponse struct {
 }
 
 func (r *FolderResource) Metadata(ctx context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_secrets_folder"
+	resp.TypeName = req.ProviderTypeName + "_workload_credentials_folder"
 }
 
 func (r *FolderResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {

@@ -27,20 +27,20 @@ func TestAccStaticSecretResource_basic(t *testing.T) {
 			{
 				Config: testAccStaticSecretResourceConfig_basic(secretName, secretValue),
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("beyondtrust_secrets_static_secret.test", "name", secretName),
-					resource.TestCheckResourceAttr("beyondtrust_secrets_static_secret.test", "path", secretName),
-					resource.TestCheckResourceAttrSet("beyondtrust_secrets_static_secret.test", "id"),
-					resource.TestCheckResourceAttrSet("beyondtrust_secrets_static_secret.test", "created_at"),
-					resource.TestCheckResourceAttrSet("beyondtrust_secrets_static_secret.test", "secret_wo_version"),
+					resource.TestCheckResourceAttr("beyondtrust_workload_credentials_static_secret.test", "name", secretName),
+					resource.TestCheckResourceAttr("beyondtrust_workload_credentials_static_secret.test", "path", secretName),
+					resource.TestCheckResourceAttrSet("beyondtrust_workload_credentials_static_secret.test", "id"),
+					resource.TestCheckResourceAttrSet("beyondtrust_workload_credentials_static_secret.test", "created_at"),
+					resource.TestCheckResourceAttrSet("beyondtrust_workload_credentials_static_secret.test", "secret_wo_version"),
 				),
 			},
 			// ImportState testing - import by path since the API identifies secrets by path, not UUID
 			{
-				ResourceName:      "beyondtrust_secrets_static_secret.test",
+				ResourceName:      "beyondtrust_workload_credentials_static_secret.test",
 				ImportState:       true,
 				ImportStateVerify: true,
 				ImportStateIdFunc: func(s *terraform.State) (string, error) {
-					rs, ok := s.RootModule().Resources["beyondtrust_secrets_static_secret.test"]
+					rs, ok := s.RootModule().Resources["beyondtrust_workload_credentials_static_secret.test"]
 					if !ok {
 						return "", fmt.Errorf("resource not found in state")
 					}
@@ -71,10 +71,10 @@ func TestAccStaticSecretResource_inFolder(t *testing.T) {
 			{
 				Config: testAccStaticSecretResourceConfig_inFolder(folderName, secretName, secretValue),
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("beyondtrust_secrets_static_secret.test", "name", secretName),
-					resource.TestCheckResourceAttr("beyondtrust_secrets_static_secret.test", "folder", folderName),
-					resource.TestCheckResourceAttr("beyondtrust_secrets_static_secret.test", "path", fmt.Sprintf("%s/%s", folderName, secretName)),
-					resource.TestCheckResourceAttrSet("beyondtrust_secrets_static_secret.test", "id"),
+					resource.TestCheckResourceAttr("beyondtrust_workload_credentials_static_secret.test", "name", secretName),
+					resource.TestCheckResourceAttr("beyondtrust_workload_credentials_static_secret.test", "folder", folderName),
+					resource.TestCheckResourceAttr("beyondtrust_workload_credentials_static_secret.test", "path", fmt.Sprintf("%s/%s", folderName, secretName)),
+					resource.TestCheckResourceAttrSet("beyondtrust_workload_credentials_static_secret.test", "id"),
 				),
 			},
 		},
@@ -96,21 +96,21 @@ func TestAccStaticSecretResource_updateValue(t *testing.T) {
 			{
 				Config: testAccStaticSecretResourceConfig_basic(secretName, secretValue1),
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("beyondtrust_secrets_static_secret.test", "secret_wo_version", "1"),
+					resource.TestCheckResourceAttr("beyondtrust_workload_credentials_static_secret.test", "secret_wo_version", "1"),
 				),
 			},
 			// Update value (should create version 2)
 			{
 				Config: testAccStaticSecretResourceConfig_basic(secretName, secretValue2),
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("beyondtrust_secrets_static_secret.test", "secret_wo_version", "2"),
+					resource.TestCheckResourceAttr("beyondtrust_workload_credentials_static_secret.test", "secret_wo_version", "2"),
 				),
 			},
 			// Update value again (should create version 3)
 			{
 				Config: testAccStaticSecretResourceConfig_basic(secretName, secretValue3),
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("beyondtrust_secrets_static_secret.test", "secret_wo_version", "3"),
+					resource.TestCheckResourceAttr("beyondtrust_workload_credentials_static_secret.test", "secret_wo_version", "3"),
 				),
 			},
 		},
@@ -133,8 +133,8 @@ func TestAccStaticSecretResource_withTags(t *testing.T) {
 					"Type":        "database-password",
 				}),
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("beyondtrust_secrets_static_secret.test", "tags.Environment", "test"),
-					resource.TestCheckResourceAttr("beyondtrust_secrets_static_secret.test", "tags.Type", "database-password"),
+					resource.TestCheckResourceAttr("beyondtrust_workload_credentials_static_secret.test", "tags.Environment", "test"),
+					resource.TestCheckResourceAttr("beyondtrust_workload_credentials_static_secret.test", "tags.Type", "database-password"),
 				),
 			},
 			// Update tags
@@ -145,9 +145,9 @@ func TestAccStaticSecretResource_withTags(t *testing.T) {
 					"Owner":       "platform-team",
 				}),
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("beyondtrust_secrets_static_secret.test", "tags.Environment", "production"),
-					resource.TestCheckResourceAttr("beyondtrust_secrets_static_secret.test", "tags.Type", "api-key"),
-					resource.TestCheckResourceAttr("beyondtrust_secrets_static_secret.test", "tags.Owner", "platform-team"),
+					resource.TestCheckResourceAttr("beyondtrust_workload_credentials_static_secret.test", "tags.Environment", "production"),
+					resource.TestCheckResourceAttr("beyondtrust_workload_credentials_static_secret.test", "tags.Type", "api-key"),
+					resource.TestCheckResourceAttr("beyondtrust_workload_credentials_static_secret.test", "tags.Owner", "platform-team"),
 				),
 			},
 		},
@@ -167,13 +167,13 @@ func TestAccStaticSecretResource_nameImmutable(t *testing.T) {
 			{
 				Config: testAccStaticSecretResourceConfig_basic(secretName1, secretValue),
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("beyondtrust_secrets_static_secret.test", "name", secretName1),
+					resource.TestCheckResourceAttr("beyondtrust_workload_credentials_static_secret.test", "name", secretName1),
 				),
 			},
 			{
 				Config: testAccStaticSecretResourceConfig_basic(secretName2, secretValue),
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("beyondtrust_secrets_static_secret.test", "name", secretName2),
+					resource.TestCheckResourceAttr("beyondtrust_workload_credentials_static_secret.test", "name", secretName2),
 				),
 				// This should trigger a replacement (destroy then create)
 			},
@@ -185,7 +185,7 @@ func testAccCheckStaticSecretDestroy(s *terraform.State) error {
 	// TODO: Implement actual destroy check by querying the API
 	// For now, we'll just verify the resource is no longer in state
 	for _, rs := range s.RootModule().Resources {
-		if rs.Type != "beyondtrust_secrets_static_secret" {
+		if rs.Type != "beyondtrust_workload_credentials_static_secret" {
 			continue
 		}
 
@@ -202,7 +202,7 @@ func testAccCheckStaticSecretDestroy(s *terraform.State) error {
 // testAccStaticSecretResourceConfig_basic returns a basic static secret resource configuration
 func testAccStaticSecretResourceConfig_basic(name, value string) string {
 	return fmt.Sprintf(`
-resource "beyondtrust_secrets_static_secret" "test" {
+resource "beyondtrust_workload_credentials_static_secret" "test" {
   name = %[1]q
   secret_wo = {
     value = %[2]q
@@ -214,13 +214,13 @@ resource "beyondtrust_secrets_static_secret" "test" {
 // testAccStaticSecretResourceConfig_inFolder returns a configuration with a secret in a folder
 func testAccStaticSecretResourceConfig_inFolder(folderName, secretName, value string) string {
 	return fmt.Sprintf(`
-resource "beyondtrust_secrets_folder" "test" {
+resource "beyondtrust_workload_credentials_folder" "test" {
   name = %[1]q
 }
 
-resource "beyondtrust_secrets_static_secret" "test" {
+resource "beyondtrust_workload_credentials_static_secret" "test" {
   name   = %[2]q
-  folder = beyondtrust_secrets_folder.test.path
+  folder = beyondtrust_workload_credentials_folder.test.path
   secret_wo = {
     value = %[3]q
   }
@@ -237,7 +237,7 @@ func testAccStaticSecretResourceConfig_withTags(name, value string, tags map[str
 	tagsStr += "  }"
 
 	return fmt.Sprintf(`
-resource "beyondtrust_secrets_static_secret" "test" {
+resource "beyondtrust_workload_credentials_static_secret" "test" {
   name = %[1]q
   secret_wo = {
     value = %[2]q

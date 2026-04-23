@@ -49,7 +49,7 @@ type Config struct {
 }
 
 func (d *AwsIntegrationDataSource) Metadata(ctx context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_secrets_aws_integration"
+	resp.TypeName = req.ProviderTypeName + "_workload_credentials_aws_integration"
 }
 
 func (d *AwsIntegrationDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {

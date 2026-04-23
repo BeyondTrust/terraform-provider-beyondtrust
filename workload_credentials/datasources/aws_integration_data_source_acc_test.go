@@ -25,10 +25,10 @@ func TestAccAwsIntegrationDataSource_basic(t *testing.T) {
 			{
 				Config: testAccAwsIntegrationDataSourceConfig_basic(integrationName, roleArn, externalId),
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("data.beyondtrust_secrets_aws_integration.test", "name", integrationName),
-					resource.TestCheckResourceAttr("data.beyondtrust_secrets_aws_integration.test", "role_arn", roleArn),
-					resource.TestCheckResourceAttrSet("data.beyondtrust_secrets_aws_integration.test", "id"),
-					resource.TestCheckResourceAttrSet("data.beyondtrust_secrets_aws_integration.test", "created_at"),
+					resource.TestCheckResourceAttr("data.beyondtrust_workload_credentials_aws_integration.test", "name", integrationName),
+					resource.TestCheckResourceAttr("data.beyondtrust_workload_credentials_aws_integration.test", "role_arn", roleArn),
+					resource.TestCheckResourceAttrSet("data.beyondtrust_workload_credentials_aws_integration.test", "id"),
+					resource.TestCheckResourceAttrSet("data.beyondtrust_workload_credentials_aws_integration.test", "created_at"),
 				),
 			},
 		},
@@ -42,14 +42,14 @@ func getTestRoleArn(t *testing.T) string {
 // testAccAwsIntegrationDataSourceConfig_basic returns a basic AWS integration data source configuration
 func testAccAwsIntegrationDataSourceConfig_basic(name, roleArn, externalId string) string {
 	return fmt.Sprintf(`
-resource "beyondtrust_secrets_aws_integration" "setup" {
+resource "beyondtrust_workload_credentials_aws_integration" "setup" {
   name        = %[1]q
   role_arn    = %[2]q
   external_id = %[3]q
 }
 
-data "beyondtrust_secrets_aws_integration" "test" {
-  name = beyondtrust_secrets_aws_integration.setup.name
+data "beyondtrust_workload_credentials_aws_integration" "test" {
+  name = beyondtrust_workload_credentials_aws_integration.setup.name
 }
 `, name, roleArn, externalId)
 }
