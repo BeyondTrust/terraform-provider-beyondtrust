@@ -16,9 +16,9 @@ The provider uses **ephemeral resources** for secure secret handling, which were
 ### Features That Work on Earlier Versions
 
 The following features work on Terraform 1.0+:
-- Folder management (`beyondtrust_secrets_folder`)
-- AWS Integration resources (`beyondtrust_secrets_aws_integration`)
-- AWS Dynamic Secret resources (`beyondtrust_secrets_aws_dynamic_secret`)
+- Folder management (`beyondtrust_workload_credentials_folder`)
+- AWS Integration resources (`beyondtrust_workload_credentials_aws_integration`)
+- AWS Dynamic Secret resources (`beyondtrust_workload_credentials_aws_dynamic_secret`)
 - Data sources
 
 ## Future Considerations for Production Release
@@ -82,14 +82,14 @@ terraform {
 ```text
 terraform-plugin-framework v1.18.0
 ├── Ephemeral Resources (framework v1.14+, Terraform 1.10+)
-│   └── beyondtrust_secrets_static_secret (ephemeral)
+│   └── beyondtrust_workload_credentials_static_secret (ephemeral)
 ├── Resources (framework v1.0+, Terraform 1.0+)
-│   ├── beyondtrust_secrets_folder
-│   ├── beyondtrust_secrets_static_secret (write-only)
-│   ├── beyondtrust_secrets_aws_integration
-│   └── beyondtrust_secrets_aws_dynamic_secret
+│   ├── beyondtrust_workload_credentials_folder
+│   ├── beyondtrust_workload_credentials_static_secret (write-only)
+│   ├── beyondtrust_workload_credentials_aws_integration
+│   └── beyondtrust_workload_credentials_aws_dynamic_secret
 └── Data Sources (framework v1.0+, Terraform 1.0+)
-    └── beyondtrust_secrets_aws_integration
+    └── beyondtrust_workload_credentials_aws_integration
 ```
 
 ### Backward Compatibility Strategy for v1.0 Release

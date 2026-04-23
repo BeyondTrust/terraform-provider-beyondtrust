@@ -110,7 +110,7 @@ Add to `main.tf`:
 
 ```hcl
 # Create a folder
-resource "beyondtrust_secrets_folder" "my_first_folder" {
+resource "beyondtrust_workload_credentials_folder" "my_first_folder" {
   name = "my-first-folder"
 
   tags = {
@@ -121,11 +121,11 @@ resource "beyondtrust_secrets_folder" "my_first_folder" {
 
 # Output the folder details
 output "folder_id" {
-  value = beyondtrust_secrets_folder.my_first_folder.id
+  value = beyondtrust_workload_credentials_folder.my_first_folder.id
 }
 
 output "folder_path" {
-  value = beyondtrust_secrets_folder.my_first_folder.path
+  value = beyondtrust_workload_credentials_folder.my_first_folder.path
 }
 ```
 
@@ -156,9 +156,9 @@ Add to your `main.tf`:
 
 ```hcl
 # Create a static secret (write-only - never in state!)
-resource "beyondtrust_secrets_static_secret" "my_api_key" {
+resource "beyondtrust_workload_credentials_static_secret" "my_api_key" {
   name   = "my-api-key"
-  folder = beyondtrust_secrets_folder.my_first_folder.path
+  folder = beyondtrust_workload_credentials_folder.my_first_folder.path
 
   # These values are write-only and never stored in Terraform state
   secret_wo = {
@@ -172,18 +172,18 @@ resource "beyondtrust_secrets_static_secret" "my_api_key" {
 }
 
 # Read the secret using ephemeral resource (requires Terraform 1.10+)
-ephemeral "beyondtrust_secrets_static_secret" "read_api_key" {
-  name   = beyondtrust_secrets_static_secret.my_api_key.name
-  folder = beyondtrust_secrets_static_secret.my_api_key.folder
+ephemeral "beyondtrust_workload_credentials_static_secret" "read_api_key" {
+  name   = beyondtrust_workload_credentials_static_secret.my_api_key.name
+  folder = beyondtrust_workload_credentials_static_secret.my_api_key.folder
 }
 
 # Output metadata (safe - not the secret value)
 output "secret_id" {
-  value = beyondtrust_secrets_static_secret.my_api_key.id
+  value = beyondtrust_workload_credentials_static_secret.my_api_key.id
 }
 
 output "secret_path" {
-  value = beyondtrust_secrets_static_secret.my_api_key.path
+  value = beyondtrust_workload_credentials_static_secret.my_api_key.path
 }
 
 # Note: The actual secret values are in the ephemeral resource
