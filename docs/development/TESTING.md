@@ -34,7 +34,7 @@ make test-unit
 Or directly with go test:
 
 ```bash
-go test -v -cover ./internal/... ./secrets/...
+go test -v -cover ./internal/... ./workload_credentials/...
 ```
 
 ### Acceptance Tests
@@ -72,7 +72,7 @@ TF_ACC=1 go test -v -timeout=120m ./...
 #### Run Specific Test
 
 ```bash
-TF_ACC=1 go test -v -timeout=30m -run TestAccFolderResource_basic ./secrets/resources/
+TF_ACC=1 go test -v -timeout=30m -run TestAccFolderResource_basic ./workload_credentials/resources/
 ```
 
 ### Run All Tests
@@ -112,9 +112,9 @@ Located alongside the code they test:
 
 ### Acceptance Test Files
 Located in the same package as the resources/data sources:
-- `secrets/resources/*_test.go` - Resource acceptance tests
-- `secrets/datasources/*_test.go` - Data source acceptance tests
-- `secrets/ephemeral/*_test.go` - Ephemeral resource acceptance tests
+- `workload_credentials/resources/*_test.go` - Resource acceptance tests
+- `workload_credentials/datasources/*_test.go` - Data source acceptance tests
+- `workload_credentials/ephemeral/*_test.go` - Ephemeral resource acceptance tests
 
 ### Test Helpers
 - `internal/acctest/` - Shared test utilities and helpers
@@ -311,19 +311,19 @@ See `UNIT_TEST_PROGRESS.md` for detailed unit test status and roadmap.
 ### Verbose Output
 
 ```bash
-go test -v -run TestAccFolderResource_basic ./secrets/resources/
+go test -v -run TestAccFolderResource_basic ./workload_credentials/resources/
 ```
 
 ### With Debug Logs
 
 ```bash
-TF_LOG=DEBUG TF_ACC=1 go test -v -run TestAccFolderResource_basic ./secrets/resources/
+TF_LOG=DEBUG TF_ACC=1 go test -v -run TestAccFolderResource_basic ./workload_credentials/resources/
 ```
 
 ### Run Single Test Method
 
 ```bash
-TF_ACC=1 go test -v -timeout=30m -run '^TestAccFolderResource_basic$' ./secrets/resources/
+TF_ACC=1 go test -v -timeout=30m -run '^TestAccFolderResource_basic$' ./workload_credentials/resources/
 ```
 
 ## Troubleshooting

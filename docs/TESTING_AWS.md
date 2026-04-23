@@ -55,7 +55,7 @@ export BEYONDTRUST_AWS_ACCOUNT_ID="999999999999"
 export AWS_PROFILE=my-profile
 
 # Run AWS integration tests
-TF_ACC=1 go test -v -timeout=30m -run TestAccAwsIntegration ./secrets/resources/
+TF_ACC=1 go test -v -timeout=30m -run TestAccAwsIntegration ./workload_credentials/resources/
 ```
 
 The tests will:
