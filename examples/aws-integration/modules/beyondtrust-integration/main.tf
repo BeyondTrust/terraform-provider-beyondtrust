@@ -6,7 +6,7 @@
 # Step 2: Store External ID in Workload Credentials (Write-Only Pattern)
 # ============================================================================
 
-resource "beyondtrust_secrets_folder" "aws" {
+resource "beyondtrust_workload_credentials_folder" "aws" {
   name   = "aws"
   folder = ""
 
@@ -16,9 +16,9 @@ resource "beyondtrust_secrets_folder" "aws" {
   }
 }
 
-resource "beyondtrust_secrets_static_secret" "external_id" {
+resource "beyondtrust_workload_credentials_static_secret" "external_id" {
   name   = "integration-external-id"
-  folder = beyondtrust_secrets_folder.aws.path
+  folder = beyondtrust_workload_credentials_folder.aws.path
 
   # Write-only: not stored in Terraform state
   secret_wo = {
@@ -36,18 +36,18 @@ resource "beyondtrust_secrets_static_secret" "external_id" {
 # Step 3: Read External ID Ephemerally (When Needed)
 # ============================================================================
 
-ephemeral "beyondtrust_secrets_static_secret" "external_id_reader" {
-  depends_on = [beyondtrust_secrets_static_secret.external_id]
+ephemeral "beyondtrust_workload_credentials_static_secret" "external_id_reader" {
+  depends_on = [beyondtrust_workload_credentials_static_secret.external_id]
 
-  name   = beyondtrust_secrets_static_secret.external_id.name
-  folder = beyondtrust_secrets_static_secret.external_id.folder
+  name   = beyondtrust_workload_credentials_static_secret.external_id.name
+  folder = beyondtrust_workload_credentials_static_secret.external_id.folder
 }
 
 # ============================================================================
 # Step 6: Create BeyondTrust AWS Integration
 # ============================================================================
 
-resource "beyondtrust_secrets_aws_integration" "main" {
+resource "beyondtrust_workload_credentials_aws_integration" "main" {
   name = var.integration_name
 
   role_arn = var.workload_credentials_integration_role_arn
@@ -61,10 +61,10 @@ resource "beyondtrust_secrets_aws_integration" "main" {
 # Step 7: Create Dynamic Secrets
 # ============================================================================
 
-resource "beyondtrust_secrets_aws_dynamic_secret" "developer_access" {
+resource "beyondtrust_workload_credentials_aws_dynamic_secret" "developer_access" {
   name             = "developer-readonly-creds"
-  folder           = beyondtrust_secrets_folder.aws.path
-  integration_name = beyondtrust_secrets_aws_integration.main.name
+  folder           = beyondtrust_workload_credentials_folder.aws.path
+  integration_name = beyondtrust_workload_credentials_aws_integration.main.name
 
   credential_type = "assumed_role"
   role_arn        = var.developer_role_arn
@@ -79,10 +79,10 @@ resource "beyondtrust_secrets_aws_dynamic_secret" "developer_access" {
   }
 }
 
-resource "beyondtrust_secrets_aws_dynamic_secret" "admin_access" {
+resource "beyondtrust_workload_credentials_aws_dynamic_secret" "admin_access" {
   name             = "admin-creds"
-  folder           = beyondtrust_secrets_folder.aws.path
-  integration_name = beyondtrust_secrets_aws_integration.main.name
+  folder           = beyondtrust_workload_credentials_folder.aws.path
+  integration_name = beyondtrust_workload_credentials_aws_integration.main.name
 
   credential_type = "assumed_role"
   role_arn        = var.admin_role_arn

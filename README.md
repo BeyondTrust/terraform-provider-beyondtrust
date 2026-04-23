@@ -91,18 +91,18 @@ provider "beyondtrust" {
 
 ### Managed Resources
 
-- `beyondtrust_secrets_folder` - Manage folder hierarchy for organizing secrets
-- `beyondtrust_secrets_static_secret` - Manage static secrets (write-only, use ephemeral to read)
-- `beyondtrust_secrets_aws_integration` - Manage AWS integrations for dynamic credentials
-- `beyondtrust_secrets_aws_dynamic_secret` - Configure AWS dynamic secret templates
+- `beyondtrust_workload_credentials_folder` - Manage folder hierarchy for organizing secrets
+- `beyondtrust_workload_credentials_static_secret` - Manage static secrets (write-only, use ephemeral to read)
+- `beyondtrust_workload_credentials_aws_integration` - Manage AWS integrations for dynamic credentials
+- `beyondtrust_workload_credentials_aws_dynamic_secret` - Configure AWS dynamic secret templates
 
 ### Ephemeral Resources
 
-- `beyondtrust_secrets_static_secret` - Read secret values (never persisted to state)
+- `beyondtrust_workload_credentials_static_secret` - Read secret values (never persisted to state)
 
 ### Data Sources
 
-- `beyondtrust_secrets_aws_integration` - Read AWS integration details
+- `beyondtrust_workload_credentials_aws_integration` - Read AWS integration details
 
 ## Example Usage
 
@@ -110,15 +110,15 @@ provider "beyondtrust" {
 
 ```terraform
 # Create a folder
-resource "beyondtrust_secrets_folder" "production" {
+resource "beyondtrust_workload_credentials_folder" "production" {
   name        = "production"
   description = "Production environment secrets"
 }
 
 # Store a secret (write-only)
-resource "beyondtrust_secrets_static_secret" "db_password" {
+resource "beyondtrust_workload_credentials_static_secret" "db_password" {
   name   = "database-password"
-  folder = beyondtrust_secrets_folder.production.path
+  folder = beyondtrust_workload_credentials_folder.production.path
   secret_wo = {
     password = "super-secret-password"
   }
@@ -129,7 +129,7 @@ resource "beyondtrust_secrets_static_secret" "db_password" {
 }
 
 # Read secret value (ephemeral - requires Terraform 1.10+)
-ephemeral "beyondtrust_secrets_static_secret" "db_password" {
+ephemeral "beyondtrust_workload_credentials_static_secret" "db_password" {
   name   = "database-password"
   folder = "production"
 }
@@ -140,7 +140,7 @@ resource "kubernetes_secret" "db" {
     name = "database-credentials"
   }
   data = {
-    password = ephemeral.beyondtrust_secrets_static_secret.db_password.secret["password"]
+    password = ephemeral.beyondtrust_workload_credentials_static_secret.db_password.secret["password"]
   }
 }
 ```
@@ -149,17 +149,17 @@ resource "kubernetes_secret" "db" {
 
 ```terraform
 # Create AWS integration
-resource "beyondtrust_secrets_aws_integration" "main" {
+resource "beyondtrust_workload_credentials_aws_integration" "main" {
   name        = "production-aws"
   role_arn    = "arn:aws:iam::123456789012:role/beyondtrust-role"
   external_id = "unique-external-id"
 }
 
 # Configure dynamic secret for a specific role
-resource "beyondtrust_secrets_aws_dynamic_secret" "readonly" {
+resource "beyondtrust_workload_credentials_aws_dynamic_secret" "readonly" {
   name           = "readonly-access"
-  folder         = beyondtrust_secrets_folder.production.path
-  integration_id = beyondtrust_secrets_aws_integration.main.id
+  folder         = beyondtrust_workload_credentials_folder.production.path
+  integration_id = beyondtrust_workload_credentials_aws_integration.main.id
 
   role_arn = "arn:aws:iam::123456789012:role/readonly-role"
   ttl      = 3600  # 1 hour

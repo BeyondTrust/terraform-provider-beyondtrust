@@ -14,7 +14,7 @@ provider "beyondtrust" {
 }
 
 # Test folder resource
-resource "beyondtrust_secrets_folder" "test" {
+resource "beyondtrust_workload_credentials_folder" "test" {
   name   = "terraform-test"
   folder = ""
 
@@ -25,9 +25,9 @@ resource "beyondtrust_secrets_folder" "test" {
 }
 
 # Test nested folder
-resource "beyondtrust_secrets_folder" "test_nested" {
+resource "beyondtrust_workload_credentials_folder" "test_nested" {
   name   = "nested"
-  folder = beyondtrust_secrets_folder.test.path
+  folder = beyondtrust_workload_credentials_folder.test.path
 
   tags = {
     managed_by = "terraform"
@@ -36,13 +36,13 @@ resource "beyondtrust_secrets_folder" "test_nested" {
 }
 
 output "test_folder_id" {
-  value = beyondtrust_secrets_folder.test.id
+  value = beyondtrust_workload_credentials_folder.test.id
 }
 
 output "test_folder_path" {
-  value = beyondtrust_secrets_folder.test.path
+  value = beyondtrust_workload_credentials_folder.test.path
 }
 
 output "nested_folder_path" {
-  value = beyondtrust_secrets_folder.test_nested.path
+  value = beyondtrust_workload_credentials_folder.test_nested.path
 }
