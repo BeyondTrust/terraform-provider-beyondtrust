@@ -18,13 +18,13 @@ make validate-generated
 
 ## What Gets Generated?
 
-1. **Resource Files** (`secrets/resources/*.go`)
+1. **Resource Files** (`workload_credentials/resources/*.go`)
    - Resource struct definition
    - Schema definition with all attributes
    - CRUD operations
    - Import logic
 
-2. **Data Source Files** (`secrets/datasources/*.go`)
+2. **Data Source Files** (`workload_credentials/datasources/*.go`)
    - Data source struct definition
    - Schema definition
    - Read operation

@@ -14,9 +14,9 @@ import (
 
 	"github.com/beyondtrust/terraform-provider-beyondtrust/internal/client"
 	"github.com/beyondtrust/terraform-provider-beyondtrust/internal/constants"
-	"github.com/beyondtrust/terraform-provider-beyondtrust/secrets/datasources"
-	ephemeralresources "github.com/beyondtrust/terraform-provider-beyondtrust/secrets/ephemeral"
-	"github.com/beyondtrust/terraform-provider-beyondtrust/secrets/resources"
+	"github.com/beyondtrust/terraform-provider-beyondtrust/workload_credentials/datasources"
+	ephemeralresources "github.com/beyondtrust/terraform-provider-beyondtrust/workload_credentials/ephemeral"
+	"github.com/beyondtrust/terraform-provider-beyondtrust/workload_credentials/resources"
 )
 
 // Ensure provider defined types fully satisfy framework interfaces.

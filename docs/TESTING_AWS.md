@@ -55,7 +55,7 @@ export BEYONDTRUST_AWS_ACCOUNT_ID="999999999999"
 export AWS_PROFILE=my-profile
 
 # Run AWS integration tests
-TF_ACC=1 go test -v -timeout=30m -run TestAccAwsIntegration ./secrets/resources/
+TF_ACC=1 go test -v -timeout=30m -run TestAccAwsIntegration ./workload_credentials/resources/
 ```
 
 The tests will:
@@ -131,7 +131,7 @@ func TestAccAwsIntegrationResource_basic(t *testing.T) {
             {
                 Config: testAccConfig(integrationName, roleARN1, externalID),
                 Check: resource.ComposeAggregateTestCheckFunc(
-                    resource.TestCheckResourceAttr("beyondtrust_secrets_aws_integration.test", "role_arn", roleARN1),
+                    resource.TestCheckResourceAttr("beyondtrust_workload_credentials_aws_integration.test", "role_arn", roleARN1),
                 ),
             },
         },

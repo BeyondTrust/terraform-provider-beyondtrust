@@ -42,7 +42,7 @@ terraform-provider-beyondtrust/
 │       ├── helpers.go               # Test helpers (random names, etc.)
 │       ├── helpers_test.go          # Helper tests
 │       └── aws_helpers.go           # AWS-specific test utilities
-├── secrets/
+├── workload_credentials/
 │   ├── resources/                   # Managed resource implementations
 │   │   ├── folder_resource.go
 │   │   ├── folder_resource_test.go
@@ -83,7 +83,7 @@ internal/client/client.go
   ├── CSRF token handling (currently disabled)
   └── Merge-patch request building
   ↓
-secrets/resources/*.go
+workload_credentials/resources/*.go
   ├── Resource interface implementations
   ├── Schema definitions with plan modifiers
   ├── CRUD operations via client
@@ -126,7 +126,7 @@ make build
 
 # 4. Test locally with Terraform
 make tf-local-shell      # Starts shell with dev overrides
-cd examples/resources/beyondtrust_secrets_folder/
+cd examples/resources/beyondtrust_workload_credentials_folder/
 terraform init
 terraform plan
 terraform apply
@@ -235,7 +235,7 @@ query.Set("path", "production/aws/my-folder")
 client.Get(ctx, "/folders", query, &result)
 
 // Import format
-terraform import beyondtrust_secrets_folder.example production/aws/my-folder
+terraform import beyondtrust_workload_credentials_folder.example production/aws/my-folder
 ```
 
 ### Soft Deletes
@@ -257,8 +257,8 @@ client.Delete(ctx, path, query)
 ### 1. Create Resource File
 
 ```bash
-# Create file: secrets/resources/<name>_resource.go
-touch secrets/resources/example_resource.go
+# Create file: workload_credentials/resources/<name>_resource.go
+touch workload_credentials/resources/example_resource.go
 ```
 
 ### 2. Define Model Struct
@@ -361,7 +361,7 @@ func (p *BeyondTrustProvider) Resources(ctx context.Context) []func() resource.R
 ### 5. Write Tests
 
 ```go
-// secrets/resources/example_resource_test.go
+// workload_credentials/resources/example_resource_test.go
 func TestAccExampleResource_basic(t *testing.T) {
     resource.ParallelTest(t, resource.TestCase{
         PreCheck:                 func() { testAccPreCheck(t) },
@@ -595,7 +595,7 @@ export BEYONDTRUST_TEST_AWS_ROLE_ARN="arn:aws:iam::123456789012:role/test"  # Fo
 make test-acc
 
 # Run specific test
-TF_ACC=1 go test -v -timeout=30m -run TestAccFolderResource_basic ./secrets/resources/
+TF_ACC=1 go test -v -timeout=30m -run TestAccFolderResource_basic ./workload_credentials/resources/
 ```
 
 ### Test Helpers
@@ -679,13 +679,13 @@ Secrets support ephemeral resources (Terraform 1.10+):
 
 ```hcl
 # Never persisted to state or plan files
-ephemeral "beyondtrust_secrets_static_secret" "db_password" {
+ephemeral "beyondtrust_workload_credentials_static_secret" "db_password" {
   path = "production/db-password"
 }
 
 resource "kubernetes_secret" "db" {
   data = {
-    password = ephemeral.beyondtrust_secrets_static_secret.db_password.value
+    password = ephemeral.beyondtrust_workload_credentials_static_secret.db_password.value
   }
 }
 ```
@@ -701,8 +701,8 @@ cd tools/codegen
 go run . --spec ../../api/openapi.yaml --resource folder
 
 # Generates:
-# - secrets/resources/folder_resource.go
-# - secrets/resources/folder_resource_test.go (skeleton)
+# - workload_credentials/resources/folder_resource.go
+# - workload_credentials/resources/folder_resource_test.go (skeleton)
 # - examples/resources/beyondtrust_folder/
 ```
 
