@@ -21,6 +21,6 @@ jobs:
       contents: read
       pull-requests: write
       security-events: write
-    uses: ./.github/workflows/megalinter.yaml
+    uses: ./.github/workflows/megalinter.yml
     with:
       full: true
