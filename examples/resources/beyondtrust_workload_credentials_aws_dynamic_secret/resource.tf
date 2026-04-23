@@ -1,8 +1,8 @@
 # AWS Dynamic Secret with assumed role credentials
-resource "beyondtrust_secrets_aws_dynamic_secret" "developer_readonly" {
+resource "beyondtrust_workload_credentials_aws_dynamic_secret" "developer_readonly" {
   name             = "developer-readonly-creds"
   folder           = "production/aws"
-  integration_name = beyondtrust_secrets_aws_integration.production.name
+  integration_name = beyondtrust_workload_credentials_aws_integration.production.name
 
   credential_type = "assumed_role"
   role_arn        = "arn:aws:iam::123456789012:role/DeveloperReadOnlyRole"
@@ -22,10 +22,10 @@ resource "beyondtrust_secrets_aws_dynamic_secret" "developer_readonly" {
 }
 
 # Dynamic secret with inline IAM policy
-resource "beyondtrust_secrets_aws_dynamic_secret" "s3_specific" {
+resource "beyondtrust_workload_credentials_aws_dynamic_secret" "s3_specific" {
   name             = "s3-data-bucket-access"
   folder           = "production/aws"
-  integration_name = beyondtrust_secrets_aws_integration.production.name
+  integration_name = beyondtrust_workload_credentials_aws_integration.production.name
 
   credential_type = "assumed_role"
   role_arn        = "arn:aws:iam::123456789012:role/S3DataBucketRole"
@@ -57,10 +57,10 @@ resource "beyondtrust_secrets_aws_dynamic_secret" "s3_specific" {
 }
 
 # Admin access with short TTL
-resource "beyondtrust_secrets_aws_dynamic_secret" "admin" {
+resource "beyondtrust_workload_credentials_aws_dynamic_secret" "admin" {
   name             = "admin-creds"
   folder           = "production/aws"
-  integration_name = beyondtrust_secrets_aws_integration.production.name
+  integration_name = beyondtrust_workload_credentials_aws_integration.production.name
 
   credential_type = "assumed_role"
   role_arn        = "arn:aws:iam::123456789012:role/AdminRole"

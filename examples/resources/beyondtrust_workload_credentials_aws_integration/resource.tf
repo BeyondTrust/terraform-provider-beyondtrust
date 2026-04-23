@@ -1,5 +1,5 @@
 # AWS Integration for dynamic credential generation
-resource "beyondtrust_secrets_aws_integration" "production" {
+resource "beyondtrust_workload_credentials_aws_integration" "production" {
   name        = "production-aws-account"
   role_arn    = "arn:aws:iam::123456789012:role/beyondtrust/btp-account-role-for-workload-credentials"
   external_id = var.external_id
@@ -13,7 +13,7 @@ resource "random_password" "external_id" {
   override_special = "_+=,.@:/-"
 }
 
-resource "beyondtrust_secrets_static_secret" "external_id" {
+resource "beyondtrust_workload_credentials_static_secret" "external_id" {
   name   = "aws-integration-external-id"
   folder = "production"
 
@@ -22,7 +22,7 @@ resource "beyondtrust_secrets_static_secret" "external_id" {
   }
 }
 
-resource "beyondtrust_secrets_aws_integration" "production_secure" {
+resource "beyondtrust_workload_credentials_aws_integration" "production_secure" {
   name        = "production-aws-secure"
   role_arn    = "arn:aws:iam::123456789012:role/beyondtrust/btp-account-role-for-workload-credentials"
   external_id = random_password.external_id.result

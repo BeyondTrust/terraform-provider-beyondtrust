@@ -1,5 +1,5 @@
 # Basic folder at root level
-resource "beyondtrust_secrets_folder" "production" {
+resource "beyondtrust_workload_credentials_folder" "production" {
   name = "production"
 
   tags = {
@@ -9,9 +9,9 @@ resource "beyondtrust_secrets_folder" "production" {
 }
 
 # Nested folder
-resource "beyondtrust_secrets_folder" "aws" {
+resource "beyondtrust_workload_credentials_folder" "aws" {
   name   = "aws"
-  folder = beyondtrust_secrets_folder.production.path
+  folder = beyondtrust_workload_credentials_folder.production.path
 
   tags = {
     cloud       = "aws"

@@ -1,5 +1,5 @@
 # Static secret with write-only values
-resource "beyondtrust_secrets_static_secret" "api_key" {
+resource "beyondtrust_workload_credentials_static_secret" "api_key" {
   name   = "api-key"
   folder = "production"
 
@@ -16,9 +16,9 @@ resource "beyondtrust_secrets_static_secret" "api_key" {
 }
 
 # Read the secret value using ephemeral resource
-ephemeral "beyondtrust_secrets_static_secret" "api_key_reader" {
-  name   = beyondtrust_secrets_static_secret.api_key.name
-  folder = beyondtrust_secrets_static_secret.api_key.folder
+ephemeral "beyondtrust_workload_credentials_static_secret" "api_key_reader" {
+  name   = beyondtrust_workload_credentials_static_secret.api_key.name
+  folder = beyondtrust_workload_credentials_static_secret.api_key.folder
 }
 
 # Use the secret in another resource (ephemeral values available during plan/apply)
@@ -28,7 +28,7 @@ resource "kubernetes_secret" "api_credentials" {
   }
 
   data = {
-    api_key = ephemeral.beyondtrust_secrets_static_secret.api_key_reader.secret["api_key"]
-    api_url = ephemeral.beyondtrust_secrets_static_secret.api_key_reader.secret["api_url"]
+    api_key = ephemeral.beyondtrust_workload_credentials_static_secret.api_key_reader.secret["api_key"]
+    api_url = ephemeral.beyondtrust_workload_credentials_static_secret.api_key_reader.secret["api_url"]
   }
 }
