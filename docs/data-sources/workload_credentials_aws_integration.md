@@ -1,11 +1,11 @@
 ---
-page_title: "Data Source beyondtrust_secrets_aws_integration - beyondtrust"
+page_title: "Data Source beyondtrust_workload_credentials_aws_integration - beyondtrust"
 subcategory: ""
 description: |-
   Reads an existing AWS integration from BeyondTrust Workload Credentials.
 ---
 
-# beyondtrust_secrets_aws_integration (Data Source)
+# beyondtrust_workload_credentials_aws_integration (Data Source)
 
 Reads an existing AWS integration from BeyondTrust Workload Credentials.
 
@@ -13,15 +13,15 @@ Reads an existing AWS integration from BeyondTrust Workload Credentials.
 
 ```terraform
 # Read an existing AWS integration
-data "beyondtrust_secrets_aws_integration" "existing" {
+data "beyondtrust_workload_credentials_aws_integration" "existing" {
   name = "production-aws-account"
 }
 
 # Use the integration details in a dynamic secret
-resource "beyondtrust_secrets_aws_dynamic_secret" "from_existing" {
+resource "beyondtrust_workload_credentials_aws_dynamic_secret" "from_existing" {
   name             = "new-dynamic-secret"
   folder           = "production"
-  integration_name = data.beyondtrust_secrets_aws_integration.existing.name
+  integration_name = data.beyondtrust_workload_credentials_aws_integration.existing.name
 
   credential_type = "assumed_role"
   role_arn        = "arn:aws:iam::123456789012:role/MyRole"
@@ -30,11 +30,11 @@ resource "beyondtrust_secrets_aws_dynamic_secret" "from_existing" {
 
 # Output integration details
 output "integration_id" {
-  value = data.beyondtrust_secrets_aws_integration.existing.id
+  value = data.beyondtrust_workload_credentials_aws_integration.existing.id
 }
 
 output "integration_role_arn" {
-  value = data.beyondtrust_secrets_aws_integration.existing.role_arn
+  value = data.beyondtrust_workload_credentials_aws_integration.existing.role_arn
 }
 ```
 

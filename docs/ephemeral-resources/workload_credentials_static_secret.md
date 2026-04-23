@@ -1,11 +1,11 @@
 ---
-page_title: "Ephemeral Resource beyondtrust_secrets_static_secret - beyondtrust"
+page_title: "Ephemeral Resource beyondtrust_workload_credentials_static_secret - beyondtrust"
 subcategory: ""
 description: |-
   Ephemeral resource for reading static secret values from BeyondTrust Workload Credentials. Secret values are never stored in Terraform state or plan files.
 ---
 
-# beyondtrust_secrets_static_secret (Ephemeral Resource)
+# beyondtrust_workload_credentials_static_secret (Ephemeral Resource)
 
 Ephemeral resource for reading static secret values from BeyondTrust Workload Credentials. Secret values are never stored in Terraform state or plan files.
 
@@ -15,7 +15,7 @@ Ephemeral resource for reading static secret values from BeyondTrust Workload Cr
 
 ```terraform
 # Read a secret value ephemerally (not stored in state)
-ephemeral "beyondtrust_secrets_static_secret" "database_password" {
+ephemeral "beyondtrust_workload_credentials_static_secret" "database_password" {
   name   = "db-master-password"
   folder = "production/database"
 }
@@ -29,13 +29,13 @@ resource "kubernetes_secret" "db_credentials" {
 
   data = {
     username = "admin"
-    password = ephemeral.beyondtrust_secrets_static_secret.database_password.secret["password"]
-    host     = ephemeral.beyondtrust_secrets_static_secret.database_password.secret["host"]
+    password = ephemeral.beyondtrust_workload_credentials_static_secret.database_password.secret["password"]
+    host     = ephemeral.beyondtrust_workload_credentials_static_secret.database_password.secret["host"]
   }
 }
 
 # Read a specific version of a secret
-ephemeral "beyondtrust_secrets_static_secret" "api_key_v2" {
+ephemeral "beyondtrust_workload_credentials_static_secret" "api_key_v2" {
   name    = "api-key"
   folder  = "production"
   version = 2
@@ -43,11 +43,11 @@ ephemeral "beyondtrust_secrets_static_secret" "api_key_v2" {
 
 # Output metadata (safe - not the secret value)
 output "secret_path" {
-  value = ephemeral.beyondtrust_secrets_static_secret.database_password.path
+  value = ephemeral.beyondtrust_workload_credentials_static_secret.database_password.path
 }
 
 output "secret_version" {
-  value = ephemeral.beyondtrust_secrets_static_secret.database_password.version
+  value = ephemeral.beyondtrust_workload_credentials_static_secret.database_password.version
 }
 ```
 

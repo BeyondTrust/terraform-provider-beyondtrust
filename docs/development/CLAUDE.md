@@ -126,7 +126,7 @@ make build
 
 # 4. Test locally with Terraform
 make tf-local-shell      # Starts shell with dev overrides
-cd examples/resources/beyondtrust_secrets_folder/
+cd examples/resources/beyondtrust_workload_credentials_folder/
 terraform init
 terraform plan
 terraform apply
@@ -235,7 +235,7 @@ query.Set("path", "production/aws/my-folder")
 client.Get(ctx, "/folders", query, &result)
 
 // Import format
-terraform import beyondtrust_secrets_folder.example production/aws/my-folder
+terraform import beyondtrust_workload_credentials_folder.example production/aws/my-folder
 ```
 
 ### Soft Deletes
@@ -679,13 +679,13 @@ Secrets support ephemeral resources (Terraform 1.10+):
 
 ```hcl
 # Never persisted to state or plan files
-ephemeral "beyondtrust_secrets_static_secret" "db_password" {
+ephemeral "beyondtrust_workload_credentials_static_secret" "db_password" {
   path = "production/db-password"
 }
 
 resource "kubernetes_secret" "db" {
   data = {
-    password = ephemeral.beyondtrust_secrets_static_secret.db_password.value
+    password = ephemeral.beyondtrust_workload_credentials_static_secret.db_password.value
   }
 }
 ```

@@ -131,7 +131,7 @@ func TestAccAwsIntegrationResource_basic(t *testing.T) {
             {
                 Config: testAccConfig(integrationName, roleARN1, externalID),
                 Check: resource.ComposeAggregateTestCheckFunc(
-                    resource.TestCheckResourceAttr("beyondtrust_secrets_aws_integration.test", "role_arn", roleARN1),
+                    resource.TestCheckResourceAttr("beyondtrust_workload_credentials_aws_integration.test", "role_arn", roleARN1),
                 ),
             },
         },

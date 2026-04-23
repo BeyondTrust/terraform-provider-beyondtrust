@@ -1,11 +1,11 @@
 ---
-page_title: "Resource beyondtrust_secrets_aws_integration - beyondtrust"
+page_title: "Resource beyondtrust_workload_credentials_aws_integration - beyondtrust"
 subcategory: ""
 description: |-
   Manages an AWS integration in BeyondTrust Workload Credentials. This integration provides credentials for accessing a customer AWS account to generate dynamic credentials.
 ---
 
-# beyondtrust_secrets_aws_integration (Resource)
+# beyondtrust_workload_credentials_aws_integration (Resource)
 
 Manages an AWS integration in BeyondTrust Workload Credentials. This integration provides credentials for accessing a customer AWS account to generate dynamic credentials.
 
@@ -13,7 +13,7 @@ Manages an AWS integration in BeyondTrust Workload Credentials. This integration
 
 ```terraform
 # AWS Integration for dynamic credential generation
-resource "beyondtrust_secrets_aws_integration" "production" {
+resource "beyondtrust_workload_credentials_aws_integration" "production" {
   name        = "production-aws-account"
   role_arn    = "arn:aws:iam::123456789012:role/beyondtrust/btp-account-role-for-workload-credentials"
   external_id = var.external_id
@@ -27,7 +27,7 @@ resource "random_password" "external_id" {
   override_special = "_+=,.@:/-"
 }
 
-resource "beyondtrust_secrets_static_secret" "external_id" {
+resource "beyondtrust_workload_credentials_static_secret" "external_id" {
   name   = "aws-integration-external-id"
   folder = "production"
 
@@ -36,7 +36,7 @@ resource "beyondtrust_secrets_static_secret" "external_id" {
   }
 }
 
-resource "beyondtrust_secrets_aws_integration" "production_secure" {
+resource "beyondtrust_workload_credentials_aws_integration" "production_secure" {
   name        = "production-aws-secure"
   role_arn    = "arn:aws:iam::123456789012:role/beyondtrust/btp-account-role-for-workload-credentials"
   external_id = random_password.external_id.result
@@ -63,7 +63,7 @@ Import is supported using the following syntax:
 
 ```shell
 # Import an AWS integration by name
-terraform import beyondtrust_secrets_aws_integration.production production-aws-account
+terraform import beyondtrust_workload_credentials_aws_integration.production production-aws-account
 
 # Note: After import, you must provide the external_id in your configuration.
 # The external ID is not returned by the API for security reasons.

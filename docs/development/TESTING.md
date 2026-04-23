@@ -269,8 +269,8 @@ func TestAccFolderResource_basic(t *testing.T) {
             {
                 Config: testAccFolderResourceConfig_basic(folderName),
                 Check: resource.ComposeAggregateTestCheckFunc(
-                    resource.TestCheckResourceAttr("beyondtrust_secrets_folder.test", "name", folderName),
-                    resource.TestCheckResourceAttrSet("beyondtrust_secrets_folder.test", "id"),
+                    resource.TestCheckResourceAttr("beyondtrust_workload_credentials_folder.test", "name", folderName),
+                    resource.TestCheckResourceAttrSet("beyondtrust_workload_credentials_folder.test", "id"),
                 ),
             },
         },

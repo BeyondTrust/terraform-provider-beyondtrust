@@ -1,11 +1,11 @@
 ---
-page_title: "Resource beyondtrust_secrets_static_secret - beyondtrust"
+page_title: "Resource beyondtrust_workload_credentials_static_secret - beyondtrust"
 subcategory: ""
 description: |-
   Manages a static secret in BeyondTrust Workload Credentials. The secret value is write-only and not stored in Terraform state. Use the ephemeral data source to read secret values.
 ---
 
-# beyondtrust_secrets_static_secret (Resource)
+# beyondtrust_workload_credentials_static_secret (Resource)
 
 Manages a static secret in BeyondTrust Workload Credentials. The secret value is write-only and not stored in Terraform state. Use the ephemeral data source to read secret values.
 
@@ -13,7 +13,7 @@ Manages a static secret in BeyondTrust Workload Credentials. The secret value is
 
 ```terraform
 # Static secret with write-only values
-resource "beyondtrust_secrets_static_secret" "api_key" {
+resource "beyondtrust_workload_credentials_static_secret" "api_key" {
   name   = "api-key"
   folder = "production"
 
@@ -30,9 +30,9 @@ resource "beyondtrust_secrets_static_secret" "api_key" {
 }
 
 # Read the secret value using ephemeral resource
-ephemeral "beyondtrust_secrets_static_secret" "api_key_reader" {
-  name   = beyondtrust_secrets_static_secret.api_key.name
-  folder = beyondtrust_secrets_static_secret.api_key.folder
+ephemeral "beyondtrust_workload_credentials_static_secret" "api_key_reader" {
+  name   = beyondtrust_workload_credentials_static_secret.api_key.name
+  folder = beyondtrust_workload_credentials_static_secret.api_key.folder
 }
 
 # Use the secret in another resource (ephemeral values available during plan/apply)
@@ -42,8 +42,8 @@ resource "kubernetes_secret" "api_credentials" {
   }
 
   data = {
-    api_key = ephemeral.beyondtrust_secrets_static_secret.api_key_reader.secret["api_key"]
-    api_url = ephemeral.beyondtrust_secrets_static_secret.api_key_reader.secret["api_url"]
+    api_key = ephemeral.beyondtrust_workload_credentials_static_secret.api_key_reader.secret["api_key"]
+    api_url = ephemeral.beyondtrust_workload_credentials_static_secret.api_key_reader.secret["api_url"]
   }
 }
 ```
@@ -74,10 +74,10 @@ Import is supported using the following syntax:
 
 ```shell
 # Import a root-level secret
-terraform import beyondtrust_secrets_static_secret.api_key api-key
+terraform import beyondtrust_workload_credentials_static_secret.api_key api-key
 
 # Import a secret in a folder (use full path)
-terraform import beyondtrust_secrets_static_secret.api_key production/api-key
+terraform import beyondtrust_workload_credentials_static_secret.api_key production/api-key
 
 # Note: After import, you must provide the secret_wo attribute in your configuration.
 # The secret value is not retrieved during import for security reasons.

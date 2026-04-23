@@ -1,11 +1,11 @@
 ---
-page_title: "Resource beyondtrust_secrets_folder - beyondtrust"
+page_title: "Resource beyondtrust_workload_credentials_folder - beyondtrust"
 subcategory: ""
 description: |-
   Manages a folder in BeyondTrust Workload Credentials for organizing secrets and dynamic secrets.
 ---
 
-# beyondtrust_secrets_folder (Resource)
+# beyondtrust_workload_credentials_folder (Resource)
 
 Manages a folder in BeyondTrust Workload Credentials for organizing secrets and dynamic secrets.
 
@@ -13,7 +13,7 @@ Manages a folder in BeyondTrust Workload Credentials for organizing secrets and 
 
 ```terraform
 # Basic folder at root level
-resource "beyondtrust_secrets_folder" "production" {
+resource "beyondtrust_workload_credentials_folder" "production" {
   name = "production"
 
   tags = {
@@ -23,9 +23,9 @@ resource "beyondtrust_secrets_folder" "production" {
 }
 
 # Nested folder
-resource "beyondtrust_secrets_folder" "aws" {
+resource "beyondtrust_workload_credentials_folder" "aws" {
   name   = "aws"
-  folder = beyondtrust_secrets_folder.production.path
+  folder = beyondtrust_workload_credentials_folder.production.path
 
   tags = {
     cloud       = "aws"
@@ -59,8 +59,8 @@ Import is supported using the following syntax:
 
 ```shell
 # Import a root-level folder
-terraform import beyondtrust_secrets_folder.production production
+terraform import beyondtrust_workload_credentials_folder.production production
 
 # Import a nested folder (use full path with forward slashes)
-terraform import beyondtrust_secrets_folder.aws production/aws
+terraform import beyondtrust_workload_credentials_folder.aws production/aws
 ```

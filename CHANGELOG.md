@@ -13,14 +13,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initial release of the BeyondTrust Workload Credentials Terraform Provider
 - **Resources:**
-  - `beyondtrust_secrets_folder` - Manage folder hierarchy
-  - `beyondtrust_secrets_static_secret` - Manage static secrets (managed resource)
-  - `beyondtrust_secrets_aws_integration` - Manage AWS integrations for dynamic credential provisioning
-  - `beyondtrust_secrets_aws_dynamic_secret` - Manage AWS dynamic secrets with role assumption and credential templates
+  - `beyondtrust_workload_credentials_folder` - Manage folder hierarchy
+  - `beyondtrust_workload_credentials_static_secret` - Manage static secrets (managed resource)
+  - `beyondtrust_workload_credentials_aws_integration` - Manage AWS integrations for dynamic credential provisioning
+  - `beyondtrust_workload_credentials_aws_dynamic_secret` - Manage AWS dynamic secrets with role assumption and credential templates
 - **Data Sources:**
-  - `beyondtrust_secrets_aws_integration` - Read AWS integration configuration
+  - `beyondtrust_workload_credentials_aws_integration` - Read AWS integration configuration
 - **Ephemeral Resources:**
-  - `beyondtrust_secrets_static_secret` - Retrieve secrets without persisting to state (requires Terraform 1.10+)
+  - `beyondtrust_workload_credentials_static_secret` - Retrieve secrets without persisting to state (requires Terraform 1.10+)
 - **Features:**
   - Full import support for all managed resources
   - Path-based resource identification for folders and secrets

@@ -1,11 +1,11 @@
 ---
-page_title: "Resource beyondtrust_secrets_aws_dynamic_secret - beyondtrust"
+page_title: "Resource beyondtrust_workload_credentials_aws_dynamic_secret - beyondtrust"
 subcategory: ""
 description: |-
   Manages an AWS dynamic secret configuration in BeyondTrust Workload Credentials. Dynamic secrets generate temporary AWS credentials on-demand with configurable TTL and permissions.
 ---
 
-# beyondtrust_secrets_aws_dynamic_secret (Resource)
+# beyondtrust_workload_credentials_aws_dynamic_secret (Resource)
 
 Manages an AWS dynamic secret configuration in BeyondTrust Workload Credentials. Dynamic secrets generate temporary AWS credentials on-demand with configurable TTL and permissions.
 
@@ -13,10 +13,10 @@ Manages an AWS dynamic secret configuration in BeyondTrust Workload Credentials.
 
 ```terraform
 # AWS Dynamic Secret with assumed role credentials
-resource "beyondtrust_secrets_aws_dynamic_secret" "developer_readonly" {
+resource "beyondtrust_workload_credentials_aws_dynamic_secret" "developer_readonly" {
   name             = "developer-readonly-creds"
   folder           = "production/aws"
-  integration_name = beyondtrust_secrets_aws_integration.production.name
+  integration_name = beyondtrust_workload_credentials_aws_integration.production.name
 
   credential_type = "assumed_role"
   role_arn        = "arn:aws:iam::123456789012:role/DeveloperReadOnlyRole"
@@ -36,10 +36,10 @@ resource "beyondtrust_secrets_aws_dynamic_secret" "developer_readonly" {
 }
 
 # Dynamic secret with inline IAM policy
-resource "beyondtrust_secrets_aws_dynamic_secret" "s3_specific" {
+resource "beyondtrust_workload_credentials_aws_dynamic_secret" "s3_specific" {
   name             = "s3-data-bucket-access"
   folder           = "production/aws"
-  integration_name = beyondtrust_secrets_aws_integration.production.name
+  integration_name = beyondtrust_workload_credentials_aws_integration.production.name
 
   credential_type = "assumed_role"
   role_arn        = "arn:aws:iam::123456789012:role/S3DataBucketRole"
@@ -71,10 +71,10 @@ resource "beyondtrust_secrets_aws_dynamic_secret" "s3_specific" {
 }
 
 # Admin access with short TTL
-resource "beyondtrust_secrets_aws_dynamic_secret" "admin" {
+resource "beyondtrust_workload_credentials_aws_dynamic_secret" "admin" {
   name             = "admin-creds"
   folder           = "production/aws"
-  integration_name = beyondtrust_secrets_aws_integration.production.name
+  integration_name = beyondtrust_workload_credentials_aws_integration.production.name
 
   credential_type = "assumed_role"
   role_arn        = "arn:aws:iam::123456789012:role/AdminRole"
@@ -125,8 +125,8 @@ Import is supported using the following syntax:
 
 ```shell
 # Import a root-level dynamic secret
-terraform import beyondtrust_secrets_aws_dynamic_secret.developer developer-readonly-creds
+terraform import beyondtrust_workload_credentials_aws_dynamic_secret.developer developer-readonly-creds
 
 # Import a dynamic secret in a folder (use full path)
-terraform import beyondtrust_secrets_aws_dynamic_secret.developer production/aws/developer-readonly-creds
+terraform import beyondtrust_workload_credentials_aws_dynamic_secret.developer production/aws/developer-readonly-creds
 ```
