@@ -4,6 +4,7 @@
 package resources_test
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -11,6 +12,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 
 	"github.com/beyondtrust/terraform-provider-beyondtrust/internal/acctest"
+	"github.com/beyondtrust/terraform-provider-beyondtrust/internal/client"
 	_ "github.com/beyondtrust/terraform-provider-beyondtrust/internal/provider"
 )
 
@@ -158,18 +160,42 @@ func TestAccAwsIntegrationResource_nameImmutable(t *testing.T) {
 }
 
 func testAccCheckAwsIntegrationDestroy(s *terraform.State) error {
-	// TODO: Implement actual destroy check by querying the API
-	// For now, we'll just verify the resource is no longer in state
+	// Create a test client to verify resources are destroyed
+	client, err := acctest.NewTestClient()
+	if err != nil {
+		return fmt.Errorf("failed to create test client: %w", err)
+	}
+
 	for _, rs := range s.RootModule().Resources {
 		if rs.Type != "beyondtrust_workload_credentials_aws_integration" {
 			continue
 		}
 
-		// In a real implementation, you would:
-		// 1. Get the client from the provider
-		// 2. Try to fetch the integration by name
-		// 3. Verify it returns a 404
-		_ = rs.Primary.Attributes["name"]
+		// Get the integration name from state
+		name := rs.Primary.Attributes["name"]
+		if name == "" {
+			return fmt.Errorf("integration name not found in state")
+		}
+
+		// Try to fetch the integration - should return 404 if properly deleted
+		apiPath := client.BuildPath(fmt.Sprintf("/integrations/%s", name))
+		var result interface{}
+		err := client.Get(context.Background(), apiPath, nil, &result)
+
+		// If no error, resource still exists - test should fail
+		if err == nil {
+			return fmt.Errorf("AWS integration %s still exists after destroy", name)
+		}
+
+		// Verify it's a 404 error (resource properly deleted)
+		// Use our typed error checking from task #2
+		if apiErr, ok := err.(*client.APIError); ok && apiErr.IsNotFound() {
+			// Expected - resource is properly deleted
+			continue
+		}
+
+		// Any other error is unexpected
+		return fmt.Errorf("unexpected error checking AWS integration deletion: %w", err)
 	}
 
 	return nil
