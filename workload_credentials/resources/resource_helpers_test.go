@@ -3,6 +3,7 @@ package resources
 import (
 	"errors"
 	"fmt"
+	"net/http"
 	"testing"
 
 	"github.com/beyondtrust/terraform-provider-beyondtrust/internal/client"
@@ -364,7 +365,7 @@ func TestIsNotFoundError(t *testing.T) {
 			name: "typed APIError with 404",
 			err: &client.APIError{
 				Message:    "resource not found",
-				StatusCode: 404,
+				StatusCode: http.StatusNotFound,
 			},
 			want:        true,
 			description: "Typed APIError with 404 should be detected",
@@ -373,7 +374,7 @@ func TestIsNotFoundError(t *testing.T) {
 			name: "wrapped APIError with 404",
 			err: fmt.Errorf("failed to get resource: %w", &client.APIError{
 				Message:    "resource not found",
-				StatusCode: 404,
+				StatusCode: http.StatusNotFound,
 			}),
 			want:        true,
 			description: "Wrapped APIError with 404 should be detected via errors.As",
@@ -382,7 +383,7 @@ func TestIsNotFoundError(t *testing.T) {
 			name: "typed APIError with 401",
 			err: &client.APIError{
 				Message:    "unauthorized",
-				StatusCode: 401,
+				StatusCode: http.StatusUnauthorized,
 			},
 			want:        false,
 			description: "Typed APIError with non-404 status should not be detected",
@@ -391,7 +392,7 @@ func TestIsNotFoundError(t *testing.T) {
 			name: "typed APIError with 500",
 			err: &client.APIError{
 				Message:    "internal server error",
-				StatusCode: 500,
+				StatusCode: http.StatusInternalServerError,
 			},
 			want:        false,
 			description: "Typed APIError with server error should not be detected",

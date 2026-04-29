@@ -57,22 +57,22 @@ func (e *APIError) Error() string {
 
 // IsNotFound returns true if the error is a 404 Not Found
 func (e *APIError) IsNotFound() bool {
-	return e.StatusCode == 404
+	return e.StatusCode == http.StatusNotFound
 }
 
 // IsConflict returns true if the error is a 409 Conflict
 func (e *APIError) IsConflict() bool {
-	return e.StatusCode == 409
+	return e.StatusCode == http.StatusConflict
 }
 
 // IsBadRequest returns true if the error is a 400 Bad Request
 func (e *APIError) IsBadRequest() bool {
-	return e.StatusCode == 400
+	return e.StatusCode == http.StatusBadRequest
 }
 
 // IsServerError returns true if the error is a 5xx Server Error
 func (e *APIError) IsServerError() bool {
-	return e.StatusCode >= 500 && e.StatusCode < 600
+	return e.StatusCode >= http.StatusInternalServerError && e.StatusCode < 600
 }
 
 // IsAWSCredentialValidationError returns true if the error is an AWS credential validation failure

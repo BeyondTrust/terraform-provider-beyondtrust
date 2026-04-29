@@ -163,7 +163,7 @@ func TestDoRequest(t *testing.T) {
 			checkError: func(t *testing.T, err error) {
 				var apiErr *APIError
 				require.True(t, errors.As(err, &apiErr), "error should be *client.APIError, got: %T", err)
-				assert.Equal(t, 404, apiErr.StatusCode, "status code should be 404")
+				assert.Equal(t, http.StatusNotFound, apiErr.StatusCode, "status code should be 404")
 				assert.True(t, apiErr.IsNotFound(), "IsNotFound() should return true")
 			},
 		},
@@ -175,7 +175,7 @@ func TestDoRequest(t *testing.T) {
 			checkError: func(t *testing.T, err error) {
 				var apiErr *APIError
 				require.True(t, errors.As(err, &apiErr), "error should be *client.APIError, got: %T", err)
-				assert.Equal(t, 401, apiErr.StatusCode, "status code should be 401")
+				assert.Equal(t, http.StatusUnauthorized, apiErr.StatusCode, "status code should be 401")
 			},
 		},
 		{
@@ -186,7 +186,7 @@ func TestDoRequest(t *testing.T) {
 			checkError: func(t *testing.T, err error) {
 				var apiErr *APIError
 				require.True(t, errors.As(err, &apiErr), "error should be *client.APIError, got: %T", err)
-				assert.Equal(t, 500, apiErr.StatusCode, "status code should be 500")
+				assert.Equal(t, http.StatusInternalServerError, apiErr.StatusCode, "status code should be 500")
 				assert.True(t, apiErr.IsServerError(), "IsServerError() should return true")
 			},
 		},
@@ -685,7 +685,7 @@ func TestAPIError_HelperMethods(t *testing.T) {
 	}{
 		{
 			name:            "404 Not Found",
-			statusCode:      404,
+			statusCode:      http.StatusNotFound,
 			wantNotFound:    true,
 			wantConflict:    false,
 			wantBadRequest:  false,
@@ -693,7 +693,7 @@ func TestAPIError_HelperMethods(t *testing.T) {
 		},
 		{
 			name:            "409 Conflict",
-			statusCode:      409,
+			statusCode:      http.StatusConflict,
 			wantNotFound:    false,
 			wantConflict:    true,
 			wantBadRequest:  false,
@@ -701,7 +701,7 @@ func TestAPIError_HelperMethods(t *testing.T) {
 		},
 		{
 			name:            "400 Bad Request",
-			statusCode:      400,
+			statusCode:      http.StatusBadRequest,
 			wantNotFound:    false,
 			wantConflict:    false,
 			wantBadRequest:  true,
@@ -709,7 +709,7 @@ func TestAPIError_HelperMethods(t *testing.T) {
 		},
 		{
 			name:            "500 Internal Server Error",
-			statusCode:      500,
+			statusCode:      http.StatusInternalServerError,
 			wantNotFound:    false,
 			wantConflict:    false,
 			wantBadRequest:  false,
@@ -717,7 +717,7 @@ func TestAPIError_HelperMethods(t *testing.T) {
 		},
 		{
 			name:            "503 Service Unavailable",
-			statusCode:      503,
+			statusCode:      http.StatusServiceUnavailable,
 			wantNotFound:    false,
 			wantConflict:    false,
 			wantBadRequest:  false,
@@ -741,7 +741,7 @@ func TestAPIError_HelperMethods(t *testing.T) {
 		},
 		{
 			name:            "401 Unauthorized",
-			statusCode:      401,
+			statusCode:      http.StatusUnauthorized,
 			wantNotFound:    false,
 			wantConflict:    false,
 			wantBadRequest:  false,
@@ -749,7 +749,7 @@ func TestAPIError_HelperMethods(t *testing.T) {
 		},
 		{
 			name:            "403 Forbidden",
-			statusCode:      403,
+			statusCode:      http.StatusForbidden,
 			wantNotFound:    false,
 			wantConflict:    false,
 			wantBadRequest:  false,
@@ -757,7 +757,7 @@ func TestAPIError_HelperMethods(t *testing.T) {
 		},
 		{
 			name:            "200 OK (no error)",
-			statusCode:      200,
+			statusCode:      http.StatusOK,
 			wantNotFound:    false,
 			wantConflict:    false,
 			wantBadRequest:  false,
