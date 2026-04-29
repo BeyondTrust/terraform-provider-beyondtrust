@@ -369,6 +369,15 @@ func TestIsNotFoundError(t *testing.T) {
 			description: "Typed APIError with 404 should be detected",
 		},
 		{
+			name: "wrapped APIError with 404",
+			err: fmt.Errorf("failed to get resource: %w", &client.APIError{
+				Message:    "resource not found",
+				StatusCode: 404,
+			}),
+			want:        true,
+			description: "Wrapped APIError with 404 should be detected via errors.As",
+		},
+		{
 			name: "typed APIError with 401",
 			err: &client.APIError{
 				Message:    "unauthorized",

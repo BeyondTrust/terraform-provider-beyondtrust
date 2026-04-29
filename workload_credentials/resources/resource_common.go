@@ -2,6 +2,7 @@ package resources
 
 import (
 	"context"
+	"errors"
 	"net/url"
 	"strings"
 
@@ -102,8 +103,9 @@ func isNotFoundError(err error) bool {
 		return false
 	}
 
-	// Check if it's a typed APIError with 404 status
-	if apiErr, ok := err.(*client.APIError); ok {
+	// Check if it's a typed APIError with 404 status (handles wrapped errors)
+	var apiErr *client.APIError
+	if errors.As(err, &apiErr) {
 		return apiErr.IsNotFound()
 	}
 

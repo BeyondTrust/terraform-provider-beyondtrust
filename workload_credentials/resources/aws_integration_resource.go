@@ -2,6 +2,7 @@ package resources
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -165,7 +166,8 @@ func (r *AwsIntegrationResource) Create(ctx context.Context, req resource.Create
 		}
 
 		// Only retry on credential test failures (likely IAM propagation delay)
-		if apiErr, ok := err.(*client.APIError); !ok || !apiErr.IsAWSCredentialValidationError() {
+		var apiErr *client.APIError
+		if !errors.As(err, &apiErr) || !apiErr.IsAWSCredentialValidationError() {
 			break
 		}
 
