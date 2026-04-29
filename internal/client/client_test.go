@@ -3,6 +3,7 @@ package client
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -160,8 +161,8 @@ func TestDoRequest(t *testing.T) {
 			serverBody:     map[string]string{"message": "not found"},
 			wantErr:        true,
 			checkError: func(t *testing.T, err error) {
-				apiErr, ok := err.(*APIError)
-				require.True(t, ok, "error should be *client.APIError, got: %T", err)
+				var apiErr *APIError
+				require.True(t, errors.As(err, &apiErr), "error should be *client.APIError, got: %T", err)
 				assert.Equal(t, 404, apiErr.StatusCode, "status code should be 404")
 				assert.True(t, apiErr.IsNotFound(), "IsNotFound() should return true")
 			},
@@ -172,8 +173,8 @@ func TestDoRequest(t *testing.T) {
 			serverBody:     map[string]string{"message": "unauthorized"},
 			wantErr:        true,
 			checkError: func(t *testing.T, err error) {
-				apiErr, ok := err.(*APIError)
-				require.True(t, ok, "error should be *client.APIError, got: %T", err)
+				var apiErr *APIError
+				require.True(t, errors.As(err, &apiErr), "error should be *client.APIError, got: %T", err)
 				assert.Equal(t, 401, apiErr.StatusCode, "status code should be 401")
 			},
 		},
@@ -183,8 +184,8 @@ func TestDoRequest(t *testing.T) {
 			serverBody:     map[string]string{"message": "internal error"},
 			wantErr:        true,
 			checkError: func(t *testing.T, err error) {
-				apiErr, ok := err.(*APIError)
-				require.True(t, ok, "error should be *client.APIError, got: %T", err)
+				var apiErr *APIError
+				require.True(t, errors.As(err, &apiErr), "error should be *client.APIError, got: %T", err)
 				assert.Equal(t, 500, apiErr.StatusCode, "status code should be 500")
 				assert.True(t, apiErr.IsServerError(), "IsServerError() should return true")
 			},

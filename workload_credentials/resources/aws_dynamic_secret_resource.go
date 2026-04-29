@@ -3,6 +3,7 @@ package resources
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/url"
 	"strings"
@@ -234,7 +235,7 @@ func (r *AwsDynamicSecretResource) Create(ctx context.Context, req resource.Crea
 
 	// Build the API path
 	name := data.Name.ValueString()
-	apiPath := r.client.BuildPath(fmt.Sprintf("/dynamic/%s", name))
+	apiPath := r.client.BuildPath("/dynamic/" + name)
 
 	// Add folder query parameter if specified
 	query := url.Values{}
@@ -340,7 +341,7 @@ func (r *AwsDynamicSecretResource) Read(ctx context.Context, req resource.ReadRe
 
 	// Build the API path
 	name := data.Name.ValueString()
-	apiPath := r.client.BuildPath(fmt.Sprintf("/dynamic/%s", name))
+	apiPath := r.client.BuildPath("/dynamic/" + name)
 
 	// Add folder query parameter if specified
 	query := url.Values{}
@@ -433,7 +434,7 @@ func (r *AwsDynamicSecretResource) Update(ctx context.Context, req resource.Upda
 
 	// Build the API path
 	name := data.Name.ValueString()
-	apiPath := r.client.BuildPath(fmt.Sprintf("/dynamic/%s", name))
+	apiPath := r.client.BuildPath("/dynamic/" + name)
 
 	// Add folder query parameter if specified
 	query := url.Values{}
@@ -514,7 +515,7 @@ func (r *AwsDynamicSecretResource) Update(ctx context.Context, req resource.Upda
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error Reading Updated AWS Dynamic Secret",
-			fmt.Sprintf("Could not read AWS dynamic secret after update: %s", err.Error()),
+			"Could not read AWS dynamic secret after update: "+err.Error(),
 		)
 		return
 	}
@@ -547,7 +548,7 @@ func (r *AwsDynamicSecretResource) Delete(ctx context.Context, req resource.Dele
 
 	// Build the API path
 	name := data.Name.ValueString()
-	apiPath := r.client.BuildPath(fmt.Sprintf("/dynamic/%s", name))
+	apiPath := r.client.BuildPath("/dynamic/" + name)
 
 	// Add folder query parameter and permanent delete flag
 	query := url.Values{}
@@ -601,7 +602,7 @@ func (r *AwsDynamicSecretResource) ImportState(ctx context.Context, req resource
 // validateJSONPolicy validates AWS IAM policy JSON format
 func validateJSONPolicy(policy string) error {
 	if policy == "" {
-		return fmt.Errorf("policy cannot be empty")
+		return errors.New("policy cannot be empty")
 	}
 
 	var js map[string]interface{}
@@ -612,7 +613,7 @@ func validateJSONPolicy(policy string) error {
 
 	// Must be an object, not array
 	if js == nil {
-		return fmt.Errorf("policy must be a JSON object, not array")
+		return errors.New("policy must be a JSON object, not array")
 	}
 
 	return nil

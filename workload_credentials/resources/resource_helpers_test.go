@@ -1,6 +1,7 @@
 package resources
 
 import (
+	"errors"
 	"fmt"
 	"testing"
 
@@ -398,38 +399,38 @@ func TestIsNotFoundError(t *testing.T) {
 
 		// Fallback string-based path tests
 		{
-			name:        "fmt.Errorf with 404 in message",
-			err:         fmt.Errorf("HTTP 404: resource not found"),
+			name:        "errors.New with 404 in message",
+			err:         errors.New("HTTP 404: resource not found"),
 			want:        true,
 			description: "String error with '404' should be caught by fallback",
 		},
 		{
-			name:        "fmt.Errorf with 'not found' phrase",
-			err:         fmt.Errorf("folder not found"),
+			name:        "errors.New with 'not found' phrase",
+			err:         errors.New("folder not found"),
 			want:        true,
 			description: "String error with 'not found' should be caught by fallback",
 		},
 		{
-			name:        "fmt.Errorf case insensitive",
-			err:         fmt.Errorf("Resource NOT FOUND"),
+			name:        "errors.New case insensitive",
+			err:         errors.New("Resource NOT FOUND"),
 			want:        true,
 			description: "Fallback should be case-insensitive",
 		},
 		{
-			name:        "fmt.Errorf different error",
-			err:         fmt.Errorf("permission denied"),
+			name:        "errors.New different error",
+			err:         errors.New("permission denied"),
 			want:        false,
 			description: "Non-404 string errors should not be detected",
 		},
 		{
-			name:        "fmt.Errorf 500 error",
-			err:         fmt.Errorf("HTTP 500: internal server error"),
+			name:        "errors.New 500 error",
+			err:         errors.New("HTTP 500: internal server error"),
 			want:        false,
 			description: "Other HTTP errors should not be detected",
 		},
 		{
-			name:        "fmt.Errorf network error",
-			err:         fmt.Errorf("connection refused"),
+			name:        "errors.New network error",
+			err:         errors.New("connection refused"),
 			want:        false,
 			description: "Network errors should not be detected",
 		},

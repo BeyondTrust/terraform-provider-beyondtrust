@@ -141,7 +141,7 @@ func (r *AwsIntegrationResource) Create(ctx context.Context, req resource.Create
 
 	// Build the API path
 	name := data.Name.ValueString()
-	apiPath := r.client.BuildPath(fmt.Sprintf("/integrations/%s", name))
+	apiPath := r.client.BuildPath("/integrations/" + name)
 
 	// Build request body
 	createReq := AwsIntegrationCreateRequest{
@@ -216,7 +216,7 @@ func (r *AwsIntegrationResource) Read(ctx context.Context, req resource.ReadRequ
 
 	// Build the API path
 	name := data.Name.ValueString()
-	apiPath := r.client.BuildPath(fmt.Sprintf("/integrations/%s", name))
+	apiPath := r.client.BuildPath("/integrations/" + name)
 
 	// Get integration
 	var integrationResp AwsIntegrationResponse
@@ -262,7 +262,7 @@ func (r *AwsIntegrationResource) Update(ctx context.Context, req resource.Update
 
 	// Build the API path
 	name := data.Name.ValueString()
-	apiPath := r.client.BuildPath(fmt.Sprintf("/integrations/%s", name))
+	apiPath := r.client.BuildPath("/integrations/" + name)
 
 	// Build update request with merge patch semantics
 	updateReq := AwsIntegrationUpdateRequest{
@@ -296,7 +296,7 @@ func (r *AwsIntegrationResource) Update(ctx context.Context, req resource.Update
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error Reading Updated AWS Integration",
-			fmt.Sprintf("Could not read AWS integration after update: %s", err.Error()),
+			"Could not read AWS integration after update: "+err.Error(),
 		)
 		return
 	}
@@ -323,7 +323,7 @@ func (r *AwsIntegrationResource) Delete(ctx context.Context, req resource.Delete
 
 	// Build the API path
 	name := data.Name.ValueString()
-	apiPath := r.client.BuildPath(fmt.Sprintf("/integrations/%s", name))
+	apiPath := r.client.BuildPath("/integrations/" + name)
 
 	// Delete the integration
 	err := r.client.Delete(ctx, apiPath, nil)
