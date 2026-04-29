@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 )
 
@@ -72,6 +73,13 @@ func (e *APIError) IsBadRequest() bool {
 // IsServerError returns true if the error is a 5xx Server Error
 func (e *APIError) IsServerError() bool {
 	return e.StatusCode >= 500 && e.StatusCode < 600
+}
+
+// IsAWSCredentialValidationError returns true if the error is an AWS credential validation failure
+func (e *APIError) IsAWSCredentialValidationError() bool {
+	return e.Code == "aws_integration_test_failed" ||
+		e.Code == "aws_credential_validation_failed" ||
+		strings.Contains(strings.ToLower(e.Message), "failed to validate aws integration credentials")
 }
 
 // NewClient creates a new BeyondTrust API client
