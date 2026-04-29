@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -161,10 +160,10 @@ func TestDoRequest(t *testing.T) {
 			serverBody:     map[string]string{"message": "not found"},
 			wantErr:        true,
 			checkError: func(t *testing.T, err error) {
-				// Check error message contains status code or text
-				errStr := err.Error()
-				assert.True(t, strings.Contains(errStr, "404") || strings.Contains(errStr, "not found"),
-					"error should contain 404 or not found, got: %s", errStr)
+				apiErr, ok := err.(*APIError)
+				require.True(t, ok, "error should be *client.APIError, got: %T", err)
+				assert.Equal(t, 404, apiErr.StatusCode, "status code should be 404")
+				assert.True(t, apiErr.IsNotFound(), "IsNotFound() should return true")
 			},
 		},
 		{
@@ -173,9 +172,9 @@ func TestDoRequest(t *testing.T) {
 			serverBody:     map[string]string{"message": "unauthorized"},
 			wantErr:        true,
 			checkError: func(t *testing.T, err error) {
-				errStr := err.Error()
-				assert.True(t, strings.Contains(errStr, "401") || strings.Contains(errStr, "unauthorized"),
-					"error should contain 401 or unauthorized, got: %s", errStr)
+				apiErr, ok := err.(*APIError)
+				require.True(t, ok, "error should be *client.APIError, got: %T", err)
+				assert.Equal(t, 401, apiErr.StatusCode, "status code should be 401")
 			},
 		},
 		{
@@ -184,9 +183,10 @@ func TestDoRequest(t *testing.T) {
 			serverBody:     map[string]string{"message": "internal error"},
 			wantErr:        true,
 			checkError: func(t *testing.T, err error) {
-				errStr := err.Error()
-				assert.True(t, strings.Contains(errStr, "500") || strings.Contains(errStr, "internal"),
-					"error should contain 500 or internal, got: %s", errStr)
+				apiErr, ok := err.(*APIError)
+				require.True(t, ok, "error should be *client.APIError, got: %T", err)
+				assert.Equal(t, 500, apiErr.StatusCode, "status code should be 500")
+				assert.True(t, apiErr.IsServerError(), "IsServerError() should return true")
 			},
 		},
 	}
@@ -670,4 +670,188 @@ func TestDoRequest_QueryParameters(t *testing.T) {
 	var result map[string]string
 	err = client.Get(context.Background(), "/test", query, &result)
 	assert.NoError(t, err)
+}
+
+// TestAPIError_HelperMethods validates all APIError helper methods
+func TestAPIError_HelperMethods(t *testing.T) {
+	tests := []struct {
+		name            string
+		statusCode      int
+		wantNotFound    bool
+		wantConflict    bool
+		wantBadRequest  bool
+		wantServerError bool
+	}{
+		{
+			name:            "404 Not Found",
+			statusCode:      404,
+			wantNotFound:    true,
+			wantConflict:    false,
+			wantBadRequest:  false,
+			wantServerError: false,
+		},
+		{
+			name:            "409 Conflict",
+			statusCode:      409,
+			wantNotFound:    false,
+			wantConflict:    true,
+			wantBadRequest:  false,
+			wantServerError: false,
+		},
+		{
+			name:            "400 Bad Request",
+			statusCode:      400,
+			wantNotFound:    false,
+			wantConflict:    false,
+			wantBadRequest:  true,
+			wantServerError: false,
+		},
+		{
+			name:            "500 Internal Server Error",
+			statusCode:      500,
+			wantNotFound:    false,
+			wantConflict:    false,
+			wantBadRequest:  false,
+			wantServerError: true,
+		},
+		{
+			name:            "503 Service Unavailable",
+			statusCode:      503,
+			wantNotFound:    false,
+			wantConflict:    false,
+			wantBadRequest:  false,
+			wantServerError: true,
+		},
+		{
+			name:            "599 Edge of 5xx range",
+			statusCode:      599,
+			wantNotFound:    false,
+			wantConflict:    false,
+			wantBadRequest:  false,
+			wantServerError: true,
+		},
+		{
+			name:            "600 Outside 5xx range",
+			statusCode:      600,
+			wantNotFound:    false,
+			wantConflict:    false,
+			wantBadRequest:  false,
+			wantServerError: false,
+		},
+		{
+			name:            "401 Unauthorized",
+			statusCode:      401,
+			wantNotFound:    false,
+			wantConflict:    false,
+			wantBadRequest:  false,
+			wantServerError: false,
+		},
+		{
+			name:            "403 Forbidden",
+			statusCode:      403,
+			wantNotFound:    false,
+			wantConflict:    false,
+			wantBadRequest:  false,
+			wantServerError: false,
+		},
+		{
+			name:            "200 OK (no error)",
+			statusCode:      200,
+			wantNotFound:    false,
+			wantConflict:    false,
+			wantBadRequest:  false,
+			wantServerError: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			apiErr := &APIError{
+				Message:    "test error",
+				StatusCode: tt.statusCode,
+			}
+
+			assert.Equal(t, tt.wantNotFound, apiErr.IsNotFound(), "IsNotFound()")
+			assert.Equal(t, tt.wantConflict, apiErr.IsConflict(), "IsConflict()")
+			assert.Equal(t, tt.wantBadRequest, apiErr.IsBadRequest(), "IsBadRequest()")
+			assert.Equal(t, tt.wantServerError, apiErr.IsServerError(), "IsServerError()")
+		})
+	}
+}
+
+// TestAPIError_IsAWSCredentialValidationError validates AWS credential validation error detection
+func TestAPIError_IsAWSCredentialValidationError(t *testing.T) {
+	tests := []struct {
+		name    string
+		code    string
+		message string
+		want    bool
+	}{
+		{
+			name:    "aws_integration_test_failed code",
+			code:    "aws_integration_test_failed",
+			message: "some error message",
+			want:    true,
+		},
+		{
+			name:    "aws_credential_validation_failed code",
+			code:    "aws_credential_validation_failed",
+			message: "some error message",
+			want:    true,
+		},
+		{
+			name:    "message contains validation failure",
+			code:    "",
+			message: "Failed to validate AWS integration credentials",
+			want:    true,
+		},
+		{
+			name:    "message contains validation failure lowercase",
+			code:    "",
+			message: "failed to validate aws integration credentials",
+			want:    true,
+		},
+		{
+			name:    "message contains validation failure mixed case",
+			code:    "",
+			message: "FAILED TO VALIDATE AWS INTEGRATION CREDENTIALS",
+			want:    true,
+		},
+		{
+			name:    "different error code",
+			code:    "some_other_error",
+			message: "some error message",
+			want:    false,
+		},
+		{
+			name:    "different error message",
+			code:    "",
+			message: "some other error message",
+			want:    false,
+		},
+		{
+			name:    "empty error",
+			code:    "",
+			message: "",
+			want:    false,
+		},
+		{
+			name:    "partial match should not trigger",
+			code:    "",
+			message: "aws integration error",
+			want:    false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			apiErr := &APIError{
+				Code:    tt.code,
+				Message: tt.message,
+			}
+
+			result := apiErr.IsAWSCredentialValidationError()
+			assert.Equal(t, tt.want, result)
+		})
+	}
 }

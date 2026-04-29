@@ -165,8 +165,7 @@ func (r *AwsIntegrationResource) Create(ctx context.Context, req resource.Create
 		}
 
 		// Only retry on credential test failures (likely IAM propagation delay)
-		if !strings.Contains(err.Error(), "aws_integration_test_failed") &&
-			!strings.Contains(err.Error(), "failed to validate AWS integration credentials") {
+		if apiErr, ok := err.(*client.APIError); !ok || !apiErr.IsAWSCredentialValidationError() {
 			break
 		}
 
