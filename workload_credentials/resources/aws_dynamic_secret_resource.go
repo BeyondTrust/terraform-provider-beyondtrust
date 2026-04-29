@@ -352,8 +352,8 @@ func (r *AwsDynamicSecretResource) Read(ctx context.Context, req resource.ReadRe
 	var secretResp AwsDynamicSecretResponse
 	err := r.client.Get(ctx, apiPath, query, &secretResp)
 	if err != nil {
-		// Check if it's a 404 error
-		if strings.Contains(err.Error(), "404") || strings.Contains(err.Error(), "not found") {
+		// Check if it's a 404 error using typed error handling
+		if isNotFoundError(err) {
 			// Dynamic secret no longer exists, remove from state
 			resp.State.RemoveResource(ctx)
 			return
@@ -559,8 +559,8 @@ func (r *AwsDynamicSecretResource) Delete(ctx context.Context, req resource.Dele
 	// Delete the dynamic secret
 	err := r.client.Delete(ctx, apiPath, query)
 	if err != nil {
-		// Ignore 404 errors (already deleted)
-		if strings.Contains(err.Error(), "404") || strings.Contains(err.Error(), "not found") {
+		// Ignore 404 errors (already deleted) using typed error handling
+		if isNotFoundError(err) {
 			return
 		}
 

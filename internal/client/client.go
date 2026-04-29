@@ -41,9 +41,10 @@ type Config struct {
 
 // APIError represents an error response from the API
 type APIError struct {
-	Message string                 `json:"message"`
-	Code    string                 `json:"code,omitempty"`
-	Details map[string]interface{} `json:"details,omitempty"`
+	Message    string                 `json:"message"`
+	Code       string                 `json:"code,omitempty"`
+	Details    map[string]interface{} `json:"details,omitempty"`
+	StatusCode int                    // HTTP status code
 }
 
 func (e *APIError) Error() string {
@@ -51,6 +52,26 @@ func (e *APIError) Error() string {
 		return fmt.Sprintf("%s (code: %s)", e.Message, e.Code)
 	}
 	return e.Message
+}
+
+// IsNotFound returns true if the error is a 404 Not Found
+func (e *APIError) IsNotFound() bool {
+	return e.StatusCode == 404
+}
+
+// IsConflict returns true if the error is a 409 Conflict
+func (e *APIError) IsConflict() bool {
+	return e.StatusCode == 409
+}
+
+// IsBadRequest returns true if the error is a 400 Bad Request
+func (e *APIError) IsBadRequest() bool {
+	return e.StatusCode == 400
+}
+
+// IsServerError returns true if the error is a 5xx Server Error
+func (e *APIError) IsServerError() bool {
+	return e.StatusCode >= 500 && e.StatusCode < 600
 }
 
 // NewClient creates a new BeyondTrust API client
@@ -269,6 +290,9 @@ func (c *Client) handleErrorResponse(resp *http.Response) error {
 		// If we can't parse the error, return the raw response
 		return fmt.Errorf("HTTP %d: %s", resp.StatusCode, string(body))
 	}
+
+	// Capture the HTTP status code
+	apiErr.StatusCode = resp.StatusCode
 
 	return &apiErr
 }

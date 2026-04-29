@@ -221,8 +221,8 @@ func (r *AwsIntegrationResource) Read(ctx context.Context, req resource.ReadRequ
 	var integrationResp AwsIntegrationResponse
 	err := r.client.Get(ctx, apiPath, nil, &integrationResp)
 	if err != nil {
-		// Check if it's a 404 error
-		if strings.Contains(err.Error(), "404") || strings.Contains(err.Error(), "not found") {
+		// Check if it's a 404 error using typed error handling
+		if isNotFoundError(err) {
 			// Integration no longer exists, remove from state
 			resp.State.RemoveResource(ctx)
 			return
@@ -327,8 +327,8 @@ func (r *AwsIntegrationResource) Delete(ctx context.Context, req resource.Delete
 	// Delete the integration
 	err := r.client.Delete(ctx, apiPath, nil)
 	if err != nil {
-		// Ignore 404 errors (already deleted)
-		if strings.Contains(err.Error(), "404") || strings.Contains(err.Error(), "not found") {
+		// Ignore 404 errors (already deleted) using typed error handling
+		if isNotFoundError(err) {
 			return
 		}
 

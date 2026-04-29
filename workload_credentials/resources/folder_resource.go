@@ -237,7 +237,7 @@ func (r *FolderResource) Read(ctx context.Context, req resource.ReadRequest, res
 	err := r.client.Get(ctx, apiPath, query, &metadataResp)
 	if err != nil {
 		// Check if it's a 404 error using helper
-		if isNotFoundError(err.Error()) {
+		if isNotFoundError(err) {
 			// Folder no longer exists, remove from state
 			resp.State.RemoveResource(ctx)
 			return
@@ -350,7 +350,7 @@ func (r *FolderResource) Delete(ctx context.Context, req resource.DeleteRequest,
 	err := r.client.Delete(ctx, apiPath, query)
 	if err != nil {
 		// Ignore 404 errors (already deleted) using helper
-		if isNotFoundError(err.Error()) {
+		if isNotFoundError(err) {
 			return
 		}
 

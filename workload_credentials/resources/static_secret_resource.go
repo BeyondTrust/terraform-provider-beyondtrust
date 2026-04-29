@@ -238,7 +238,7 @@ func (r *StaticSecretResource) Read(ctx context.Context, req resource.ReadReques
 	err := r.client.Get(ctx, apiPath, query, &metadataResp)
 	if err != nil {
 		// Check if it's a 404 error using helper
-		if isNotFoundError(err.Error()) {
+		if isNotFoundError(err) {
 			// Secret no longer exists, remove from state
 			resp.State.RemoveResource(ctx)
 			return
@@ -383,7 +383,7 @@ func (r *StaticSecretResource) Delete(ctx context.Context, req resource.DeleteRe
 	err := r.client.Delete(ctx, apiPath, query)
 	if err != nil {
 		// Ignore 404 errors (already deleted) using helper
-		if isNotFoundError(err.Error()) {
+		if isNotFoundError(err) {
 			return
 		}
 
