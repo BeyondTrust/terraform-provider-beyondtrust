@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/url"
+	"strconv"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/ephemeral"
@@ -127,7 +128,7 @@ func (e *StaticSecretEphemeral) Open(ctx context.Context, req ephemeral.OpenRequ
 
 	// Build the API path
 	name := data.Name.ValueString()
-	apiPath := e.client.BuildPath(fmt.Sprintf("/static/%s", name))
+	apiPath := e.client.BuildPath("/static/" + name)
 
 	// Add query parameters
 	query := url.Values{}
@@ -135,7 +136,7 @@ func (e *StaticSecretEphemeral) Open(ctx context.Context, req ephemeral.OpenRequ
 		query.Set("folder", data.Folder.ValueString())
 	}
 	if !data.Version.IsNull() {
-		query.Set("version", fmt.Sprintf("%d", data.Version.ValueInt64()))
+		query.Set("version", strconv.FormatInt(data.Version.ValueInt64(), 10))
 	}
 
 	// Get the secret (includes the secret value)

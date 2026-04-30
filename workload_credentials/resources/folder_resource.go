@@ -149,7 +149,7 @@ func (r *FolderResource) Create(ctx context.Context, req resource.CreateRequest,
 
 	// Build the API path
 	name := data.Name.ValueString()
-	apiPath := r.client.BuildPath(fmt.Sprintf("/folders/%s", name))
+	apiPath := r.client.BuildPath("/folders/" + name)
 
 	// Add folder query parameter if parent folder is specified
 	parentFolder := ""
@@ -178,7 +178,7 @@ func (r *FolderResource) Create(ctx context.Context, req resource.CreateRequest,
 		if err := r.updateTags(ctx, name, data.Folder.ValueString(), data.Tags); err != nil {
 			resp.Diagnostics.AddError(
 				"Error Setting Tags",
-				fmt.Sprintf("Folder created but failed to set tags: %s", err.Error()),
+				"Folder created but failed to set tags: "+err.Error(),
 			)
 			// Don't return here - folder was created successfully
 		}
@@ -191,7 +191,7 @@ func (r *FolderResource) Create(ctx context.Context, req resource.CreateRequest,
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error Reading Created Folder",
-			fmt.Sprintf("Folder created but could not read metadata: %s", err.Error()),
+			"Folder created but could not read metadata: "+err.Error(),
 		)
 		return
 	}
@@ -237,7 +237,7 @@ func (r *FolderResource) Read(ctx context.Context, req resource.ReadRequest, res
 	err := r.client.Get(ctx, apiPath, query, &metadataResp)
 	if err != nil {
 		// Check if it's a 404 error using helper
-		if isNotFoundError(err.Error()) {
+		if isNotFoundError(err) {
 			// Folder no longer exists, remove from state
 			resp.State.RemoveResource(ctx)
 			return
@@ -284,7 +284,7 @@ func (r *FolderResource) Update(ctx context.Context, req resource.UpdateRequest,
 	if err := r.updateTags(ctx, data.Name.ValueString(), data.Folder.ValueString(), data.Tags); err != nil {
 		resp.Diagnostics.AddError(
 			"Error Updating Tags",
-			fmt.Sprintf("Could not update folder tags: %s", err.Error()),
+			"Could not update folder tags: "+err.Error(),
 		)
 		return
 	}
@@ -304,7 +304,7 @@ func (r *FolderResource) Update(ctx context.Context, req resource.UpdateRequest,
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error Reading Updated Folder",
-			fmt.Sprintf("Could not read folder after update: %s", err.Error()),
+			"Could not read folder after update: "+err.Error(),
 		)
 		return
 	}
@@ -337,7 +337,7 @@ func (r *FolderResource) Delete(ctx context.Context, req resource.DeleteRequest,
 
 	// Build the API path
 	name := data.Name.ValueString()
-	apiPath := r.client.BuildPath(fmt.Sprintf("/folders/%s", name))
+	apiPath := r.client.BuildPath("/folders/" + name)
 
 	// Build query parameters using helper (includes parent folder and permanent flag)
 	parentFolder := ""
@@ -350,7 +350,7 @@ func (r *FolderResource) Delete(ctx context.Context, req resource.DeleteRequest,
 	err := r.client.Delete(ctx, apiPath, query)
 	if err != nil {
 		// Ignore 404 errors (already deleted) using helper
-		if isNotFoundError(err.Error()) {
+		if isNotFoundError(err) {
 			return
 		}
 

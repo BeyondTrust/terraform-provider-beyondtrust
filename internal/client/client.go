@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 )
 
@@ -41,9 +42,10 @@ type Config struct {
 
 // APIError represents an error response from the API
 type APIError struct {
-	Message string                 `json:"message"`
-	Code    string                 `json:"code,omitempty"`
-	Details map[string]interface{} `json:"details,omitempty"`
+	Message    string                 `json:"message"`
+	Code       string                 `json:"code,omitempty"`
+	Details    map[string]interface{} `json:"details,omitempty"`
+	StatusCode int                    // HTTP status code
 }
 
 func (e *APIError) Error() string {
@@ -51,6 +53,33 @@ func (e *APIError) Error() string {
 		return fmt.Sprintf("%s (code: %s)", e.Message, e.Code)
 	}
 	return e.Message
+}
+
+// IsNotFound returns true if the error is a 404 Not Found
+func (e *APIError) IsNotFound() bool {
+	return e.StatusCode == http.StatusNotFound
+}
+
+// IsConflict returns true if the error is a 409 Conflict
+func (e *APIError) IsConflict() bool {
+	return e.StatusCode == http.StatusConflict
+}
+
+// IsBadRequest returns true if the error is a 400 Bad Request
+func (e *APIError) IsBadRequest() bool {
+	return e.StatusCode == http.StatusBadRequest
+}
+
+// IsServerError returns true if the error is a 5xx Server Error
+func (e *APIError) IsServerError() bool {
+	return e.StatusCode >= http.StatusInternalServerError && e.StatusCode < 600
+}
+
+// IsAWSCredentialValidationError returns true if the error is an AWS credential validation failure
+func (e *APIError) IsAWSCredentialValidationError() bool {
+	return e.Code == "aws_integration_test_failed" ||
+		e.Code == "aws_credential_validation_failed" ||
+		strings.Contains(strings.ToLower(e.Message), "failed to validate aws integration credentials")
 }
 
 // NewClient creates a new BeyondTrust API client
@@ -269,6 +298,9 @@ func (c *Client) handleErrorResponse(resp *http.Response) error {
 		// If we can't parse the error, return the raw response
 		return fmt.Errorf("HTTP %d: %s", resp.StatusCode, string(body))
 	}
+
+	// Capture the HTTP status code
+	apiErr.StatusCode = resp.StatusCode
 
 	return &apiErr
 }

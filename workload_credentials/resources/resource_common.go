@@ -2,6 +2,7 @@ package resources
 
 import (
 	"context"
+	"errors"
 	"net/url"
 	"strings"
 
@@ -97,8 +98,19 @@ func buildFolderQueryParam(parentFolder string) url.Values {
 
 // isNotFoundError checks if an error indicates a resource was not found (404).
 // This is used to determine when to remove a resource from Terraform state.
-func isNotFoundError(errMsg string) bool {
-	errLower := strings.ToLower(errMsg)
+func isNotFoundError(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	// Check if it's a typed APIError with 404 status (handles wrapped errors)
+	var apiErr *client.APIError
+	if errors.As(err, &apiErr) {
+		return apiErr.IsNotFound()
+	}
+
+	// Fallback to string checking for non-APIError errors
+	errLower := strings.ToLower(err.Error())
 	return strings.Contains(errLower, "404") || strings.Contains(errLower, "not found")
 }
 
