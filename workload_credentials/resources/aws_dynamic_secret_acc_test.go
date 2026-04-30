@@ -224,7 +224,7 @@ func testAccCheckAwsDynamicSecretDestroy(s *terraform.State) error {
 		}
 
 		// Build API path and query parameters
-		apiPath := client.BuildPath(fmt.Sprintf("/dynamic-secrets/%s", name))
+		apiPath := client.BuildPath(fmt.Sprintf("/dynamic/%s", name))
 		query := url.Values{}
 		if folder != "" {
 			query.Set("folder", folder)

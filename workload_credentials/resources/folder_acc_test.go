@@ -253,13 +253,13 @@ func testAccCheckFolderDestroy(s *terraform.State) error {
 		}
 
 		// Build API path and query parameters
-		apiPath := client.BuildPath(fmt.Sprintf("/folders/%s/metadata", name))
+		apiPath := client.BuildPath(fmt.Sprintf("/folders/%s", name))
 		query := url.Values{}
 		if folder != "" {
 			query.Set("folder", folder)
 		}
 
-		// Try to fetch the folder metadata - should return 404 if properly deleted
+		// Try to fetch the folder - should return 404 if properly deleted
 		var result interface{}
 		err := client.Get(context.Background(), apiPath, query, &result)
 

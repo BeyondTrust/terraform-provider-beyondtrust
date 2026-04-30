@@ -223,13 +223,13 @@ func testAccCheckStaticSecretDestroy(s *terraform.State) error {
 		}
 
 		// Build API path and query parameters
-		apiPath := client.BuildPath(fmt.Sprintf("/secrets/%s/metadata", name))
+		apiPath := client.BuildPath(fmt.Sprintf("/static/%s", name))
 		query := url.Values{}
 		if folder != "" {
 			query.Set("folder", folder)
 		}
 
-		// Try to fetch the secret metadata - should return 404 if properly deleted
+		// Try to fetch the static secret - should return 404 if properly deleted
 		var result interface{}
 		err := client.Get(context.Background(), apiPath, query, &result)
 
