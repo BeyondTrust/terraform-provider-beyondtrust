@@ -5,6 +5,7 @@ package resources_test
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"testing"
 
@@ -188,8 +189,8 @@ func testAccCheckAwsIntegrationDestroy(s *terraform.State) error {
 		}
 
 		// Verify it's a 404 error (resource properly deleted)
-		// Use our typed error checking from task #2
-		if apiErr, ok := err.(*client.APIError); ok && apiErr.IsNotFound() {
+		var apiErr *client.APIError
+		if errors.As(err, &apiErr) && apiErr.IsNotFound() {
 			// Expected - resource is properly deleted
 			continue
 		}

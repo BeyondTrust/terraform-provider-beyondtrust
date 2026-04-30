@@ -5,6 +5,7 @@ package resources_test
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/url"
 	"testing"
@@ -255,7 +256,8 @@ func testAccCheckFolderDestroy(s *terraform.State) error {
 		}
 
 		// Verify it's a 404 error (resource properly deleted)
-		if apiErr, ok := err.(*client.APIError); ok && apiErr.IsNotFound() {
+		var apiErr *client.APIError
+		if errors.As(err, &apiErr) && apiErr.IsNotFound() {
 			// Expected - resource is properly deleted
 			continue
 		}
