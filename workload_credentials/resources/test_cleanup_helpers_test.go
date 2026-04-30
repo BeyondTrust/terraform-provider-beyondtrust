@@ -38,9 +38,16 @@ func registerAwsIntegrationCleanup(t *testing.T, name string) {
 		}
 
 		var apiErr *btclient.APIError
-		if errors.As(err, &apiErr) && apiErr.IsNotFound() {
-			// Expected - already deleted by Terraform
-			return
+		if errors.As(err, &apiErr) {
+			if apiErr.IsGone() {
+				// Expected - already deleted by Terraform
+				return
+			}
+			if apiErr.IsPermissionError() {
+				// Expected - cannot delete without permissions, skip cleanup
+				t.Logf("Cleanup: skipping AWS integration %s due to permission error (already deleted or no access)", name)
+				return
+			}
 		}
 
 		t.Logf("Cleanup: unexpected error deleting AWS integration %s: %v", name, err)
@@ -70,9 +77,16 @@ func registerAwsDynamicSecretCleanup(t *testing.T, path string) {
 		}
 
 		var apiErr *btclient.APIError
-		if errors.As(err, &apiErr) && apiErr.IsNotFound() {
-			// Expected - already deleted by Terraform
-			return
+		if errors.As(err, &apiErr) {
+			if apiErr.IsGone() {
+				// Expected - already deleted by Terraform
+				return
+			}
+			if apiErr.IsPermissionError() {
+				// Expected - cannot delete without permissions, skip cleanup
+				t.Logf("Cleanup: skipping AWS dynamic secret %s due to permission error (already deleted or no access)", path)
+				return
+			}
 		}
 
 		t.Logf("Cleanup: unexpected error deleting AWS dynamic secret %s: %v", path, err)
@@ -107,9 +121,16 @@ func registerFolderCleanup(t *testing.T, name, folder string) {
 		}
 
 		var apiErr *btclient.APIError
-		if errors.As(err, &apiErr) && apiErr.IsNotFound() {
-			// Expected - already deleted by Terraform
-			return
+		if errors.As(err, &apiErr) {
+			if apiErr.IsGone() {
+				// Expected - already deleted by Terraform
+				return
+			}
+			if apiErr.IsPermissionError() {
+				// Expected - cannot delete without permissions, skip cleanup
+				t.Logf("Cleanup: skipping folder %s due to permission error (already deleted or no access)", name)
+				return
+			}
 		}
 
 		t.Logf("Cleanup: unexpected error deleting folder %s: %v", name, err)
@@ -144,9 +165,16 @@ func registerStaticSecretCleanup(t *testing.T, name, folder string) {
 		}
 
 		var apiErr *btclient.APIError
-		if errors.As(err, &apiErr) && apiErr.IsNotFound() {
-			// Expected - already deleted by Terraform
-			return
+		if errors.As(err, &apiErr) {
+			if apiErr.IsGone() {
+				// Expected - already deleted by Terraform
+				return
+			}
+			if apiErr.IsPermissionError() {
+				// Expected - cannot delete without permissions, skip cleanup
+				t.Logf("Cleanup: skipping static secret %s due to permission error (already deleted or no access)", name)
+				return
+			}
 		}
 
 		t.Logf("Cleanup: unexpected error deleting static secret %s: %v", name, err)

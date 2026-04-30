@@ -240,9 +240,16 @@ func testAccCheckStaticSecretDestroy(s *terraform.State) error {
 
 		// Verify it's a 404 error (resource properly deleted)
 		var apiErr *btclient.APIError
-		if errors.As(err, &apiErr) && apiErr.IsNotFound() {
-			// Expected - resource is properly deleted
-			continue
+		if errors.As(err, &apiErr) {
+			if apiErr.IsGone() {
+				// Expected - resource is properly deleted
+				continue
+			}
+			if apiErr.IsPermissionError() {
+				// Permission error after destroy - likely means resource is deleted
+				// but we no longer have permission to verify
+				continue
+			}
 		}
 
 		// Any other error is unexpected

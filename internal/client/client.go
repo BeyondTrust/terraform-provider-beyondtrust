@@ -60,6 +60,20 @@ func (e *APIError) IsNotFound() bool {
 	return e.StatusCode == http.StatusNotFound
 }
 
+// IsGone returns true if the error indicates the resource no longer exists
+// Only checks for 404 Not Found per HTTP semantics and OpenAPI schema
+func (e *APIError) IsGone() bool {
+	return e.StatusCode == http.StatusNotFound
+}
+
+// IsPermissionError returns true for 403 Forbidden or 401 Unauthorized
+// In cleanup contexts, permission errors can be treated as non-fatal since
+// we cannot delete resources we don't have permission to access
+func (e *APIError) IsPermissionError() bool {
+	return e.StatusCode == http.StatusForbidden ||
+		e.StatusCode == http.StatusUnauthorized
+}
+
 // IsConflict returns true if the error is a 409 Conflict
 func (e *APIError) IsConflict() bool {
 	return e.StatusCode == http.StatusConflict
@@ -290,13 +304,20 @@ func (c *Client) do(req *http.Request, requireCSRF bool) (*http.Response, error)
 func (c *Client) handleErrorResponse(resp *http.Response) error {
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return fmt.Errorf("HTTP %d: failed to read error response", resp.StatusCode)
+		return &APIError{
+			StatusCode: resp.StatusCode,
+			Message:    "failed to read error response",
+		}
 	}
 
 	var apiErr APIError
 	if err := json.Unmarshal(body, &apiErr); err != nil {
-		// If we can't parse the error, return the raw response
-		return fmt.Errorf("HTTP %d: %s", resp.StatusCode, string(body))
+		// If we can't parse the error, return the raw response as an APIError
+		// This ensures errors.As works and IsPermissionError() can check the status code
+		return &APIError{
+			StatusCode: resp.StatusCode,
+			Message:    string(body),
+		}
 	}
 
 	// Capture the HTTP status code
