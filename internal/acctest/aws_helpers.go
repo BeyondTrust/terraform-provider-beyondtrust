@@ -218,7 +218,7 @@ func SetupAWSTestRoles(t *testing.T) (roleARN1, roleARN2, externalID string, cle
 	}
 
 	// Create roles dynamically
-	role1 := CreateTestIAMRole(t, fmt.Sprintf("tf-acc-test-bt-%s", RandomString(8)))
+	role1 := CreateTestIAMRole(t, "tf-acc-test-bt-"+RandomString(8))
 	role2 := CreateTestIAMRole(t, fmt.Sprintf("tf-acc-test-bt-%s-2", RandomString(8)))
 
 	cleanup = func() {

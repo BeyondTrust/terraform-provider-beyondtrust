@@ -161,7 +161,7 @@ func (r *StaticSecretResource) Create(ctx context.Context, req resource.CreateRe
 
 	// Build the API path
 	name := data.Name.ValueString()
-	apiPath := r.client.BuildPath(fmt.Sprintf("/static/%s", name))
+	apiPath := r.client.BuildPath("/static/" + name)
 
 	// Add folder query parameter if parent folder is specified
 	parentFolder := ""
@@ -204,7 +204,7 @@ func (r *StaticSecretResource) Create(ctx context.Context, req resource.CreateRe
 		if err := r.updateTags(ctx, name, data.Folder.ValueString(), data.Tags); err != nil {
 			resp.Diagnostics.AddError(
 				"Error Setting Tags",
-				fmt.Sprintf("Secret created but failed to set tags: %s", err.Error()),
+				"Secret created but failed to set tags: "+err.Error(),
 			)
 			// Don't return here - secret was created successfully
 		}
@@ -238,7 +238,7 @@ func (r *StaticSecretResource) Read(ctx context.Context, req resource.ReadReques
 	err := r.client.Get(ctx, apiPath, query, &metadataResp)
 	if err != nil {
 		// Check if it's a 404 error using helper
-		if isNotFoundError(err.Error()) {
+		if isNotFoundError(err) {
 			// Secret no longer exists, remove from state
 			resp.State.RemoveResource(ctx)
 			return
@@ -285,7 +285,7 @@ func (r *StaticSecretResource) Update(ctx context.Context, req resource.UpdateRe
 	}
 
 	name := data.Name.ValueString()
-	apiPath := r.client.BuildPath(fmt.Sprintf("/static/%s", name))
+	apiPath := r.client.BuildPath("/static/" + name)
 
 	parentFolder := ""
 	if !data.Folder.IsNull() {
@@ -314,7 +314,7 @@ func (r *StaticSecretResource) Update(ctx context.Context, req resource.UpdateRe
 		if err != nil {
 			resp.Diagnostics.AddError(
 				"Error Updating Static Secret",
-				fmt.Sprintf("Could not update secret: %s", err.Error()),
+				"Could not update secret: "+err.Error(),
 			)
 			return
 		}
@@ -325,7 +325,7 @@ func (r *StaticSecretResource) Update(ctx context.Context, req resource.UpdateRe
 		if err := r.updateTags(ctx, name, data.Folder.ValueString(), data.Tags); err != nil {
 			resp.Diagnostics.AddError(
 				"Error Updating Tags",
-				fmt.Sprintf("Could not update secret tags: %s", err.Error()),
+				"Could not update secret tags: "+err.Error(),
 			)
 			return
 		}
@@ -339,7 +339,7 @@ func (r *StaticSecretResource) Update(ctx context.Context, req resource.UpdateRe
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error Reading Updated Secret",
-			fmt.Sprintf("Could not read secret after update: %s", err.Error()),
+			"Could not read secret after update: "+err.Error(),
 		)
 		return
 	}
@@ -370,7 +370,7 @@ func (r *StaticSecretResource) Delete(ctx context.Context, req resource.DeleteRe
 
 	// Build the API path
 	name := data.Name.ValueString()
-	apiPath := r.client.BuildPath(fmt.Sprintf("/static/%s", name))
+	apiPath := r.client.BuildPath("/static/" + name)
 
 	// Build query parameters using helper (includes parent folder and permanent flag)
 	parentFolder := ""
@@ -383,7 +383,7 @@ func (r *StaticSecretResource) Delete(ctx context.Context, req resource.DeleteRe
 	err := r.client.Delete(ctx, apiPath, query)
 	if err != nil {
 		// Ignore 404 errors (already deleted) using helper
-		if isNotFoundError(err.Error()) {
+		if isNotFoundError(err) {
 			return
 		}
 

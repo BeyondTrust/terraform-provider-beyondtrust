@@ -103,12 +103,12 @@ func RandomResourceName(prefix string) string {
 // RandomFolderPath generates a random folder path for testing.
 // Format: "tf-acc-test/{random}"
 func RandomFolderPath() string {
-	return fmt.Sprintf("tf-acc-test/%s", RandomString(8))
+	return "tf-acc-test/" + RandomString(8)
 }
 
 // RandomFolderName generates a random folder name for testing.
 func RandomFolderName() string {
-	return fmt.Sprintf("tf-acc-test-%s", RandomString(8))
+	return "tf-acc-test-" + RandomString(8)
 }
 
 // RandomSecretName generates a random secret name for testing.

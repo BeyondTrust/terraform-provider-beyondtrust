@@ -106,7 +106,7 @@ func (d *AwsIntegrationDataSource) Read(ctx context.Context, req datasource.Read
 
 	// Build the API path
 	name := data.Name.ValueString()
-	apiPath := d.client.BuildPath(fmt.Sprintf("/integrations/%s", name))
+	apiPath := d.client.BuildPath("/integrations/" + name)
 
 	// Get integration
 	var integrationResp AwsIntegrationDataSourceResponse
