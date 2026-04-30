@@ -11,7 +11,7 @@ import (
 	"testing"
 
 	"github.com/beyondtrust/terraform-provider-beyondtrust/internal/acctest"
-	"github.com/beyondtrust/terraform-provider-beyondtrust/internal/client"
+	btclient "github.com/beyondtrust/terraform-provider-beyondtrust/internal/client"
 	_ "github.com/beyondtrust/terraform-provider-beyondtrust/internal/provider"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
@@ -269,7 +269,7 @@ func testAccCheckFolderDestroy(s *terraform.State) error {
 		}
 
 		// Verify it's a 404 error (resource properly deleted)
-		var apiErr *client.APIError
+		var apiErr *btclient.APIError
 		if errors.As(err, &apiErr) && apiErr.IsNotFound() {
 			// Expected - resource is properly deleted
 			continue

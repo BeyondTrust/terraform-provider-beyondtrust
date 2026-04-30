@@ -1,3 +1,6 @@
+//go:build !acceptance
+// +build !acceptance
+
 package resources
 
 import (

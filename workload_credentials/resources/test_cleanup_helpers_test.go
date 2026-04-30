@@ -11,7 +11,7 @@ import (
 	"testing"
 
 	"github.com/beyondtrust/terraform-provider-beyondtrust/internal/acctest"
-	"github.com/beyondtrust/terraform-provider-beyondtrust/internal/client"
+	btclient "github.com/beyondtrust/terraform-provider-beyondtrust/internal/client"
 )
 
 // registerAwsIntegrationCleanup registers a cleanup function that attempts to delete
@@ -37,7 +37,7 @@ func registerAwsIntegrationCleanup(t *testing.T, name string) {
 			return
 		}
 
-		var apiErr *client.APIError
+		var apiErr *btclient.APIError
 		if errors.As(err, &apiErr) && apiErr.IsNotFound() {
 			// Expected - already deleted by Terraform
 			return
@@ -69,7 +69,7 @@ func registerAwsDynamicSecretCleanup(t *testing.T, path string) {
 			return
 		}
 
-		var apiErr *client.APIError
+		var apiErr *btclient.APIError
 		if errors.As(err, &apiErr) && apiErr.IsNotFound() {
 			// Expected - already deleted by Terraform
 			return
@@ -106,7 +106,7 @@ func registerFolderCleanup(t *testing.T, name, folder string) {
 			return
 		}
 
-		var apiErr *client.APIError
+		var apiErr *btclient.APIError
 		if errors.As(err, &apiErr) && apiErr.IsNotFound() {
 			// Expected - already deleted by Terraform
 			return
@@ -143,7 +143,7 @@ func registerStaticSecretCleanup(t *testing.T, name, folder string) {
 			return
 		}
 
-		var apiErr *client.APIError
+		var apiErr *btclient.APIError
 		if errors.As(err, &apiErr) && apiErr.IsNotFound() {
 			// Expected - already deleted by Terraform
 			return
