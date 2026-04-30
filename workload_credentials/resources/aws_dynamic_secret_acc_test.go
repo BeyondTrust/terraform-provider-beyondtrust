@@ -25,6 +25,10 @@ func TestAccAwsDynamicSecretResource_basic(t *testing.T) {
 	targetRoleArn := getTestTargetRoleArn(t)
 	externalId := acctest.RandomString(32)
 
+	// Register cleanup as safety net (LIFO order: secret cleaned up before integration)
+	registerAwsIntegrationCleanup(t, integrationName)
+	registerAwsDynamicSecretCleanup(t, dynamicSecretName)
+
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck:                 func() { acctest.PreCheck(t); acctest.PreCheckAWS(t) },
 		ProtoV6ProviderFactories: acctest.ProtoV6ProviderFactories,
@@ -77,6 +81,11 @@ func TestAccAwsDynamicSecretResource_inFolder(t *testing.T) {
 	targetRoleArn := getTestTargetRoleArn(t)
 	externalId := acctest.RandomString(32)
 
+	// Register cleanup as safety net (LIFO: secret → folder → integration)
+	registerAwsIntegrationCleanup(t, integrationName)
+	registerFolderCleanup(t, folderName, "")
+	registerAwsDynamicSecretCleanup(t, fmt.Sprintf("%s/%s", folderName, dynamicSecretName))
+
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck:                 func() { acctest.PreCheck(t); acctest.PreCheckAWS(t) },
 		ProtoV6ProviderFactories: acctest.ProtoV6ProviderFactories,
@@ -101,6 +110,10 @@ func TestAccAwsDynamicSecretResource_withPolicyArns(t *testing.T) {
 	roleArn := getTestRoleArn(t)
 	targetRoleArn := getTestTargetRoleArn(t)
 	externalId := acctest.RandomString(32)
+
+	// Register cleanup as safety net (LIFO order: secret cleaned up before integration)
+	registerAwsIntegrationCleanup(t, integrationName)
+	registerAwsDynamicSecretCleanup(t, dynamicSecretName)
 
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck:                 func() { acctest.PreCheck(t); acctest.PreCheckAWS(t) },
@@ -137,6 +150,10 @@ func TestAccAwsDynamicSecretResource_withInlinePolicy(t *testing.T) {
   ]
 }`
 
+	// Register cleanup as safety net (LIFO order: secret cleaned up before integration)
+	registerAwsIntegrationCleanup(t, integrationName)
+	registerAwsDynamicSecretCleanup(t, dynamicSecretName)
+
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck:                 func() { acctest.PreCheck(t); acctest.PreCheckAWS(t) },
 		ProtoV6ProviderFactories: acctest.ProtoV6ProviderFactories,
@@ -158,6 +175,10 @@ func TestAccAwsDynamicSecretResource_updateTTL(t *testing.T) {
 	roleArn := getTestRoleArn(t)
 	targetRoleArn := getTestTargetRoleArn(t)
 	externalId := acctest.RandomString(32)
+
+	// Register cleanup as safety net (LIFO order: secret cleaned up before integration)
+	registerAwsIntegrationCleanup(t, integrationName)
+	registerAwsDynamicSecretCleanup(t, dynamicSecretName)
 
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck:                 func() { acctest.PreCheck(t); acctest.PreCheckAWS(t) },

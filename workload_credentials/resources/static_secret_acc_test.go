@@ -22,6 +22,9 @@ func TestAccStaticSecretResource_basic(t *testing.T) {
 	secretName := acctest.RandomSecretName()
 	secretValue := acctest.RandomString(32)
 
+	// Register cleanup as safety net in case Terraform destroy fails
+	registerStaticSecretCleanup(t, secretName, "")
+
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck:                 func() { acctest.PreCheck(t) },
 		ProtoV6ProviderFactories: acctest.ProtoV6ProviderFactories,
@@ -67,6 +70,10 @@ func TestAccStaticSecretResource_inFolder(t *testing.T) {
 	secretName := acctest.RandomSecretName()
 	secretValue := acctest.RandomString(32)
 
+	// Register cleanup as safety net (LIFO: secret cleaned up before folder)
+	registerFolderCleanup(t, folderName, "")
+	registerStaticSecretCleanup(t, secretName, folderName)
+
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck:                 func() { acctest.PreCheck(t) },
 		ProtoV6ProviderFactories: acctest.ProtoV6ProviderFactories,
@@ -90,6 +97,9 @@ func TestAccStaticSecretResource_updateValue(t *testing.T) {
 	secretValue1 := acctest.RandomString(32)
 	secretValue2 := acctest.RandomString(32)
 	secretValue3 := acctest.RandomString(32)
+
+	// Register cleanup as safety net in case Terraform destroy fails
+	registerStaticSecretCleanup(t, secretName, "")
 
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck:                 func() { acctest.PreCheck(t) },
@@ -124,6 +134,9 @@ func TestAccStaticSecretResource_updateValue(t *testing.T) {
 func TestAccStaticSecretResource_withTags(t *testing.T) {
 	secretName := acctest.RandomSecretName()
 	secretValue := acctest.RandomString(32)
+
+	// Register cleanup as safety net in case Terraform destroy fails
+	registerStaticSecretCleanup(t, secretName, "")
 
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck:                 func() { acctest.PreCheck(t) },
@@ -162,6 +175,10 @@ func TestAccStaticSecretResource_nameImmutable(t *testing.T) {
 	secretName1 := acctest.RandomSecretName()
 	secretName2 := acctest.RandomSecretName()
 	secretValue := acctest.RandomString(32)
+
+	// Register cleanup for both secrets (name update creates a new resource)
+	registerStaticSecretCleanup(t, secretName1, "")
+	registerStaticSecretCleanup(t, secretName2, "")
 
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck:                 func() { acctest.PreCheck(t) },

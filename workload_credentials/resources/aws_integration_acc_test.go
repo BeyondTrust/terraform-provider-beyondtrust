@@ -34,6 +34,9 @@ func TestAccAwsIntegrationResource_basic(t *testing.T) {
 	roleArn := getTestRoleArn(t)
 	externalId := acctest.RandomString(32)
 
+	// Register cleanup as safety net in case Terraform destroy fails
+	registerAwsIntegrationCleanup(t, integrationName)
+
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck:                 func() { acctest.PreCheck(t); acctest.PreCheckAWS(t) },
 		ProtoV6ProviderFactories: acctest.ProtoV6ProviderFactories,
@@ -80,6 +83,9 @@ func TestAccAwsIntegrationResource_updateRole(t *testing.T) {
 	roleArn2 := getTestRoleArn2(t)
 	externalId := acctest.RandomString(32)
 
+	// Register cleanup as safety net in case Terraform destroy fails
+	registerAwsIntegrationCleanup(t, integrationName)
+
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck:                 func() { acctest.PreCheck(t); acctest.PreCheckAWS(t) },
 		ProtoV6ProviderFactories: acctest.ProtoV6ProviderFactories,
@@ -109,6 +115,9 @@ func TestAccAwsIntegrationResource_updateExternalId(t *testing.T) {
 	externalId1 := acctest.RandomString(32)
 	externalId2 := acctest.RandomString(32)
 
+	// Register cleanup as safety net in case Terraform destroy fails
+	registerAwsIntegrationCleanup(t, integrationName)
+
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck:                 func() { acctest.PreCheck(t); acctest.PreCheckAWS(t) },
 		ProtoV6ProviderFactories: acctest.ProtoV6ProviderFactories,
@@ -137,6 +146,10 @@ func TestAccAwsIntegrationResource_nameImmutable(t *testing.T) {
 	integrationName2 := acctest.RandomIntegrationName()
 	roleArn := getTestRoleArn(t)
 	externalId := acctest.RandomString(32)
+
+	// Register cleanup for both integrations (name update creates a new resource)
+	registerAwsIntegrationCleanup(t, integrationName1)
+	registerAwsIntegrationCleanup(t, integrationName2)
 
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck:                 func() { acctest.PreCheck(t); acctest.PreCheckAWS(t) },

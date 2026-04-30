@@ -26,6 +26,9 @@ func TestAccFolderResource_basic(t *testing.T) {
 
 	folderName := acctest.RandomFolderName()
 
+	// Register cleanup as safety net in case Terraform destroy fails
+	registerFolderCleanup(t, folderName, "")
+
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck:                 func() { acctest.PreCheck(t) },
 		ProtoV6ProviderFactories: acctest.ProtoV6ProviderFactories,
@@ -60,6 +63,9 @@ func TestAccFolderResource_update(t *testing.T) {
 	}
 
 	folderName := acctest.RandomFolderName()
+
+	// Register cleanup as safety net in case Terraform destroy fails
+	registerFolderCleanup(t, folderName, "")
 
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck:                 func() { acctest.PreCheck(t) },
@@ -108,6 +114,9 @@ func TestAccFolderResource_tags(t *testing.T) {
 	}
 
 	folderName := acctest.RandomFolderName()
+
+	// Register cleanup as safety net in case Terraform destroy fails
+	registerFolderCleanup(t, folderName, "")
 
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck:                 func() { acctest.PreCheck(t) },
@@ -159,6 +168,10 @@ func TestAccFolderResource_nested(t *testing.T) {
 
 	parentName := acctest.RandomFolderName()
 	childName := acctest.RandomFolderName()
+
+	// Register cleanup as safety net (LIFO: child cleaned up before parent)
+	registerFolderCleanup(t, parentName, "")
+	registerFolderCleanup(t, childName, parentName)
 
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck:                 func() { acctest.PreCheck(t) },
