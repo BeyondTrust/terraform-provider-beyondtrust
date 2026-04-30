@@ -2,6 +2,7 @@ package resources
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -140,7 +141,7 @@ func (r *AwsIntegrationResource) Create(ctx context.Context, req resource.Create
 
 	// Build the API path
 	name := data.Name.ValueString()
-	apiPath := r.client.BuildPath(fmt.Sprintf("/integrations/%s", name))
+	apiPath := r.client.BuildPath("/integrations/" + name)
 
 	// Build request body
 	createReq := AwsIntegrationCreateRequest{
@@ -165,8 +166,8 @@ func (r *AwsIntegrationResource) Create(ctx context.Context, req resource.Create
 		}
 
 		// Only retry on credential test failures (likely IAM propagation delay)
-		if !strings.Contains(err.Error(), "aws_integration_test_failed") &&
-			!strings.Contains(err.Error(), "failed to validate AWS integration credentials") {
+		var apiErr *client.APIError
+		if !errors.As(err, &apiErr) || !apiErr.IsAWSCredentialValidationError() {
 			break
 		}
 
@@ -215,14 +216,14 @@ func (r *AwsIntegrationResource) Read(ctx context.Context, req resource.ReadRequ
 
 	// Build the API path
 	name := data.Name.ValueString()
-	apiPath := r.client.BuildPath(fmt.Sprintf("/integrations/%s", name))
+	apiPath := r.client.BuildPath("/integrations/" + name)
 
 	// Get integration
 	var integrationResp AwsIntegrationResponse
 	err := r.client.Get(ctx, apiPath, nil, &integrationResp)
 	if err != nil {
-		// Check if it's a 404 error
-		if strings.Contains(err.Error(), "404") || strings.Contains(err.Error(), "not found") {
+		// Check if it's a 404 error using typed error handling
+		if isNotFoundError(err) {
 			// Integration no longer exists, remove from state
 			resp.State.RemoveResource(ctx)
 			return
@@ -261,7 +262,7 @@ func (r *AwsIntegrationResource) Update(ctx context.Context, req resource.Update
 
 	// Build the API path
 	name := data.Name.ValueString()
-	apiPath := r.client.BuildPath(fmt.Sprintf("/integrations/%s", name))
+	apiPath := r.client.BuildPath("/integrations/" + name)
 
 	// Build update request with merge patch semantics
 	updateReq := AwsIntegrationUpdateRequest{
@@ -295,7 +296,7 @@ func (r *AwsIntegrationResource) Update(ctx context.Context, req resource.Update
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error Reading Updated AWS Integration",
-			fmt.Sprintf("Could not read AWS integration after update: %s", err.Error()),
+			"Could not read AWS integration after update: "+err.Error(),
 		)
 		return
 	}
@@ -322,13 +323,13 @@ func (r *AwsIntegrationResource) Delete(ctx context.Context, req resource.Delete
 
 	// Build the API path
 	name := data.Name.ValueString()
-	apiPath := r.client.BuildPath(fmt.Sprintf("/integrations/%s", name))
+	apiPath := r.client.BuildPath("/integrations/" + name)
 
 	// Delete the integration
 	err := r.client.Delete(ctx, apiPath, nil)
 	if err != nil {
-		// Ignore 404 errors (already deleted)
-		if strings.Contains(err.Error(), "404") || strings.Contains(err.Error(), "not found") {
+		// Ignore 404 errors (already deleted) using typed error handling
+		if isNotFoundError(err) {
 			return
 		}
 

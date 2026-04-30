@@ -14,6 +14,8 @@ linters:
     - gocritic
     - nilerr
     - nolintlint
+    - perfsprint    # Catches unnecessary fmt.Sprintf/Errorf usage
+    - errorlint     # Validates Go 1.13+ error wrapping patterns
 
   disable:
     - exhaustive

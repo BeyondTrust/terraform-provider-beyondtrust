@@ -1,8 +1,12 @@
 package resources
 
 import (
+	"errors"
+	"fmt"
+	"net/http"
 	"testing"
 
+	"github.com/beyondtrust/terraform-provider-beyondtrust/internal/client"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -347,63 +351,104 @@ func TestBuildQueryParameters(t *testing.T) {
 	}
 }
 
-// TestIsNotFoundError tests 404 error detection
+// TestIsNotFoundError tests 404 error detection (both typed and fallback paths)
 // Used by: all resources (for state cleanup)
 func TestIsNotFoundError(t *testing.T) {
 	tests := []struct {
 		name        string
-		errorMsg    string
-		is404       bool
+		err         error
+		want        bool
 		description string
 	}{
+		// Typed APIError path tests
 		{
-			name:        "explicit 404 status",
-			errorMsg:    "HTTP 404: resource not found",
-			is404:       true,
-			description: "Should detect 404 in error message",
+			name: "typed APIError with 404",
+			err: &client.APIError{
+				Message:    "resource not found",
+				StatusCode: http.StatusNotFound,
+			},
+			want:        true,
+			description: "Typed APIError with 404 should be detected",
 		},
 		{
-			name:        "not found phrase",
-			errorMsg:    "folder not found",
-			is404:       true,
-			description: "Should detect 'not found' phrase",
+			name: "wrapped APIError with 404",
+			err: fmt.Errorf("failed to get resource: %w", &client.APIError{
+				Message:    "resource not found",
+				StatusCode: http.StatusNotFound,
+			}),
+			want:        true,
+			description: "Wrapped APIError with 404 should be detected via errors.As",
 		},
 		{
-			name:        "case insensitive",
-			errorMsg:    "Resource NOT FOUND",
-			is404:       true,
-			description: "Should detect case-insensitive",
+			name: "typed APIError with 401",
+			err: &client.APIError{
+				Message:    "unauthorized",
+				StatusCode: http.StatusUnauthorized,
+			},
+			want:        false,
+			description: "Typed APIError with non-404 status should not be detected",
 		},
 		{
-			name:        "different error",
-			errorMsg:    "permission denied",
-			is404:       false,
-			description: "Should not detect non-404 errors",
+			name: "typed APIError with 500",
+			err: &client.APIError{
+				Message:    "internal server error",
+				StatusCode: http.StatusInternalServerError,
+			},
+			want:        false,
+			description: "Typed APIError with server error should not be detected",
+		},
+
+		// Fallback string-based path tests
+		{
+			name:        "errors.New with 404 in message",
+			err:         errors.New("HTTP 404: resource not found"),
+			want:        true,
+			description: "String error with '404' should be caught by fallback",
 		},
 		{
-			name:        "500 error",
-			errorMsg:    "HTTP 500: internal server error",
-			is404:       false,
-			description: "Should not detect other HTTP errors",
+			name:        "errors.New with 'not found' phrase",
+			err:         errors.New("folder not found"),
+			want:        true,
+			description: "String error with 'not found' should be caught by fallback",
 		},
 		{
-			name:        "network error",
-			errorMsg:    "connection refused",
-			is404:       false,
-			description: "Should not detect network errors",
+			name:        "errors.New case insensitive",
+			err:         errors.New("Resource NOT FOUND"),
+			want:        true,
+			description: "Fallback should be case-insensitive",
 		},
 		{
-			name:        "empty error",
-			errorMsg:    "",
-			is404:       false,
-			description: "Empty error should not be 404",
+			name:        "errors.New different error",
+			err:         errors.New("permission denied"),
+			want:        false,
+			description: "Non-404 string errors should not be detected",
+		},
+		{
+			name:        "errors.New 500 error",
+			err:         errors.New("HTTP 500: internal server error"),
+			want:        false,
+			description: "Other HTTP errors should not be detected",
+		},
+		{
+			name:        "errors.New network error",
+			err:         errors.New("connection refused"),
+			want:        false,
+			description: "Network errors should not be detected",
+		},
+
+		// Edge cases
+		{
+			name:        "nil error",
+			err:         nil,
+			want:        false,
+			description: "Nil error should return false",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := isNotFoundError(tt.errorMsg)
-			assert.Equal(t, tt.is404, result, tt.description)
+			result := isNotFoundError(tt.err)
+			assert.Equal(t, tt.want, result, tt.description)
 		})
 	}
 }
