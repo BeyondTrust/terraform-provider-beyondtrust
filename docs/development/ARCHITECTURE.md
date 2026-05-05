@@ -24,7 +24,7 @@ The BeyondTrust Terraform Provider enables infrastructure-as-code management of 
 
 **High-Level System Diagram:**
 
-```
+```text
 ┌─────────────────────────────────────────────────────────────┐
 │                    Terraform CLI                             │
 │  (terraform plan/apply/destroy)                              │
@@ -65,7 +65,7 @@ The BeyondTrust Terraform Provider enables infrastructure-as-code management of 
 
 ## Package Organization
 
-```
+```text
 terraform-provider-beyondtrust/
 ├── main.go                          # Provider entry point
 │
@@ -287,7 +287,7 @@ type FolderResourceModel struct {
 
 ### Initialization Flow
 
-```
+```text
 1. Terraform CLI invokes provider binary
    ↓
 2. main.go calls provider.New(version)()
@@ -306,7 +306,7 @@ type FolderResourceModel struct {
 
 ### Request Flow
 
-```
+```text
 Terraform plan/apply
    ↓
 Resource CRUD method (Create/Read/Update/Delete)
@@ -534,7 +534,7 @@ Schema-level validation via plan modifiers:
 
 ### Test Pyramid
 
-```
+```text
                      ▲
                     ╱│╲
                    ╱ │ ╲
@@ -746,7 +746,7 @@ All secrets marked as sensitive in schema:
 }
 ```
 
-### Ephemeral Resources
+### Secret Handling via Ephemeral Resources
 
 Secrets retrieved via ephemeral resources:
 - Never persisted to state files

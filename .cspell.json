@@ -40,6 +40,8 @@
         "goreleaser",
         "stringdefault",
         "tflog",
-        "Fatalf"
+        "Fatalf",
+        "Errorf",
+        "Unmarshal"
     ]
 }
