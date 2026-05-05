@@ -52,6 +52,10 @@ func (e *APIError) Error() string {
 	if e.Code != "" {
 		return fmt.Sprintf("%s (code: %s)", e.Message, e.Code)
 	}
+	// Include status code for unstructured responses (when there's no error code)
+	if e.StatusCode >= 400 {
+		return fmt.Sprintf("%s (status: %d)", e.Message, e.StatusCode)
+	}
 	return e.Message
 }
 
