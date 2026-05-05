@@ -88,7 +88,7 @@ unset TF_CLI_CONFIG_FILE
    }
 
    provider "beyondtrust" {
-     api_url      = "https://api.workload-credentials.example.com"
+     api_url      = "https://api.beyondtrust.io"
      access_token = var.beyondtrust_access_token
      site_id      = var.beyondtrust_site_id
    }
