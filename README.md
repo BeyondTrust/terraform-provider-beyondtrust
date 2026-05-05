@@ -11,7 +11,7 @@
 
 The [BeyondTrust Workload Credentials Provider](https://registry.terraform.io/providers/beyondtrust/beyondtrust/latest/docs)
 allows [Terraform](https://terraform.io) to manage secrets and credentials for
-[BeyondTrust Workload Credentials](https://www.beyondtrust.com/workload-credentials).
+[BeyondTrust Workload Credentials](https://docs.beyondtrust.com/bt-docs/docs/secrets-on-pathfinder).
 This provider enables infrastructure-as-code management of secrets, folders, AWS integrations, and dynamic credential templates.
 
 See the Workload Credentials Provider documentation in the Terraform Registry as well as your BeyondTrust instance documentation for more information on supported endpoints and parameters.
@@ -175,8 +175,8 @@ For complete examples, see:
 Full documentation is available on the [Terraform Registry](https://registry.terraform.io/providers/beyondtrust/beyondtrust/latest/docs).
 
 For development documentation, see:
-- [DEVELOPMENT.md](DEVELOPMENT.md) - Local development setup and workflow
-- [TESTING.md](TESTING.md) - Running tests
+- [DEVELOPMENT.md](./docs/development/DEVELOPMENT.md) - Local development setup and workflow
+- [TESTING.md](./docs/development/TESTING.md) - Running tests
 - [CONTRIBUTING.md](CONTRIBUTING.md) - Contribution guidelines
 
 ## Development

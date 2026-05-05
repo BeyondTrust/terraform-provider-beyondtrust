@@ -10,9 +10,9 @@ The BeyondTrust Workload Credentials Terraform Provider is a Terraform integrati
 
 ### Development Resources
 
-- **[DEVELOPMENT.md](DEVELOPMENT.md)** - Local development setup and workflow
-- **[TESTING.md](TESTING.md)** - Running unit and acceptance tests
-- **[QUICKSTART.md](QUICKSTART.md)** - Quick start guide for using the provider
+- **[DEVELOPMENT.md](./docs/development/DEVELOPMENT.md)** - Local development setup and workflow
+- **[TESTING.md](./docs/development/TESTING.md)** - Running unit and acceptance tests
+- **[QUICKSTART.md](./docs/QUICKSTART.md)** - Quick start guide for using the provider
 - **[README.md](README.md)** - Provider documentation and usage examples
 
 ## How can I Contribute?
