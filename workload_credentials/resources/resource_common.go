@@ -153,3 +153,37 @@ func updateResourceTags(ctx context.Context, client *client.Client, resourcePath
 	// Use PUT to update tags
 	return client.Put(ctx, apiPath, query, tagsMap)
 }
+
+// convertTerraformListToStrings converts a Terraform types.List to a Go []string.
+// Returns an empty slice if the list is null or empty.
+func convertTerraformListToStrings(list types.List) []string {
+	if list.IsNull() || len(list.Elements()) == 0 {
+		return []string{}
+	}
+
+	result := make([]string, 0, len(list.Elements()))
+	for _, elem := range list.Elements() {
+		if strVal, ok := elem.(types.String); ok {
+			result = append(result, strVal.ValueString())
+		}
+	}
+	return result
+}
+
+// convertTerraformMapToStringPointers converts a Terraform types.Map to a Go map[string]*string.
+// This is useful for API fields that use pointers to distinguish between null and empty values.
+// Returns an empty map if the input is null or empty.
+func convertTerraformMapToStringPointers(m types.Map) map[string]*string {
+	if m.IsNull() || len(m.Elements()) == 0 {
+		return map[string]*string{}
+	}
+
+	result := make(map[string]*string)
+	for k, v := range m.Elements() {
+		if strVal, ok := v.(types.String); ok {
+			val := strVal.ValueString()
+			result[k] = &val
+		}
+	}
+	return result
+}

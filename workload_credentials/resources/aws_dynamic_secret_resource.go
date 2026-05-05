@@ -259,12 +259,7 @@ func (r *AwsDynamicSecretResource) Create(ctx context.Context, req resource.Crea
 	}
 
 	if !data.PolicyArns.IsNull() && len(data.PolicyArns.Elements()) > 0 {
-		policyArns := make([]string, 0, len(data.PolicyArns.Elements()))
-		for _, elem := range data.PolicyArns.Elements() {
-			if strVal, ok := elem.(types.String); ok {
-				policyArns = append(policyArns, strVal.ValueString())
-			}
-		}
+		policyArns := convertTerraformListToStrings(data.PolicyArns)
 		createReq.PolicyArns = &policyArns
 	}
 
@@ -274,23 +269,12 @@ func (r *AwsDynamicSecretResource) Create(ctx context.Context, req resource.Crea
 	}
 
 	if !data.Groups.IsNull() && len(data.Groups.Elements()) > 0 {
-		groups := make([]string, 0, len(data.Groups.Elements()))
-		for _, elem := range data.Groups.Elements() {
-			if strVal, ok := elem.(types.String); ok {
-				groups = append(groups, strVal.ValueString())
-			}
-		}
+		groups := convertTerraformListToStrings(data.Groups)
 		createReq.Groups = &groups
 	}
 
 	if !data.AwsTags.IsNull() && len(data.AwsTags.Elements()) > 0 {
-		awsTags := make(map[string]*string)
-		for k, v := range data.AwsTags.Elements() {
-			if strVal, ok := v.(types.String); ok {
-				val := strVal.ValueString()
-				awsTags[k] = &val
-			}
-		}
+		awsTags := convertTerraformMapToStringPointers(data.AwsTags)
 		createReq.AwsTags = &awsTags
 	}
 
@@ -464,12 +448,7 @@ func (r *AwsDynamicSecretResource) Update(ctx context.Context, req resource.Upda
 	}
 
 	if !data.PolicyArns.IsNull() {
-		policyArns := make([]string, 0, len(data.PolicyArns.Elements()))
-		for _, elem := range data.PolicyArns.Elements() {
-			if strVal, ok := elem.(types.String); ok {
-				policyArns = append(policyArns, strVal.ValueString())
-			}
-		}
+		policyArns := convertTerraformListToStrings(data.PolicyArns)
 		updateReq.PolicyArns = &policyArns
 	}
 
@@ -479,23 +458,12 @@ func (r *AwsDynamicSecretResource) Update(ctx context.Context, req resource.Upda
 	}
 
 	if !data.Groups.IsNull() {
-		groups := make([]string, 0, len(data.Groups.Elements()))
-		for _, elem := range data.Groups.Elements() {
-			if strVal, ok := elem.(types.String); ok {
-				groups = append(groups, strVal.ValueString())
-			}
-		}
+		groups := convertTerraformListToStrings(data.Groups)
 		updateReq.Groups = &groups
 	}
 
 	if !data.AwsTags.IsNull() {
-		awsTags := make(map[string]*string)
-		for k, v := range data.AwsTags.Elements() {
-			if strVal, ok := v.(types.String); ok {
-				val := strVal.ValueString()
-				awsTags[k] = &val
-			}
-		}
+		awsTags := convertTerraformMapToStringPointers(data.AwsTags)
 		updateReq.AwsTags = &awsTags
 	}
 

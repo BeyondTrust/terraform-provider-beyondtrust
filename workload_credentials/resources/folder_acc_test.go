@@ -4,12 +4,17 @@
 package resources_test
 
 import (
+	"context"
+	"errors"
 	"fmt"
+	"net/url"
 	"testing"
 
 	"github.com/beyondtrust/terraform-provider-beyondtrust/internal/acctest"
+	btclient "github.com/beyondtrust/terraform-provider-beyondtrust/internal/client"
 	_ "github.com/beyondtrust/terraform-provider-beyondtrust/internal/provider"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/terraform"
 )
 
 func TestAccFolderResource_basic(t *testing.T) {
@@ -21,9 +26,13 @@ func TestAccFolderResource_basic(t *testing.T) {
 
 	folderName := acctest.RandomFolderName()
 
+	// Register cleanup as safety net in case Terraform destroy fails
+	registerFolderCleanup(t, folderName, "")
+
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck:                 func() { acctest.PreCheck(t) },
 		ProtoV6ProviderFactories: acctest.ProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckFolderDestroy,
 		Steps: []resource.TestStep{
 			// Step 1: Create folder
 			{
@@ -55,9 +64,13 @@ func TestAccFolderResource_update(t *testing.T) {
 
 	folderName := acctest.RandomFolderName()
 
+	// Register cleanup as safety net in case Terraform destroy fails
+	registerFolderCleanup(t, folderName, "")
+
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck:                 func() { acctest.PreCheck(t) },
 		ProtoV6ProviderFactories: acctest.ProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckFolderDestroy,
 		Steps: []resource.TestStep{
 			// Step 1: Create with tags
 			{
@@ -102,9 +115,13 @@ func TestAccFolderResource_tags(t *testing.T) {
 
 	folderName := acctest.RandomFolderName()
 
+	// Register cleanup as safety net in case Terraform destroy fails
+	registerFolderCleanup(t, folderName, "")
+
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck:                 func() { acctest.PreCheck(t) },
 		ProtoV6ProviderFactories: acctest.ProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckFolderDestroy,
 		Steps: []resource.TestStep{
 			// Step 1: Create with tags
 			{
@@ -152,9 +169,14 @@ func TestAccFolderResource_nested(t *testing.T) {
 	parentName := acctest.RandomFolderName()
 	childName := acctest.RandomFolderName()
 
+	// Register cleanup as safety net (LIFO: child cleaned up before parent)
+	registerFolderCleanup(t, parentName, "")
+	registerFolderCleanup(t, childName, parentName)
+
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck:                 func() { acctest.PreCheck(t) },
 		ProtoV6ProviderFactories: acctest.ProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckFolderDestroy,
 		Steps: []resource.TestStep{
 			{
 				Config: testAccFolderConfig_nested(cfg, parentName, childName),
@@ -208,4 +230,61 @@ resource "beyondtrust_workload_credentials_folder" "child" {
   folder = beyondtrust_workload_credentials_folder.parent.name
 }
 `, parentName, childName)
+}
+
+func testAccCheckFolderDestroy(s *terraform.State) error {
+	// Create a test client to verify resources are destroyed
+	client, err := acctest.NewTestClient()
+	if err != nil {
+		return fmt.Errorf("failed to create test client: %w", err)
+	}
+
+	for _, rs := range s.RootModule().Resources {
+		if rs.Type != "beyondtrust_workload_credentials_folder" {
+			continue
+		}
+
+		// Get the folder name and parent folder from state
+		name := rs.Primary.Attributes["name"]
+		folder := rs.Primary.Attributes["folder"]
+
+		if name == "" {
+			return fmt.Errorf("folder name not found in state")
+		}
+
+		// Build API path and query parameters
+		apiPath := client.BuildPath(fmt.Sprintf("/folders/%s/metadata", name))
+		query := url.Values{}
+		if folder != "" {
+			query.Set("folder", folder)
+		}
+
+		// Try to fetch the folder - should return 404 if properly deleted
+		var result interface{}
+		err := client.Get(context.Background(), apiPath, query, &result)
+
+		// If no error, resource still exists - test should fail
+		if err == nil {
+			return fmt.Errorf("folder %s still exists after destroy", name)
+		}
+
+		// Verify it's a 404 error (resource properly deleted)
+		var apiErr *btclient.APIError
+		if errors.As(err, &apiErr) {
+			if apiErr.IsGone() {
+				// Expected - resource is properly deleted
+				continue
+			}
+			if apiErr.IsPermissionError() {
+				// Permission error after destroy - likely means resource is deleted
+				// but we no longer have permission to verify
+				continue
+			}
+		}
+
+		// Any other error is unexpected
+		return fmt.Errorf("unexpected error checking folder deletion: %w", err)
+	}
+
+	return nil
 }
