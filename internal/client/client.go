@@ -65,14 +65,11 @@ func (e *APIError) IsNotFound() bool {
 }
 
 // IsGone returns true if the error indicates the resource no longer exists
-// Only checks for 404 Not Found per HTTP semantics and OpenAPI schema
 func (e *APIError) IsGone() bool {
 	return e.StatusCode == http.StatusNotFound
 }
 
 // IsPermissionError returns true for 403 Forbidden or 401 Unauthorized
-// In cleanup contexts, permission errors can be treated as non-fatal since
-// we cannot delete resources we don't have permission to access
 func (e *APIError) IsPermissionError() bool {
 	return e.StatusCode == http.StatusForbidden ||
 		e.StatusCode == http.StatusUnauthorized
@@ -317,7 +314,6 @@ func (c *Client) handleErrorResponse(resp *http.Response) error {
 	var apiErr APIError
 	if err := json.Unmarshal(body, &apiErr); err != nil {
 		// If we can't parse the error, return the raw response as an APIError
-		// This ensures errors.As works and IsPermissionError() can check the status code
 		return &APIError{
 			StatusCode: resp.StatusCode,
 			Message:    string(body),
