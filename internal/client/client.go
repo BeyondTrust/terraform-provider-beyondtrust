@@ -52,12 +52,27 @@ func (e *APIError) Error() string {
 	if e.Code != "" {
 		return fmt.Sprintf("%s (code: %s)", e.Message, e.Code)
 	}
+	// Include status code for unstructured responses (when there's no error code)
+	if e.StatusCode >= 400 {
+		return fmt.Sprintf("%s (status: %d)", e.Message, e.StatusCode)
+	}
 	return e.Message
 }
 
 // IsNotFound returns true if the error is a 404 Not Found
 func (e *APIError) IsNotFound() bool {
 	return e.StatusCode == http.StatusNotFound
+}
+
+// IsGone returns true if the error indicates the resource no longer exists
+func (e *APIError) IsGone() bool {
+	return e.StatusCode == http.StatusNotFound
+}
+
+// IsPermissionError returns true for 403 Forbidden or 401 Unauthorized
+func (e *APIError) IsPermissionError() bool {
+	return e.StatusCode == http.StatusForbidden ||
+		e.StatusCode == http.StatusUnauthorized
 }
 
 // IsConflict returns true if the error is a 409 Conflict
@@ -290,13 +305,19 @@ func (c *Client) do(req *http.Request, requireCSRF bool) (*http.Response, error)
 func (c *Client) handleErrorResponse(resp *http.Response) error {
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return fmt.Errorf("HTTP %d: failed to read error response", resp.StatusCode)
+		return &APIError{
+			StatusCode: resp.StatusCode,
+			Message:    "failed to read error response",
+		}
 	}
 
 	var apiErr APIError
 	if err := json.Unmarshal(body, &apiErr); err != nil {
-		// If we can't parse the error, return the raw response
-		return fmt.Errorf("HTTP %d: %s", resp.StatusCode, string(body))
+		// If we can't parse the error, return the raw response as an APIError
+		return &APIError{
+			StatusCode: resp.StatusCode,
+			Message:    string(body),
+		}
 	}
 
 	// Capture the HTTP status code

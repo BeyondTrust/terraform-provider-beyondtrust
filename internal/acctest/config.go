@@ -76,3 +76,22 @@ provider "beyondtrust" {
 	config += "}\n"
 	return config
 }
+
+// NewTestClient creates a new API client for acceptance testing.
+// This is useful for destroy verification checks in acceptance tests.
+func NewTestClient() (*client.Client, error) {
+	cfg, err := LoadTestConfig()
+	if err != nil {
+		return nil, fmt.Errorf("failed to load test config: %w", err)
+	}
+
+	clientCfg := &client.Config{
+		BaseURL:     cfg.APIURL,
+		AccessToken: cfg.AccessToken,
+		SiteID:      cfg.SiteID,
+		APIVersion:  cfg.APIVersion,
+		Timeout:     "30s",
+	}
+
+	return client.NewClient(clientCfg)
+}

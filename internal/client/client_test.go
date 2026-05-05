@@ -440,7 +440,7 @@ func TestHandleErrorResponse_StructuredJSON(t *testing.T) {
 			responseBody: map[string]interface{}{
 				"message": "Resource not found",
 			},
-			wantErrMsg: "Resource not found",
+			wantErrMsg: "Resource not found (status: 404)",
 		},
 	}
 
@@ -490,8 +490,8 @@ func TestHandleErrorResponse_UnstructuredJSON(t *testing.T) {
 	var result map[string]string
 	err = client.DoRequest(context.Background(), "GET", "/test", nil, nil, &result)
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "500")
 	assert.Contains(t, err.Error(), "Internal Server Error")
+	assert.Contains(t, err.Error(), "status: 500")
 }
 
 // TestValidateSession_Success validates successful session validation.
