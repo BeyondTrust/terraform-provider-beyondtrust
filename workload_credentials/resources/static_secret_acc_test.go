@@ -4,19 +4,26 @@
 package resources_test
 
 import (
+	"context"
+	"errors"
 	"fmt"
+	"net/url"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 
 	"github.com/beyondtrust/terraform-provider-beyondtrust/internal/acctest"
+	btclient "github.com/beyondtrust/terraform-provider-beyondtrust/internal/client"
 	_ "github.com/beyondtrust/terraform-provider-beyondtrust/internal/provider"
 )
 
 func TestAccStaticSecretResource_basic(t *testing.T) {
 	secretName := acctest.RandomSecretName()
 	secretValue := acctest.RandomString(32)
+
+	// Register cleanup as safety net in case Terraform destroy fails
+	registerStaticSecretCleanup(t, secretName, "")
 
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck:                 func() { acctest.PreCheck(t) },
@@ -63,6 +70,10 @@ func TestAccStaticSecretResource_inFolder(t *testing.T) {
 	secretName := acctest.RandomSecretName()
 	secretValue := acctest.RandomString(32)
 
+	// Register cleanup as safety net (LIFO: secret cleaned up before folder)
+	registerFolderCleanup(t, folderName, "")
+	registerStaticSecretCleanup(t, secretName, folderName)
+
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck:                 func() { acctest.PreCheck(t) },
 		ProtoV6ProviderFactories: acctest.ProtoV6ProviderFactories,
@@ -86,6 +97,9 @@ func TestAccStaticSecretResource_updateValue(t *testing.T) {
 	secretValue1 := acctest.RandomString(32)
 	secretValue2 := acctest.RandomString(32)
 	secretValue3 := acctest.RandomString(32)
+
+	// Register cleanup as safety net in case Terraform destroy fails
+	registerStaticSecretCleanup(t, secretName, "")
 
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck:                 func() { acctest.PreCheck(t) },
@@ -120,6 +134,9 @@ func TestAccStaticSecretResource_updateValue(t *testing.T) {
 func TestAccStaticSecretResource_withTags(t *testing.T) {
 	secretName := acctest.RandomSecretName()
 	secretValue := acctest.RandomString(32)
+
+	// Register cleanup as safety net in case Terraform destroy fails
+	registerStaticSecretCleanup(t, secretName, "")
 
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck:                 func() { acctest.PreCheck(t) },
@@ -159,6 +176,10 @@ func TestAccStaticSecretResource_nameImmutable(t *testing.T) {
 	secretName2 := acctest.RandomSecretName()
 	secretValue := acctest.RandomString(32)
 
+	// Register cleanup for both secrets (name update creates a new resource)
+	registerStaticSecretCleanup(t, secretName1, "")
+	registerStaticSecretCleanup(t, secretName2, "")
+
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck:                 func() { acctest.PreCheck(t) },
 		ProtoV6ProviderFactories: acctest.ProtoV6ProviderFactories,
@@ -182,18 +203,57 @@ func TestAccStaticSecretResource_nameImmutable(t *testing.T) {
 }
 
 func testAccCheckStaticSecretDestroy(s *terraform.State) error {
-	// TODO: Implement actual destroy check by querying the API
-	// For now, we'll just verify the resource is no longer in state
+	// Create a test client to verify resources are destroyed
+	client, err := acctest.NewTestClient()
+	if err != nil {
+		return fmt.Errorf("failed to create test client: %w", err)
+	}
+
 	for _, rs := range s.RootModule().Resources {
 		if rs.Type != "beyondtrust_workload_credentials_static_secret" {
 			continue
 		}
 
-		// In a real implementation, you would:
-		// 1. Get the client from the provider
-		// 2. Try to fetch the secret by path
-		// 3. Verify it returns a 404 or is marked as deleted
-		_ = rs.Primary.Attributes["path"]
+		// Get the secret name and folder from state
+		name := rs.Primary.Attributes["name"]
+		folder := rs.Primary.Attributes["folder"]
+
+		if name == "" {
+			return fmt.Errorf("static secret name not found in state")
+		}
+
+		// Build API path and query parameters
+		apiPath := client.BuildPath(fmt.Sprintf("/static/%s", name))
+		query := url.Values{}
+		if folder != "" {
+			query.Set("folder", folder)
+		}
+
+		// Try to fetch the static secret - should return 404 if properly deleted
+		var result interface{}
+		err := client.Get(context.Background(), apiPath, query, &result)
+
+		// If no error, resource still exists - test should fail
+		if err == nil {
+			return fmt.Errorf("static secret %s still exists after destroy", name)
+		}
+
+		// Verify it's a 404 error (resource properly deleted)
+		var apiErr *btclient.APIError
+		if errors.As(err, &apiErr) {
+			if apiErr.IsGone() {
+				// Expected - resource is properly deleted
+				continue
+			}
+			if apiErr.IsPermissionError() {
+				// Permission error after destroy - likely means resource is deleted
+				// but we no longer have permission to verify
+				continue
+			}
+		}
+
+		// Any other error is unexpected
+		return fmt.Errorf("unexpected error checking static secret deletion: %w", err)
 	}
 
 	return nil
