@@ -88,13 +88,13 @@ unset TF_CLI_CONFIG_FILE
    }
 
    provider "beyondtrust" {
-     api_url      = "https://your-instance.beyondtrust.com"
-     client_id    = var.client_id
-     client_secret = var.client_secret
+     api_url      = "https://api.beyondtrust.io"
+     access_token = var.beyondtrust_access_token
+     site_id      = var.beyondtrust_site_id
    }
 
-   data "beyondtrust_secret" "example" {
-     path = "my-safe/my-secret"
+   resource "beyondtrust_workload_credentials_folder" "example" {
+     name = "my-test-folder"
    }
    ```
 
@@ -232,9 +232,9 @@ make test-coverage-html  # Opens HTML report
 Acceptance tests run against a real BeyondTrust instance. Set the required environment variables:
 
 ```bash
-export BEYONDTRUST_API_URL="https://your-instance.beyondtrust.com"
-export BEYONDTRUST_CLIENT_ID="your-client-id"
-export BEYONDTRUST_CLIENT_SECRET="your-client-secret"
+export BEYONDTRUST_API_URL="https://api.beyondtrust.io"
+export BEYONDTRUST_ACCESS_TOKEN="your-access-token"
+export BEYONDTRUST_SITE_ID="your-site-id"
 
 make test-acc
 ```
