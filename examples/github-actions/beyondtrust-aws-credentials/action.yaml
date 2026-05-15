@@ -83,7 +83,7 @@ runs:
           -H "X-BT-Site-ID: $SITE_ID" \
           -H "X-BT-Role: $ROLE" \
           -H "X-BT-Auth-Type: CUSTOM-IDP" \
-          -H "bt-secrets-api-version: 2026-02-16" \
+          -H "bt-secrets-api-version: 2026-04-28" \
           "$URL")
 
         HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)

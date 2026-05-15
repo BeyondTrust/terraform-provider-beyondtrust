@@ -29,7 +29,7 @@ func registerAwsIntegrationCleanup(t *testing.T, name string) {
 			return
 		}
 
-		apiPath := client.BuildPath(fmt.Sprintf("/integrations/%s", name))
+		apiPath := client.BuildPath(fmt.Sprintf("/integrations/aws/%s", name))
 		err = client.Delete(context.Background(), apiPath, nil)
 
 		if err == nil {

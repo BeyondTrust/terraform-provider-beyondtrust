@@ -192,7 +192,7 @@ func testAccCheckAwsIntegrationDestroy(s *terraform.State) error {
 		}
 
 		// Try to fetch the integration - should return 404 if properly deleted
-		apiPath := client.BuildPath(fmt.Sprintf("/integrations/%s", name))
+		apiPath := client.BuildPath(fmt.Sprintf("/integrations/aws/%s", name))
 		var result interface{}
 		err := client.Get(context.Background(), apiPath, nil, &result)
 
