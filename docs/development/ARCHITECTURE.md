@@ -164,7 +164,7 @@ type BeyondTrustProviderModel struct {
     ApiUrl         types.String  // Base API URL
     AccessToken    types.String  // Bearer token (sensitive)
     SiteId         types.String  // Multi-tenant site ID (UUID)
-    ApiVersion     types.String  // Header version (date-based, e.g., "2026-02-16")
+    ApiVersion     types.String  // Header version (date-based, e.g., "2026-04-28")
     ApiPathVersion types.String  // Optional path version (e.g., "v1")
     Role           types.String  // X-BT-Role header (sets X-BT-Auth-Type: CUSTOM-IDP)
     Insecure       types.Bool    // Skip TLS verification (dev only)
@@ -213,7 +213,7 @@ type APIError struct {
 - Path format: `/site/{site-id}/secrets[/version]/{endpoint}`
 - Required headers on all requests:
   - `Authorization: Bearer <token>`
-  - `bt-secrets-api-version: 2026-02-16` (configurable)
+  - `bt-secrets-api-version: 2026-04-28` (configurable)
   - `X-BT-Site-ID: <uuid>`
 - Optional headers:
   - `X-BT-Role: <role>` (when role is set, also sets `X-BT-Auth-Type: CUSTOM-IDP`)

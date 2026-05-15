@@ -192,7 +192,7 @@ client.BuildPath("/folders")              // → /secrets/v1/folders
 
 All requests include:
 - `Authorization: Bearer <token>` - Authentication
-- `bt-secrets-api-version: 2026-02-16` - API version (date-based)
+- `bt-secrets-api-version: 2026-04-28` - API version (date-based)
 - `X-BT-Site-ID: <uuid>` - Tenant/site ID for multi-tenancy
 - `X-BT-Role: <role>` - Optional role (sets `X-BT-Auth-Type: CUSTOM-IDP`)
 
@@ -588,7 +588,7 @@ Require a running Workload Credentials instance:
 export BEYONDTRUST_API_URL="https://api.workload-credentials.local"
 export BEYONDTRUST_ACCESS_TOKEN="your-token"
 export BEYONDTRUST_SITE_ID="your-site-uuid"
-export BEYONDTRUST_API_VERSION="2026-02-16"  # Optional
+export BEYONDTRUST_API_VERSION="2026-04-28"  # Optional
 export BEYONDTRUST_TEST_AWS_ROLE_ARN="arn:aws:iam::123456789012:role/test"  # For AWS tests
 
 # Run all acceptance tests
