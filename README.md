@@ -59,7 +59,7 @@ BeyondTrust Workload Credentials is part of the BeyondTrust Pathfinder platform.
 
 ### Obtaining Your Site ID
 
-Your site ID is a UUID that identifies your tenant in the BeyondTrust platform. Contact your BeyondTrust platform administrator to obtain your site ID. 
+Your site ID is a UUID that identifies your tenant in the BeyondTrust platform. Contact your BeyondTrust platform administrator to obtain your site ID.
 
 ### Environment Variables
 
