@@ -159,7 +159,7 @@ git config --global user.email "your-github-email@example.com"
    cat ~/.ssh/id_ed25519.pub
    ```
 
-2. Go to: https://github.com/settings/ssh/new
+2. Go to: <https://github.com/settings/ssh/new>
 3. Select **Key type: Signing Key** (not "Authentication Key")
 4. Paste your public key
 5. Click "Add SSH key"
@@ -177,13 +177,13 @@ git log -1 --show-signature
 ```
 
 **Expected output for GPG:**
-```
+```text
 gpg: Signature made [date]
 gpg: Good signature from "Your Name <email@example.com>"
 ```
 
 **Expected output for SSH:**
-```
+```text
 Good "git" signature for your-github-email@example.com with ED25519 key SHA256:...
 ```
 

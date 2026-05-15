@@ -42,6 +42,10 @@
         "tflog",
         "Fatalf",
         "Errorf",
-        "Unmarshal"
+        "Unmarshal",
+        "clearsign",
+        "gpgsign",
+        "keyid",
+        "signingkey"
     ]
 }
