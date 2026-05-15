@@ -228,7 +228,7 @@ Type `yes` to confirm deletion.
 ```bash
 # Test your credentials
 curl -H "Authorization: Bearer ${BEYONDTRUST_ACCESS_TOKEN}" \
-     -H "bt-secrets-api-version: 2026-02-16" \
+     -H "bt-secrets-api-version: 2026-04-28" \
      "${BEYONDTRUST_API_URL}/secrets/session"
 ```
 

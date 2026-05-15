@@ -61,7 +61,7 @@ export BEYONDTRUST_SITE_ID="your-site-uuid"
 #### Optional Environment Variables
 
 ```bash
-export BEYONDTRUST_API_VERSION="2026-02-16"
+export BEYONDTRUST_API_VERSION="2026-04-28"
 export BEYONDTRUST_TEST_AWS_ROLE_ARN="arn:aws:iam::123456789012:role/test-role"
 export BEYONDTRUST_TEST_AWS_ROLE_ARN_2="arn:aws:iam::123456789012:role/test-role-2"
 ```
