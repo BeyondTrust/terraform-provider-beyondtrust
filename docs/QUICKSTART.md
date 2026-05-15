@@ -38,8 +38,6 @@ Download from: <https://www.terraform.io/downloads>
 
 Your site ID is a UUID (format: `550e8400-e29b-41d4-a716-...`) that identifies your tenant in the BeyondTrust Workload Credentials platform.
 
-> **Note**: The Site ID is required for multi-tenant isolation. Each organization in BeyondTrust Pathfinder has a unique Site ID (UUID format). This value is sent in the `X-BT-Site-ID` header with every API request.
-
 Contact your BeyondTrust Workload Credentials platform administrator to obtain your site ID. Administrators provision sites and provide the site ID to authorized users.
 
 ## Step 2: Configure Provider
