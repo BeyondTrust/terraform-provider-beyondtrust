@@ -1,0 +1,105 @@
+---
+name: "Verify Commit Signatures"
+
+on:
+  pull_request:
+    types:
+      - opened
+      - synchronize
+      - reopened
+
+permissions: {}
+
+jobs:
+  verify-signatures:
+    name: Verify all commits are signed
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Need full history to check all commits
+
+      - name: Verify commit signatures
+        id: verify_signatures
+        run: |
+          echo "Checking signatures for all commits in this PR..."
+
+          # Get list of commits in PR (from base to HEAD)
+          COMMITS=$(git log --format="%H" origin/${{ github.base_ref }}..HEAD)
+
+          if [ -z "$COMMITS" ]; then
+            echo "No commits to verify"
+            exit 0
+          fi
+
+          UNSIGNED_COMMITS=0
+          UNSIGNED_LIST=""
+
+          for commit in $COMMITS; do
+            COMMIT_SHORT=$(echo "$commit" | cut -c1-8)
+            COMMIT_SUBJECT=$(git log -1 --format="%s" "$commit")
+            echo "Checking commit: $COMMIT_SHORT - $COMMIT_SUBJECT"
+
+            # Check if commit is signed (GPG or SSH)
+            if git verify-commit "$commit" 2>&1 | grep -qi "good\|valid"; then
+              echo "✓ Commit $COMMIT_SHORT is signed"
+            else
+              echo "✗ Commit $COMMIT_SHORT is NOT signed"
+              UNSIGNED_COMMITS=$((UNSIGNED_COMMITS + 1))
+              UNSIGNED_LIST="$UNSIGNED_LIST
+          - $COMMIT_SHORT: $COMMIT_SUBJECT"
+            fi
+          done
+
+          if [ $UNSIGNED_COMMITS -gt 0 ]; then
+            echo ""
+            echo "❌ Found $UNSIGNED_COMMITS unsigned commit(s)"
+            echo "UNSIGNED_COUNT=$UNSIGNED_COMMITS" >> $GITHUB_OUTPUT
+            echo "UNSIGNED_LIST<<EOF" >> $GITHUB_OUTPUT
+            echo "$UNSIGNED_LIST" >> $GITHUB_OUTPUT
+            echo "EOF" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+
+          echo ""
+          echo "✅ All commits are properly signed"
+          echo "UNSIGNED_COUNT=0" >> $GITHUB_OUTPUT
+
+      - name: "Failed signature verification"
+        if: failure()
+        uses: thollander/actions-comment-pull-request@24bffb9b452ba05a4f3f77933840a6a841d1b32b # v3.0.1
+        with:
+          comment-tag: verify-signatures
+          message: |
+            ❌ **Commit Signature Verification Failed**
+
+            Found **${{ steps.verify_signatures.outputs.UNSIGNED_COUNT }}** unsigned commit(s):
+            ${{ steps.verify_signatures.outputs.UNSIGNED_LIST }}
+
+            ---
+
+            All commits must be signed with GPG or SSH keys. Please see [CONTRIBUTING.md](https://github.com/${{ github.repository }}/blob/main/CONTRIBUTING.md#branch-protection-and-signed-commits) for setup instructions.
+
+            **To fix this:**
+
+            1. Configure commit signing (see CONTRIBUTING.md)
+            2. Rebase your commits with signatures:
+               ```bash
+               git rebase --exec 'git commit --amend --no-edit -S' origin/${{ github.base_ref }}
+               git push --force-with-lease
+               ```
+
+      - name: "Succeeded signature verification"
+        if: success()
+        uses: thollander/actions-comment-pull-request@24bffb9b452ba05a4f3f77933840a6a841d1b32b # v3.0.1
+        with:
+          comment-tag: verify-signatures
+          create-if-not-exists: false
+          mode: upsert
+          message: |
+            ✅ All commits are properly signed
+          reactions: rocket
