@@ -141,7 +141,7 @@ func (r *AwsIntegrationResource) Create(ctx context.Context, req resource.Create
 
 	// Build the API path
 	name := data.Name.ValueString()
-	apiPath := r.client.BuildPath("/integrations/" + name)
+	apiPath := r.client.BuildPath("/integrations/aws/" + name)
 
 	// Build request body
 	createReq := AwsIntegrationCreateRequest{
@@ -216,7 +216,7 @@ func (r *AwsIntegrationResource) Read(ctx context.Context, req resource.ReadRequ
 
 	// Build the API path
 	name := data.Name.ValueString()
-	apiPath := r.client.BuildPath("/integrations/" + name)
+	apiPath := r.client.BuildPath("/integrations/aws/" + name)
 
 	// Get integration
 	var integrationResp AwsIntegrationResponse
@@ -262,7 +262,7 @@ func (r *AwsIntegrationResource) Update(ctx context.Context, req resource.Update
 
 	// Build the API path
 	name := data.Name.ValueString()
-	apiPath := r.client.BuildPath("/integrations/" + name)
+	apiPath := r.client.BuildPath("/integrations/aws/" + name)
 
 	// Build update request with merge patch semantics
 	updateReq := AwsIntegrationUpdateRequest{
@@ -323,7 +323,7 @@ func (r *AwsIntegrationResource) Delete(ctx context.Context, req resource.Delete
 
 	// Build the API path
 	name := data.Name.ValueString()
-	apiPath := r.client.BuildPath("/integrations/" + name)
+	apiPath := r.client.BuildPath("/integrations/aws/" + name)
 
 	// Delete the integration
 	err := r.client.Delete(ctx, apiPath, nil)
