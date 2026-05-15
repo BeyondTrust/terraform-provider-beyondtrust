@@ -44,8 +44,9 @@ jobs:
             COMMIT_SUBJECT=$(git log -1 --format="%s" "$commit")
             echo "Checking commit: $COMMIT_SHORT - $COMMIT_SUBJECT"
 
-            # Check if commit is signed (GPG or SSH)
-            if git verify-commit "$commit" 2>&1 | grep -qi "good\|valid"; then
+            # Check if commit has a GPG signature (presence check, not verification)
+            # We check for the gpgsig header in the raw commit object
+            if git cat-file commit "$commit" | grep -q "^gpgsig "; then
               echo "✓ Commit $COMMIT_SHORT is signed"
             else
               echo "✗ Commit $COMMIT_SHORT is NOT signed"
