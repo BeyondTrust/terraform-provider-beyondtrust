@@ -15,9 +15,10 @@ This example demonstrates:
 
 ### 1. BeyondTrust Workload Credentials
 
-- Workload Credentials instance running and accessible
-- Valid access token (obtain via `secrets login` or API key generation)
-- Site/tenant ID (UUID)
+- Workload Credentials instance (part of BeyondTrust Pathfinder platform)
+- Valid access token - obtain from [app.beyondtrust.io](https://app.beyondtrust.io):
+  - Navigate to **User Settings** → **Manage Profile** → **Personal Access Tokens**
+- Site/tenant ID (UUID) - See [QUICKSTART.md](../../docs/QUICKSTART.md#obtaining-your-site-id) for detailed instructions on how to obtain your site ID
 
 ### 2. AWS Account
 

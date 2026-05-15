@@ -34,6 +34,15 @@ Optional: Install git hooks for automatic pre-commit checks:
 make install-git-hooks
 ```
 
+### Configure Commit Signing
+
+To contribute to this repository, you must sign your commits. See [CONTRIBUTING.md](../../CONTRIBUTING.md#branch-protection-and-signed-commits) for detailed setup instructions for GPG or SSH signing.
+
+Quick verification:
+```bash
+git log -1 --show-signature
+```
+
 ## Local Development with Terraform
 
 When developing the provider, you'll want to test your changes with actual Terraform configurations without publishing the provider to the registry.
@@ -229,7 +238,15 @@ make test-coverage-html  # Opens HTML report
 
 ### Acceptance Tests
 
-Acceptance tests run against a real BeyondTrust instance. Set the required environment variables:
+Acceptance tests run against a real BeyondTrust instance.
+
+**Obtaining Credentials:**
+1. Log in to [app.beyondtrust.io](https://app.beyondtrust.io) (BeyondTrust Pathfinder platform)
+2. Navigate to **User Settings** → **Manage Profile** → **Personal Access Tokens**
+3. Create a token
+4. Obtain your Site ID - See [QUICKSTART.md](../QUICKSTART.md#obtaining-your-site-id) for detailed instructions
+
+Set the required environment variables:
 
 ```bash
 export BEYONDTRUST_API_URL="https://api.beyondtrust.io"

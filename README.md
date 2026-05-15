@@ -26,7 +26,7 @@ This provider requires BeyondTrust Workload Credentials. Using this provider wit
 
 > **Note**: This provider uses **ephemeral resources** for secure secret handling, which require Terraform 1.10 or later.
 > Ephemeral resources ensure sensitive values are never persisted in state or plan files.
-> See [TERRAFORM_VERSION_REQUIREMENTS.md](TERRAFORM_VERSION_REQUIREMENTS.md) for details on version compatibility.
+> See [Terraform Version Requirements](docs/TERRAFORM_VERSION_REQUIREMENTS.md) for details on version compatibility.
 
 ## Use Cases
 
@@ -48,6 +48,20 @@ To use the provider, you need:
 1. Your BeyondTrust Workload Credentials instance API URL
 2. An API access token
 3. Your site/tenant ID
+
+### Obtaining Credentials
+
+BeyondTrust Workload Credentials is part of the BeyondTrust Pathfinder platform.
+
+1. Log in to [app.beyondtrust.io](https://app.beyondtrust.io)
+2. Navigate to **User Settings** → **Manage Profile** → **Personal Access Tokens**
+3. Click **Create Token** and copy the access token
+
+### Obtaining Your Site ID
+
+Your site ID is a UUID that identifies your tenant in the BeyondTrust platform. Contact your BeyondTrust platform administrator to obtain your site ID. 
+
+### Environment Variables
 
 The recommended approach is to set these via environment variables:
 
@@ -212,7 +226,7 @@ make test-unit
 make test-acc
 ```
 
-For more details, see [DEVELOPMENT.md](DEVELOPMENT.md).
+For more details, see [DEVELOPMENT.md](./docs/development/DEVELOPMENT.md).
 
 ## Getting Help
 
