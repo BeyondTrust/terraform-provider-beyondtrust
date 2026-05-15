@@ -27,41 +27,20 @@ Download from: <https://www.terraform.io/downloads>
 
 ## Step 1: Obtain API Credentials
 
-### Option A: Using the BeyondTrust CLI (Recommended)
+### Using the BeyondTrust Pathfinder Platform
 
-1. Install the BeyondTrust CLI:
-   ```bash
-   # Installation instructions from your Workload Credentials administrator
-   # Or download from BeyondTrust support portal
-   ```
-
-2. Login to Workload Credentials:
-   ```bash
-   secrets login --api-url https://api.workload-credentials.example.com
-   ```
-
-3. Extract credentials:
-   ```bash
-   export BEYONDTRUST_API_URL=$(secrets config get api-url)
-   export BEYONDTRUST_ACCESS_TOKEN=$(secrets config get token)
-   export BEYONDTRUST_SITE_ID=$(secrets config get site-id)
-   ```
-
-### Option B: Using the Workload Credentials Web Console
-
-1. Log in to your Workload Credentials web console
-2. Navigate to **Settings** → **API Keys** (or **User Settings** → **Access Tokens**)
-3. Click **Generate New API Key/Token**
+1. Log in to app.beyondtrust.io
+2. Navigate to **User Settings** → **Manage Profile** -> **Personal Access Tokens**
+3. Click **Create Token**
 4. Copy the access token (you won't be able to see it again!)
-5. Find your Site ID: **Settings** → **Site Information** (UUID format: `550e8400-e29b-41d4-a716-...`)
 
-### Option C: Environment-Specific Endpoints
+### Obtaining Your Site ID
 
-| Environment | API URL                                                      |
-|-------------|--------------------------------------------------------------|
-| Production  | `https://api.workload-credentials.your-company.com`          |
-| Sandbox/Dev | Contact your Workload Credentials administrator              |
-| Self-Hosted | Your custom Workload Credentials API endpoint                |
+Your site ID is a UUID (format: `550e8400-e29b-41d4-a716-...`) that identifies your tenant in the BeyondTrust Workload Credentials platform.
+
+> **Note**: The Site ID is required for multi-tenant isolation. Each organization in BeyondTrust Pathfinder has a unique Site ID (UUID format). This value is sent in the `X-BT-Site-ID` header with every API request.
+
+Contact your BeyondTrust Workload Credentials platform administrator to obtain your site ID. Administrators provision sites and provide the site ID to authorized users.
 
 ## Step 2: Configure Provider
 
@@ -210,15 +189,15 @@ Type `yes` to confirm deletion.
 
 ### Basic Usage
 
-- [Folder Management](docs/resources/secrets_folder.md) - Organize secrets hierarchically
-- [Static Secrets](docs/resources/secrets_static_secret.md) - Store write-only secrets
-- [Ephemeral Resources](docs/ephemeral-resources/secrets_static_secret.md) - Read secrets without state storage
+- [Folder Management](resources/workload_credentials_folder.md) - Organize secrets hierarchically
+- [Static Secrets](resources/workload_credentials_static_secret.md) - Store write-only secrets
+- [Ephemeral Resources](ephemeral-resources/workload_credentials_static_secret.md) - Read secrets without state storage
 
 ### AWS Integration
 
-- [AWS Integration Setup](examples/aws-integration/README.md) - Complete guide with IAM setup
-- [AWS Integration Resource](docs/resources/secrets_aws_integration.md) - Reference documentation
-- [AWS Dynamic Secrets](docs/resources/secrets_aws_dynamic_secret.md) - Generate temporary AWS credentials
+- [AWS Integration Setup](../examples/aws-integration/README.md) - Complete guide with IAM setup
+- [AWS Integration Resource](resources/workload_credentials_aws_integration.md) - Reference documentation
+- [AWS Dynamic Secrets](resources/workload_credentials_aws_dynamic_secret.md) - Generate temporary AWS credentials
 
 ### Advanced Topics
 
@@ -227,6 +206,15 @@ Type `yes` to confirm deletion.
 - **GitHub Actions Integration**: See `examples/github-actions/`
 
 ## Common Issues
+
+### Can't Find Site ID?
+
+**Best Approach**: Contact your BeyondTrust Workload Credentials platform administrator to obtain your site ID. This is the most reliable method.
+
+**If you already have access:**
+- **JWT Token Method**: Decode your access token to extract the `tenant_id` claim (see "Obtaining Your Site ID" section above)
+- **Browser DevTools**: The UUID is sent with every API request as `X-BT-Site-ID` header
+- **Multiple Sites**: If your organization has multiple sites, ensure you're using the correct site ID for your environment
 
 ### Authentication Fails
 
