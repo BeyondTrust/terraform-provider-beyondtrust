@@ -29,6 +29,7 @@ var (
 const (
 	EnvAPIPathVersion = "BEYONDTRUST_API_PATH_VERSION"
 	EnvRole           = "BEYONDTRUST_ROLE"
+	EnvServiceName    = "BEYONDTRUST_SERVICE_NAME"
 	EnvInsecure       = "BEYONDTRUST_INSECURE"
 	EnvTimeout        = "BEYONDTRUST_TIMEOUT"
 )
@@ -49,6 +50,7 @@ type BeyondTrustProviderModel struct {
 	ApiVersion     types.String `tfsdk:"api_version"`      // Header version (date-based)
 	ApiPathVersion types.String `tfsdk:"api_path_version"` // Optional path version (e.g., "v1")
 	Role           types.String `tfsdk:"role"`             // X-BT-Role header value (auth type is always CUSTOM-IDP when role is set)
+	ServiceName    types.String `tfsdk:"service_name"`     // X-BT-Service-Name header value (for GitHub OIDC authentication)
 	Insecure       types.Bool   `tfsdk:"insecure"`
 	Timeout        types.String `tfsdk:"timeout"`
 }
@@ -87,6 +89,10 @@ func (p *BeyondTrustProvider) Schema(ctx context.Context, req provider.SchemaReq
 				Description: "Role for X-BT-Role header (when set, X-BT-Auth-Type is automatically set to 'CUSTOM-IDP'). Can also be set via " + EnvRole + " environment variable.",
 				Optional:    true,
 			},
+			"service_name": schema.StringAttribute{
+				Description: "Service name for GitHub OIDC authentication (X-BT-Service-Name header). Required when using GitHub OIDC tokens. Can also be set via " + EnvServiceName + " environment variable.",
+				Optional:    true,
+			},
 			"insecure": schema.BoolAttribute{
 				Description: "Skip TLS certificate verification. Only use for development. Defaults to false. Can also be set via " + EnvInsecure + " environment variable.",
 				Optional:    true,
@@ -115,6 +121,7 @@ func (p *BeyondTrustProvider) Configure(ctx context.Context, req provider.Config
 	apiVersion := os.Getenv(constants.EnvAPIVersion)
 	apiPathVersion := os.Getenv(EnvAPIPathVersion)
 	role := os.Getenv(EnvRole)
+	serviceName := os.Getenv(EnvServiceName)
 	insecure := os.Getenv(EnvInsecure) == "true"
 	timeout := os.Getenv(EnvTimeout)
 
@@ -141,6 +148,10 @@ func (p *BeyondTrustProvider) Configure(ctx context.Context, req provider.Config
 
 	if !config.Role.IsNull() {
 		role = config.Role.ValueString()
+	}
+
+	if !config.ServiceName.IsNull() {
+		serviceName = config.ServiceName.ValueString()
 	}
 
 	if !config.Insecure.IsNull() {
@@ -197,6 +208,7 @@ func (p *BeyondTrustProvider) Configure(ctx context.Context, req provider.Config
 		APIVersion:     apiVersion,
 		APIPathVersion: apiPathVersion,
 		Role:           role,
+		ServiceName:    serviceName,
 		Insecure:       insecure,
 		Timeout:        timeout,
 	}
