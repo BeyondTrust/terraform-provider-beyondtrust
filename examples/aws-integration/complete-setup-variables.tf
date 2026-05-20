@@ -6,14 +6,14 @@ variable "aws_region" {
   default     = "us-east-1"
 }
 
-variable "workload_credentials_bridge_account_id" {
+variable "beyondtrust_workload_credentials_bridge_account_id" {
   description = "AWS account ID of the Workload Credentials bridge account"
   type        = string
   default     = "109876543210" # Sandbox/dev bridge account
   # Use "012345678901" for production
 
   validation {
-    condition     = can(regex("^[0-9]{12}$", var.workload_credentials_bridge_account_id))
+    condition     = can(regex("^[0-9]{12}$", var.beyondtrust_workload_credentials_bridge_account_id))
     error_message = "Bridge account ID must be a 12-digit AWS account ID"
   }
 }
