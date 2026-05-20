@@ -145,7 +145,7 @@ For more examples, see the [examples](./examples) directory.
 
 ## Development
 
-### Quick Start
+### Developer Quick Start
 
 Before committing or pushing code, run local checks:
 
