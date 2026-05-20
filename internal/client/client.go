@@ -26,6 +26,7 @@ type Client struct {
 	Role           string // X-BT-Role header value (when set, auth type is always CUSTOM-IDP)
 	HTTPClient     *http.Client
 	csrfToken      string
+	ServiceName    string // Optional service name for user agent
 }
 
 // Config holds the client configuration
@@ -36,6 +37,7 @@ type Config struct {
 	APIVersion     string // Header version (date-based)
 	APIPathVersion string // Optional path version
 	Role           string // X-BT-Role header value (when set, auth type is always CUSTOM-IDP)
+	ServiceName    string // X-BT-Service-Name header value (for GitHub OIDC authentication)
 	Insecure       bool
 	Timeout        string
 }
@@ -128,6 +130,7 @@ func NewClient(cfg *Config) (*Client, error) {
 		APIVersion:     cfg.APIVersion,
 		APIPathVersion: cfg.APIPathVersion,
 		Role:           cfg.Role,
+		ServiceName:    cfg.ServiceName,
 		HTTPClient:     httpClient,
 	}, nil
 }
@@ -252,6 +255,11 @@ func (c *Client) newRequest(ctx context.Context, method, path string, query url.
 	if c.Role != "" {
 		req.Header.Set("X-BT-Role", c.Role)
 		req.Header.Set("X-BT-Auth-Type", "CUSTOM-IDP")
+	}
+
+	// Set service name header for GitHub OIDC authentication
+	if c.ServiceName != "" {
+		req.Header.Set("X-BT-Service-Name", c.ServiceName)
 	}
 
 	if body != nil {
