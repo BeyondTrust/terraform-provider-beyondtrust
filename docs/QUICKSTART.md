@@ -187,15 +187,15 @@ Type `yes` to confirm deletion.
 
 ### Basic Usage
 
-- [Folder Management](resources/workload_credentials_folder.md) - Organize secrets hierarchically
-- [Static Secrets](resources/workload_credentials_static_secret.md) - Store write-only secrets
-- [Ephemeral Resources](ephemeral-resources/workload_credentials_static_secret.md) - Read secrets without state storage
+- [Folder Management](resources/beyondtrust_workload_credentials_folder.md) - Organize secrets hierarchically
+- [Static Secrets](resources/beyondtrust_workload_credentials_static_secret.md) - Store write-only secrets
+- [Ephemeral Resources](ephemeral-resources/beyondtrust_workload_credentials_static_secret.md) - Read secrets without state storage
 
 ### AWS Integration
 
 - [AWS Integration Setup](../examples/aws-integration/README.md) - Complete guide with IAM setup
-- [AWS Integration Resource](resources/workload_credentials_aws_integration.md) - Reference documentation
-- [AWS Dynamic Secrets](resources/workload_credentials_aws_dynamic_secret.md) - Generate temporary AWS credentials
+- [AWS Integration Resource](resources/beyondtrust_workload_credentials_aws_integration.md) - Reference documentation
+- [AWS Dynamic Secrets](resources/beyondtrust_workload_credentials_aws_dynamic_secret.md) - Generate temporary AWS credentials
 
 ### Advanced Topics
 
