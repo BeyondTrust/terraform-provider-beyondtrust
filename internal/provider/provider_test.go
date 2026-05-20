@@ -160,6 +160,7 @@ func TestProviderConfigure_EnvVarPrecedence(t *testing.T) {
 					"api_version":      tftypes.String,
 					"api_path_version": tftypes.String,
 					"role":             tftypes.String,
+					"service_name":     tftypes.String,
 					"insecure":         tftypes.Bool,
 					"timeout":          tftypes.String,
 				},
@@ -170,6 +171,7 @@ func TestProviderConfigure_EnvVarPrecedence(t *testing.T) {
 				"api_version":      tftypes.NewValue(tftypes.String, nil),
 				"api_path_version": tftypes.NewValue(tftypes.String, nil),
 				"role":             tftypes.NewValue(tftypes.String, nil),
+				"service_name":     tftypes.NewValue(tftypes.String, nil),
 				"insecure":         tftypes.NewValue(tftypes.Bool, nil),
 				"timeout":          tftypes.NewValue(tftypes.String, nil),
 			})
@@ -438,6 +440,7 @@ func buildConfigValue(values map[string]interface{}) tftypes.Value {
 		"api_version":      tftypes.NewValue(tftypes.String, nil),
 		"api_path_version": tftypes.NewValue(tftypes.String, nil),
 		"role":             tftypes.NewValue(tftypes.String, nil),
+		"service_name":     tftypes.NewValue(tftypes.String, nil),
 		"insecure":         tftypes.NewValue(tftypes.Bool, nil),
 		"timeout":          tftypes.NewValue(tftypes.String, nil),
 	}
@@ -459,6 +462,7 @@ func buildConfigValue(values map[string]interface{}) tftypes.Value {
 			"api_version":      tftypes.String,
 			"api_path_version": tftypes.String,
 			"role":             tftypes.String,
+			"service_name":     tftypes.String,
 			"insecure":         tftypes.Bool,
 			"timeout":          tftypes.String,
 		},
