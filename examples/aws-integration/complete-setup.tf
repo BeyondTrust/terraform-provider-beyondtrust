@@ -49,7 +49,7 @@ data "aws_partition" "current" {}
 
 # Integration Role - Workload Credentials assumes this to access your AWS account
 # Name must match pattern: btp-account-role-* or btp-org-role-* (required by bridge role policy)
-resource "aws_iam_role" "workload_credentials_integration" {
+resource "aws_iam_role" "beyondtrust_workload_credentials_integration" {
   name        = "btp-account-role-for-workload-credentials"
   path        = "/beyondtrust/"
   description = "Role for BeyondTrust Workload Credentials to access this AWS account"
@@ -60,7 +60,7 @@ resource "aws_iam_role" "workload_credentials_integration" {
       {
         Effect = "Allow"
         Principal = {
-          AWS = "arn:${data.aws_partition.current.partition}:iam::${var.workload_credentials_bridge_account_id}:role/secrets-integration-customer-bridge-link"
+          AWS = "arn:${data.aws_partition.current.partition}:iam::${var.beyondtrust_workload_credentials_bridge_account_id}:role/secrets-integration-customer-bridge-link"
         }
         Action = "sts:AssumeRole"
         Condition = {
@@ -84,9 +84,9 @@ resource "aws_iam_role" "workload_credentials_integration" {
 }
 
 # Policy allowing the integration role to assume other roles
-resource "aws_iam_role_policy" "workload_credentials_assume_roles" {
+resource "aws_iam_role_policy" "beyondtrust_workload_credentials_assume_roles" {
   name = "workload-credentials-assume-target-roles"
-  role = aws_iam_role.workload_credentials_integration.id
+  role = aws_iam_role.beyondtrust_workload_credentials_integration.id
 
   policy = jsonencode({
     Version = "2012-10-17"
@@ -121,7 +121,7 @@ resource "aws_iam_role" "developer_readonly" {
       {
         Effect = "Allow"
         Principal = {
-          AWS = aws_iam_role.workload_credentials_integration.arn
+          AWS = aws_iam_role.beyondtrust_workload_credentials_integration.arn
         }
         Action = ["sts:AssumeRole", "sts:TagSession"]
       }
@@ -151,7 +151,7 @@ resource "aws_iam_role" "admin" {
       {
         Effect = "Allow"
         Principal = {
-          AWS = aws_iam_role.workload_credentials_integration.arn
+          AWS = aws_iam_role.beyondtrust_workload_credentials_integration.arn
         }
         Action = ["sts:AssumeRole", "sts:TagSession"]
       }
@@ -180,22 +180,22 @@ module "beyondtrust" {
   count  = var.skip_beyondtrust ? 0 : 1
   source = "./modules/beyondtrust-integration"
 
-  external_id                               = local.external_id
-  integration_name                          = "production-aws-account"
-  workload_credentials_integration_role_arn = aws_iam_role.workload_credentials_integration.arn
-  developer_role_arn                        = aws_iam_role.developer_readonly.arn
-  admin_role_arn                            = aws_iam_role.admin.arn
-  developer_policy_arns                     = ["arn:${data.aws_partition.current.partition}:iam::aws:policy/ReadOnlyAccess"]
-  environment                               = var.environment
+  external_id                                           = local.external_id
+  integration_name                                      = "production-aws-account"
+  beyondtrust_workload_credentials_integration_role_arn = aws_iam_role.beyondtrust_workload_credentials_integration.arn
+  developer_role_arn                                    = aws_iam_role.developer_readonly.arn
+  admin_role_arn                                        = aws_iam_role.admin.arn
+  developer_policy_arns                                 = ["arn:${data.aws_partition.current.partition}:iam::aws:policy/ReadOnlyAccess"]
+  environment                                           = var.environment
 }
 
 # ============================================================================
 # Outputs
 # ============================================================================
 
-output "workload_credentials_integration_role_arn" {
+output "beyondtrust_workload_credentials_integration_role_arn" {
   description = "ARN of the IAM role for Workload Credentials integration"
-  value       = aws_iam_role.workload_credentials_integration.arn
+  value       = aws_iam_role.beyondtrust_workload_credentials_integration.arn
 }
 
 output "external_id_version" {
