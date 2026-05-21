@@ -96,7 +96,7 @@ func (r *StaticSecretResource) Schema(ctx context.Context, req resource.SchemaRe
 				Description: "Key-value pairs for the secret (e.g., {password = 'secret123'}). Write-only - not stored in state. Use the ephemeral resource to read values.",
 				ElementType: types.StringType,
 				Required:    true,
-				Sensitive:   true,
+				WriteOnly:   true,
 			},
 			"secret_wo_version": schema.Int64Attribute{
 				Description: "Version tracker for the write-only secret. Increments when secret_wo changes. Stored in state to detect changes.",
@@ -210,6 +210,9 @@ func (r *StaticSecretResource) Create(ctx context.Context, req resource.CreateRe
 		}
 	}
 
+	// WriteOnly prevents framework persistence, but null out as defense-in-depth
+	data.SecretWo = types.MapNull(types.StringType)
+
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
@@ -293,7 +296,7 @@ func (r *StaticSecretResource) Update(ctx context.Context, req resource.UpdateRe
 	}
 	query := buildFolderQueryParam(parentFolder)
 
-	// Check if secret value changed
+	// With WriteOnly, state.SecretWo is always null so this always sends the secret on update
 	if !data.SecretWo.Equal(state.SecretWo) {
 		// Convert Terraform secret map to API format using helper
 		stringMap := convertSecretMap(data.SecretWo.Elements())
@@ -355,6 +358,9 @@ func (r *StaticSecretResource) Update(ctx context.Context, req resource.UpdateRe
 	} else {
 		data.Tags = types.MapNull(types.StringType)
 	}
+
+	// WriteOnly prevents framework persistence, but null out as defense-in-depth
+	data.SecretWo = types.MapNull(types.StringType)
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }

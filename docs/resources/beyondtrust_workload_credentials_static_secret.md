@@ -54,7 +54,7 @@ resource "kubernetes_secret" "api_credentials" {
 ### Required
 
 - `name` (String) The name of the secret. Must match pattern: ^[a-zA-Z0-9\-_@~\*\^%]+$ (max 100 chars)
-- `secret_wo` (Map of String, Sensitive) Key-value pairs for the secret (e.g., {password = 'secret123'}). Write-only - not stored in state. Use the ephemeral resource to read values.
+- `secret_wo` (Map of String, Write-Only) Key-value pairs for the secret (e.g., {password = 'secret123'}). Write-only - not stored in state. Use the ephemeral resource to read values.
 
 ### Optional
 
