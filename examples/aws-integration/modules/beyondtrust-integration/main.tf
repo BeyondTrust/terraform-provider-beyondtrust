@@ -50,7 +50,7 @@ ephemeral "beyondtrust_workload_credentials_static_secret" "external_id_reader" 
 resource "beyondtrust_workload_credentials_aws_integration" "main" {
   name = var.integration_name
 
-  role_arn = var.workload_credentials_integration_role_arn
+  role_arn = var.beyondtrust_workload_credentials_integration_role_arn
 
   # External ID is stored in state (required for AWS and BeyondTrust integration)
   # The write-only secret in BeyondTrust is for retrieval via CLI/API, not for Terraform state management
