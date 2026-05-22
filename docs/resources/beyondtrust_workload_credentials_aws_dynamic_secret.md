@@ -98,7 +98,7 @@ resource "beyondtrust_workload_credentials_aws_dynamic_secret" "admin" {
 
 - `credential_type` (String) The type of AWS credentials to generate. Currently supported: 'assumed_role'. Other types (iam_user, federation_token, session_token) may be added in the future.
 - `integration_name` (String) The name of the AWS integration to use for generating credentials.
-- `name` (String) The name of the dynamic secret. Must match pattern: ^[a-zA-Z0-9\-_@~\*\^]+$ (max 100 chars).
+- `name` (String) The name of the dynamic secret. Must match pattern: ^[a-zA-Z0-9\-_@~\*\^]{1,130}$ (single path segment, max 130 chars).
 - `role_arn` (String) The ARN of the AWS IAM role to assume when generating credentials. Must match pattern: arn:aws:iam::[0-9]+:role/.+
 - `ttl` (Number) Time-to-live in seconds for generated credentials. For assumed_role: 900-43200 (15 min - 12 hours). For other types: 900-129600 (15 min - 36 hours).
 
@@ -106,7 +106,7 @@ resource "beyondtrust_workload_credentials_aws_dynamic_secret" "admin" {
 
 - `aws_tags` (Map of String) Key-value tags to apply to the AWS session. Keys: 1-128 chars, Values: 0-256 chars.
 - `external_id` (String, Sensitive) Optional external ID for the role assumption. Used for additional security in role trust relationships.
-- `folder` (String) The parent folder path (e.g., 'production' or 'production/aws'). Leave empty for root level.
+- `folder` (String) The parent folder path (e.g., 'production' or 'production/aws'). Leave empty for root level. Each segment must match: ^[a-zA-Z0-9\-_@~\*\^]{1,130}$.
 - `groups` (List of String) List of IAM group names whose policies will be merged and applied to the session. Groups must be in the target AWS account. Each group name: 1-128 chars, alphanumeric + _+=,.@-
 - `policy` (String) Inline IAM policy document (JSON) to apply to the assumed role session. Allows fine-grained permissions control.
 - `policy_arns` (List of String) List of AWS managed policy ARNs to attach to the assumed role session. Each must match pattern: arn:aws:iam::.*:policy/.*

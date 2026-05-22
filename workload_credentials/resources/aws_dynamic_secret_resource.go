@@ -123,7 +123,7 @@ func (r *AwsDynamicSecretResource) Schema(ctx context.Context, req resource.Sche
 
 		Attributes: map[string]schema.Attribute{
 			"name": schema.StringAttribute{
-				Description: "The name of the dynamic secret. Must match pattern: ^[a-zA-Z0-9\\-_@~\\*\\^]+$ (max 100 chars).",
+				Description: "The name of the dynamic secret. Must match pattern: ^[a-zA-Z0-9\\-_@~\\*\\^]{1,130}$ (single path segment, max 130 chars).",
 				Required:    true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),
@@ -133,10 +133,13 @@ func (r *AwsDynamicSecretResource) Schema(ctx context.Context, req resource.Sche
 				},
 			},
 			"folder": schema.StringAttribute{
-				Description: "The parent folder path (e.g., 'production' or 'production/aws'). Leave empty for root level.",
+				Description: "The parent folder path (e.g., 'production' or 'production/aws'). Leave empty for root level. Each segment must match: ^[a-zA-Z0-9\\-_@~\\*\\^]{1,130}$.",
 				Optional:    true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),
+				},
+				Validators: []validator.String{
+					validators.FolderPathValidator(),
 				},
 			},
 			"integration_name": schema.StringAttribute{
@@ -624,7 +627,14 @@ func (r *AwsDynamicSecretResource) ImportState(ctx context.Context, req resource
 	if !validators.IsValidResourceName(name) {
 		resp.Diagnostics.AddError(
 			"Invalid Import ID",
-			fmt.Sprintf("Name %q parsed from import ID contains invalid characters. Must match pattern: ^[a-zA-Z0-9\\-_@~\\*\\^]+$", name),
+			fmt.Sprintf("Name %q parsed from import ID is invalid. Must match: ^[a-zA-Z0-9\\-_@~\\*\\^]{1,130}$", name),
+		)
+		return
+	}
+	if !validators.IsValidFolderPath(parentFolder) {
+		resp.Diagnostics.AddError(
+			"Invalid Import ID",
+			fmt.Sprintf("Folder %q parsed from import ID is invalid. Each segment must match: ^[a-zA-Z0-9\\-_@~\\*\\^]{1,130}$", parentFolder),
 		)
 		return
 	}

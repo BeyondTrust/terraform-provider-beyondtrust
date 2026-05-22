@@ -84,7 +84,7 @@ func (r *AwsIntegrationResource) Schema(ctx context.Context, req resource.Schema
 
 		Attributes: map[string]schema.Attribute{
 			"name": schema.StringAttribute{
-				Description: "The name of the integration. Must match pattern: ^[a-zA-Z0-9\\-_@~\\*\\^]+$ (max 100 chars). This is the resource identifier.",
+				Description: "The name of the integration. Must match pattern: ^[a-zA-Z0-9\\-_@~\\*\\^]{1,130}$ (single path segment, max 130 chars). This is the resource identifier.",
 				Required:    true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),
@@ -352,7 +352,7 @@ func (r *AwsIntegrationResource) ImportState(ctx context.Context, req resource.I
 	if !validators.IsValidResourceName(name) {
 		resp.Diagnostics.AddError(
 			"Invalid Import ID",
-			fmt.Sprintf("Name %q contains invalid characters. Must match pattern: ^[a-zA-Z0-9\\-_@~\\*\\^]+$", name),
+			fmt.Sprintf("Name %q is invalid. Must match: ^[a-zA-Z0-9\\-_@~\\*\\^]{1,130}$", name),
 		)
 		return
 	}

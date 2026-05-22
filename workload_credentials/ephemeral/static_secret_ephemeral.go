@@ -69,8 +69,11 @@ func (e *StaticSecretEphemeral) Schema(ctx context.Context, req ephemeral.Schema
 				},
 			},
 			"folder": schema.StringAttribute{
-				Description: "The parent folder path (e.g., 'production' or 'production/aws'). Leave empty for root level.",
+				Description: "The parent folder path (e.g., 'production' or 'production/aws'). Leave empty for root level. Each segment must match: ^[a-zA-Z0-9\\-_@~\\*\\^]{1,130}$.",
 				Optional:    true,
+				Validators: []validator.String{
+					validators.FolderPathValidator(),
+				},
 			},
 			"version": schema.Int64Attribute{
 				Description: "The specific version of the secret to read. If not provided, reads the latest version. After reading, this will be set to the actual version that was read.",
