@@ -123,6 +123,22 @@ func NewClient(cfg *Config) (*Client, error) {
 		baseURL = baseURL[:len(baseURL)-1]
 	}
 
+	// Parse and validate the base URL to prevent SSRF via fragment or query injection.
+	// Raw string checks catch cases like bare "#" that url.Parse silently discards.
+	if strings.Contains(baseURL, "#") {
+		return nil, fmt.Errorf("api_url must not contain a URL fragment (#)")
+	}
+	if strings.Contains(baseURL, "?") {
+		return nil, fmt.Errorf("api_url must not contain a query string (?)")
+	}
+	parsedURL, err := url.Parse(baseURL)
+	if err != nil {
+		return nil, fmt.Errorf("invalid api_url: %w", err)
+	}
+	if parsedURL.Scheme == "" || parsedURL.Host == "" {
+		return nil, fmt.Errorf("api_url must include a scheme and host")
+	}
+
 	return &Client{
 		BaseURL:        baseURL,
 		AccessToken:    cfg.AccessToken,
@@ -221,10 +237,11 @@ func (c *Client) ensureCSRFToken(ctx context.Context) error {
 
 // newRequest creates a new HTTP request with standard headers
 func (c *Client) newRequest(ctx context.Context, method, path string, query url.Values, body interface{}) (*http.Request, error) {
-	u, err := url.Parse(c.BaseURL + path)
+	u, err := url.Parse(c.BaseURL)
 	if err != nil {
-		return nil, fmt.Errorf("error parsing URL: %w", err)
+		return nil, fmt.Errorf("error parsing base URL: %w", err)
 	}
+	u.Path += path
 
 	if query != nil {
 		u.RawQuery = query.Encode()
