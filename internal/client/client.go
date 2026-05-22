@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -126,17 +127,17 @@ func NewClient(cfg *Config) (*Client, error) {
 	// Parse and validate the base URL to prevent SSRF via fragment or query injection.
 	// Raw string checks catch cases like bare "#" that url.Parse silently discards.
 	if strings.Contains(baseURL, "#") {
-		return nil, fmt.Errorf("api_url must not contain a URL fragment (#)")
+		return nil, errors.New("api_url must not contain a URL fragment (#)")
 	}
 	if strings.Contains(baseURL, "?") {
-		return nil, fmt.Errorf("api_url must not contain a query string (?)")
+		return nil, errors.New("api_url must not contain a query string (?)")
 	}
 	parsedURL, err := url.Parse(baseURL)
 	if err != nil {
 		return nil, fmt.Errorf("invalid api_url: %w", err)
 	}
 	if parsedURL.Scheme == "" || parsedURL.Host == "" {
-		return nil, fmt.Errorf("api_url must include a scheme and host")
+		return nil, errors.New("api_url must include a scheme and host")
 	}
 
 	return &Client{
