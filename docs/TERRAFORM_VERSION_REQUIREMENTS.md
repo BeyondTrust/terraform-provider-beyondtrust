@@ -2,16 +2,16 @@
 
 ## Current Implementation
 
-This provider currently **requires Terraform 1.10 or later** for full functionality.
+This provider currently **requires Terraform 1.11 or later** for full functionality.
 
-### Why Terraform 1.10+?
+### Why Terraform 1.11+?
 
-The provider uses **ephemeral resources** for secure secret handling, which were introduced in Terraform 1.10. Ephemeral resources ensure that sensitive values (like AWS external IDs, secret values) are never persisted in Terraform state or plan files.
+The provider uses **ephemeral resources** (Terraform 1.10+) for secure secret handling and **write-only attributes** (Terraform 1.11+) to prevent secret values from being persisted in Terraform state or plan files.
 
 ### Affected Features
 
-- **Static Secrets with Ephemeral Read**: Reading secret values without storing them in state
-- **Write-Only Attributes**: The `secret_wo` pattern for static secrets
+- **Static Secrets with Ephemeral Read**: Reading secret values without storing them in state (Terraform 1.10+)
+- **Write-Only Attributes**: The `secret_wo` attribute uses `WriteOnly: true` to prevent secret values from being stored in state (Terraform 1.11+)
 
 ### Features That Work on Earlier Versions
 
@@ -44,10 +44,10 @@ Before publishing to the Terraform Registry, consider:
 
 ### Recommended terraform Block for Users
 
-**With Ephemeral Resources (Recommended):**
+**With Write-Only Attributes and Ephemeral Resources (Recommended):**
 ```hcl
 terraform {
-  required_version = ">= 1.10.0"
+  required_version = ">= 1.11.0"
 
   required_providers {
     beyondtrust = {

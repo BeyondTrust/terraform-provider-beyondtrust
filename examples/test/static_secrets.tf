@@ -15,6 +15,9 @@ resource "beyondtrust_workload_credentials_static_secret" "external_id" {
     external_id = random_password.external_id.result
   }
 
+  # Increment to rotate the secret value (required for write-only attributes)
+  secret_wo_version = 1
+
   tags = {
     purpose     = "AWS Integration External ID"
     managed_by  = "terraform"

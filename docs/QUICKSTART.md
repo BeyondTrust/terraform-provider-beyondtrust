@@ -143,6 +143,9 @@ resource "beyondtrust_workload_credentials_static_secret" "my_api_key" {
     api_url = "https://api.example.com"
   }
 
+  # Increment to rotate the secret value (required for write-only attributes)
+  secret_wo_version = 1
+
   tags = {
     application = "quickstart-demo"
   }
