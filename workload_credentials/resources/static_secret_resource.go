@@ -299,6 +299,17 @@ func (r *StaticSecretResource) Update(ctx context.Context, req resource.UpdateRe
 	// secret_wo is write-only and cannot be diffed against state; the user-controlled
 	// secret_wo_version is the trigger for rotations. Only push the secret when it changes.
 	if !data.SecretWoVersion.Equal(state.SecretWoVersion) {
+		// Fetch the current secret to determine existing key set so we can
+		// emit explicit null for removed keys (RFC 7396 merge-patch semantics).
+		var currentSecret StaticSecretResponse
+		if err := r.client.Get(ctx, apiPath, query, &currentSecret); err != nil {
+			resp.Diagnostics.AddError(
+				"Error Reading Current Secret",
+				"Could not read current secret for key comparison: "+err.Error(),
+			)
+			return
+		}
+
 		// Convert Terraform secret map to API format using helper
 		stringMap := convertSecretMap(data.SecretWo.Elements())
 
@@ -306,6 +317,14 @@ func (r *StaticSecretResource) Update(ctx context.Context, req resource.UpdateRe
 		secretMap := make(map[string]interface{})
 		for k, v := range stringMap {
 			secretMap[k] = v
+		}
+
+		// Emit null for keys present on the server but absent from the new plan.
+		// Under RFC 7396, null instructs the server to delete the key.
+		for k := range currentSecret.Secret {
+			if _, exists := stringMap[k]; !exists {
+				secretMap[k] = nil
+			}
 		}
 
 		// Use PATCH to update the secret
