@@ -18,7 +18,7 @@ import (
 // (so a nil pointer marshals to JSON null) are pure Optional in the schema —
 // not Optional+Computed. If any of these became Computed, an unchanged value
 // could appear as Unknown in the plan, and the Update method's IsNull() check
-// would wrongly send the empty zero value to the API. See vuln 1175466.
+// would wrongly send the empty zero value to the API.
 func TestAwsDynamicSecretSchema_MergePatchOptionalsArePureOptional(t *testing.T) {
 	r := &AwsDynamicSecretResource{}
 	var resp resource.SchemaResponse
@@ -40,7 +40,7 @@ func TestAwsDynamicSecretSchema_MergePatchOptionalsArePureOptional(t *testing.T)
 // omitted. Under RFC 7396 merge-patch (used by the PATCH endpoint) an omitted
 // key means "leave unchanged" while null means "delete". If `omitempty` were
 // added to these fields, removing them from Terraform config would silently
-// leave the prior server value in place — see vulnerability 1175466.
+// leave the prior server value in place.
 func TestAwsDynamicSecretUpdateRequest_MergePatchNullSemantics(t *testing.T) {
 	t.Run("absent optional fields marshal to null", func(t *testing.T) {
 		req := AwsDynamicSecretUpdateRequest{
