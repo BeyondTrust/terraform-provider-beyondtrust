@@ -82,21 +82,21 @@ func TestAccStaticSecretEphemeral_specificVersion(t *testing.T) {
 			tfversion.SkipBelow(tfversion.Version1_10_0),
 		},
 		Steps: []resource.TestStep{
-			// Step 1: Create initial secret (version 1)
+			// Step 1: Create initial secret (server version 1)
 			{
-				Config: testAccStaticSecretResourceConfig_setup(secretName, secretValue1),
+				Config: testAccStaticSecretResourceConfig_setupWithVersion(secretName, secretValue1, 1),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("beyondtrust_workload_credentials_static_secret.setup", "name", secretName),
 				),
 			},
-			// Step 2: Update secret to create version 2
+			// Step 2: Bump secret_wo_version to trigger rotation (server version 2)
 			{
-				Config: testAccStaticSecretResourceConfig_setup(secretName, secretValue2),
+				Config: testAccStaticSecretResourceConfig_setupWithVersion(secretName, secretValue2, 2),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("beyondtrust_workload_credentials_static_secret.setup", "name", secretName),
 				),
 			},
-			// Step 3: Read version 1 with ephemeral resource (verify no errors = success)
+			// Step 3: Read server version 1 with ephemeral resource (verify no errors = success)
 			{
 				Config: testAccStaticSecretEphemeralConfig_withVersion(secretName, secretValue2, "1"),
 			},
@@ -106,14 +106,20 @@ func TestAccStaticSecretEphemeral_specificVersion(t *testing.T) {
 
 // testAccStaticSecretResourceConfig_setup returns a managed resource configuration (no ephemeral)
 func testAccStaticSecretResourceConfig_setup(name, value string) string {
+	return testAccStaticSecretResourceConfig_setupWithVersion(name, value, 1)
+}
+
+// testAccStaticSecretResourceConfig_setupWithVersion returns a managed resource configuration with an explicit secret_wo_version
+func testAccStaticSecretResourceConfig_setupWithVersion(name, value string, version int) string {
 	return fmt.Sprintf(`
 resource "beyondtrust_workload_credentials_static_secret" "setup" {
   name = %[1]q
   secret_wo = {
     value = %[2]q
   }
+  secret_wo_version = %[3]d
 }
-`, name, value)
+`, name, value, version)
 }
 
 // testAccStaticSecretResourceConfig_inFolder returns folder + managed resource configuration (no ephemeral)
@@ -129,6 +135,7 @@ resource "beyondtrust_workload_credentials_static_secret" "setup" {
   secret_wo = {
     value = %[3]q
   }
+  secret_wo_version = 1
 }
 `, folderName, secretName, value)
 }
@@ -142,6 +149,7 @@ resource "beyondtrust_workload_credentials_static_secret" "setup" {
   secret_wo = {
     value = %[2]q
   }
+  secret_wo_version = 1
 }
 
 ephemeral "beyondtrust_workload_credentials_static_secret" "test" {
@@ -163,6 +171,7 @@ resource "beyondtrust_workload_credentials_static_secret" "setup" {
   secret_wo = {
     value = %[3]q
   }
+  secret_wo_version = 1
 }
 
 ephemeral "beyondtrust_workload_credentials_static_secret" "test" {
@@ -180,6 +189,7 @@ resource "beyondtrust_workload_credentials_static_secret" "setup" {
   secret_wo = {
     value = %[2]q
   }
+  secret_wo_version = 2
 }
 
 ephemeral "beyondtrust_workload_credentials_static_secret" "test_v1" {
