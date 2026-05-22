@@ -13,8 +13,10 @@ var (
 	folderPathPattern   = regexp.MustCompile(`^[a-zA-Z0-9\-_@~\*\^]{1,130}(/[a-zA-Z0-9\-_@~\*\^]{1,130})*$`)
 )
 
-const resourceNamePatternStr = `^[a-zA-Z0-9\-_@~\*\^]{1,130}$`
-const folderPathPatternStr = `^[a-zA-Z0-9\-_@~\*\^]{1,130}(/[a-zA-Z0-9\-_@~\*\^]{1,130})*$`
+const (
+	resourceNamePatternStr = `^[a-zA-Z0-9\-_@~\*\^]{1,130}$`
+	folderPathPatternStr   = `^[a-zA-Z0-9\-_@~\*\^]{1,130}(/[a-zA-Z0-9\-_@~\*\^]{1,130})*$`
+)
 
 type resourceNameValidator struct{}
 
