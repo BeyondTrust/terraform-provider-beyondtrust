@@ -4,10 +4,110 @@
 package resources
 
 import (
+	"context"
+	"encoding/json"
 	"testing"
+
+	"github.com/hashicorp/terraform-plugin-framework/resource"
 
 	"github.com/stretchr/testify/assert"
 )
+
+// TestAwsDynamicSecretSchema_MergePatchOptionalsArePureOptional guards the
+// invariant that the five fields whose UpdateRequest tags omit `omitempty`
+// (so a nil pointer marshals to JSON null) are pure Optional in the schema —
+// not Optional+Computed. If any of these became Computed, an unchanged value
+// could appear as Unknown in the plan, and the Update method's IsNull() check
+// would wrongly send the empty zero value to the API.
+func TestAwsDynamicSecretSchema_MergePatchOptionalsArePureOptional(t *testing.T) {
+	r := &AwsDynamicSecretResource{}
+	var resp resource.SchemaResponse
+	r.Schema(context.Background(), resource.SchemaRequest{}, &resp)
+
+	fields := []string{"external_id", "policy_arns", "policy", "groups", "aws_tags"}
+	for _, name := range fields {
+		attr, ok := resp.Schema.Attributes[name]
+		assert.True(t, ok, "schema must declare %q", name)
+		assert.True(t, attr.IsOptional(), "%q must be Optional", name)
+		assert.False(t, attr.IsComputed(),
+			"%q must NOT be Computed — an unchanged value would appear as Unknown in the plan and Update would silently clear it on the API", name)
+		assert.False(t, attr.IsRequired(), "%q must NOT be Required", name)
+	}
+}
+
+// TestAwsDynamicSecretUpdateRequest_MergePatchNullSemantics verifies that
+// optional fields left unset marshal to explicit JSON null rather than being
+// omitted. Under RFC 7396 merge-patch (used by the PATCH endpoint) an omitted
+// key means "leave unchanged" while null means "delete". If `omitempty` were
+// added to these fields, removing them from Terraform config would silently
+// leave the prior server value in place.
+func TestAwsDynamicSecretUpdateRequest_MergePatchNullSemantics(t *testing.T) {
+	t.Run("absent optional fields marshal to null", func(t *testing.T) {
+		req := AwsDynamicSecretUpdateRequest{
+			Type: "aws",
+		}
+
+		data, err := json.Marshal(req)
+		assert.NoError(t, err)
+
+		var got map[string]json.RawMessage
+		assert.NoError(t, json.Unmarshal(data, &got))
+
+		for _, field := range []string{"externalId", "policyArns", "policy", "groups", "awsTags"} {
+			raw, ok := got[field]
+			assert.True(t, ok, "field %q must be present in the PATCH body so the API deletes it", field)
+			assert.Equal(t, "null", string(raw), "field %q must marshal to JSON null, got %s", field, string(raw))
+		}
+	})
+
+	t.Run("set optional fields marshal to their values", func(t *testing.T) {
+		externalId := "abc"
+		policy := `{"Version":"2012-10-17"}`
+		policyArns := []string{"arn:aws:iam::aws:policy/ReadOnlyAccess"}
+		groups := []string{"admins"}
+		tagVal := "production"
+		awsTags := map[string]*string{"Environment": &tagVal}
+
+		req := AwsDynamicSecretUpdateRequest{
+			Type:       "aws",
+			ExternalId: &externalId,
+			PolicyArns: &policyArns,
+			Policy:     &policy,
+			Groups:     &groups,
+			AwsTags:    &awsTags,
+		}
+
+		data, err := json.Marshal(req)
+		assert.NoError(t, err)
+
+		var got map[string]json.RawMessage
+		assert.NoError(t, json.Unmarshal(data, &got))
+
+		assert.Equal(t, `"abc"`, string(got["externalId"]))
+		assert.Equal(t, `["arn:aws:iam::aws:policy/ReadOnlyAccess"]`, string(got["policyArns"]))
+		assert.Equal(t, `["admins"]`, string(got["groups"]))
+		assert.Contains(t, string(got["awsTags"]), `"Environment":"production"`)
+		assert.NotEqual(t, "null", string(got["policy"]))
+	})
+
+	t.Run("unset required fields are omitted", func(t *testing.T) {
+		// roleArn and ttl retain `omitempty` because they are required and
+		// should never be cleared by Update; omitting them leaves the
+		// server-side value intact.
+		req := AwsDynamicSecretUpdateRequest{Type: "aws"}
+
+		data, err := json.Marshal(req)
+		assert.NoError(t, err)
+
+		var got map[string]json.RawMessage
+		assert.NoError(t, json.Unmarshal(data, &got))
+
+		_, hasRoleArn := got["roleArn"]
+		_, hasTTL := got["ttl"]
+		assert.False(t, hasRoleArn, "roleArn must be omitted when unset, not sent as null")
+		assert.False(t, hasTTL, "ttl must be omitted when unset, not sent as null")
+	})
+}
 
 // This file contains AWS Dynamic Secret-specific unit tests.
 // Shared helper tests are in resource_helpers_test.go
