@@ -12,9 +12,11 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/beyondtrust/terraform-provider-beyondtrust/internal/client"
+	"github.com/beyondtrust/terraform-provider-beyondtrust/internal/validators"
 )
 
 // Ensure provider defined types fully satisfy framework interfaces.
@@ -86,6 +88,9 @@ func (r *AwsIntegrationResource) Schema(ctx context.Context, req resource.Schema
 				Required:    true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),
+				},
+				Validators: []validator.String{
+					validators.ResourceNameValidator(),
 				},
 			},
 			"role_arn": schema.StringAttribute{
@@ -342,8 +347,17 @@ func (r *AwsIntegrationResource) Delete(ctx context.Context, req resource.Delete
 }
 
 func (r *AwsIntegrationResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
-	// Import by name (integration name)
-	resource.ImportStatePassthroughID(ctx, path.Root("name"), req, resp)
+	name := req.ID
+
+	if !validators.IsValidResourceName(name) {
+		resp.Diagnostics.AddError(
+			"Invalid Import ID",
+			fmt.Sprintf("Name %q contains invalid characters. Must match pattern: ^[a-zA-Z0-9\\-_@~\\*\\^%%]+$", name),
+		)
+		return
+	}
+
+	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("name"), name)...)
 }
 
 // Helper functions for AWS integration business logic

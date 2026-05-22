@@ -6,9 +6,11 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/beyondtrust/terraform-provider-beyondtrust/internal/client"
+	"github.com/beyondtrust/terraform-provider-beyondtrust/internal/validators"
 )
 
 // Ensure provider defined types fully satisfy framework interfaces.
@@ -60,6 +62,9 @@ func (d *AwsIntegrationDataSource) Schema(ctx context.Context, req datasource.Sc
 			"name": schema.StringAttribute{
 				Description: "The name of the integration to look up.",
 				Required:    true,
+				Validators: []validator.String{
+					validators.ResourceNameValidator(),
+				},
 			},
 			"role_arn": schema.StringAttribute{
 				Description: "The ARN of the IAM role in the customer AWS account.",
