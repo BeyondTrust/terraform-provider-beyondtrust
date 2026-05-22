@@ -4,11 +4,36 @@
 package resources
 
 import (
+	"context"
 	"encoding/json"
 	"testing"
 
+	"github.com/hashicorp/terraform-plugin-framework/resource"
+
 	"github.com/stretchr/testify/assert"
 )
+
+// TestAwsDynamicSecretSchema_MergePatchOptionalsArePureOptional guards the
+// invariant that the five fields whose UpdateRequest tags omit `omitempty`
+// (so a nil pointer marshals to JSON null) are pure Optional in the schema —
+// not Optional+Computed. If any of these became Computed, an unchanged value
+// could appear as Unknown in the plan, and the Update method's IsNull() check
+// would wrongly send the empty zero value to the API. See vuln 1175466.
+func TestAwsDynamicSecretSchema_MergePatchOptionalsArePureOptional(t *testing.T) {
+	r := &AwsDynamicSecretResource{}
+	var resp resource.SchemaResponse
+	r.Schema(context.Background(), resource.SchemaRequest{}, &resp)
+
+	fields := []string{"external_id", "policy_arns", "policy", "groups", "aws_tags"}
+	for _, name := range fields {
+		attr, ok := resp.Schema.Attributes[name]
+		assert.True(t, ok, "schema must declare %q", name)
+		assert.True(t, attr.IsOptional(), "%q must be Optional", name)
+		assert.False(t, attr.IsComputed(),
+			"%q must NOT be Computed — an unchanged value would appear as Unknown in the plan and Update would silently clear it on the API", name)
+		assert.False(t, attr.IsRequired(), "%q must NOT be Required", name)
+	}
+}
 
 // TestAwsDynamicSecretUpdateRequest_MergePatchNullSemantics verifies that
 // optional fields left unset marshal to explicit JSON null rather than being
