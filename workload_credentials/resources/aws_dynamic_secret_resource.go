@@ -95,6 +95,22 @@ type DynamicSecretConfig struct {
 	AwsTags         *map[string]*string `json:"awsTags,omitempty"`
 }
 
+// AwsDynamicSecretUpdateRequest represents the API request for updating a dynamic secret.
+// Optional fields intentionally omit the `omitempty` JSON tag: under RFC 7396
+// merge-patch semantics, omitting a key means "leave unchanged" while sending
+// JSON null means "delete". A nil pointer here marshals to null so removing a
+// field from Terraform config actually clears it on the server.
+type AwsDynamicSecretUpdateRequest struct {
+	Type       string              `json:"type"`
+	RoleArn    *string             `json:"roleArn,omitempty"`
+	TTL        *int64              `json:"ttl,omitempty"`
+	ExternalId *string             `json:"externalId"`
+	PolicyArns *[]string           `json:"policyArns"`
+	Policy     *string             `json:"policy"`
+	Groups     *[]string           `json:"groups"`
+	AwsTags    *map[string]*string `json:"awsTags"`
+}
+
 func (r *AwsDynamicSecretResource) Metadata(ctx context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
 	resp.TypeName = req.ProviderTypeName + "_workload_credentials_aws_dynamic_secret"
 }
@@ -425,50 +441,46 @@ func (r *AwsDynamicSecretResource) Update(ctx context.Context, req resource.Upda
 		query.Set("folder", data.Folder.ValueString())
 	}
 
-	// Build update request as a map so we can emit explicit JSON null for
-	// fields the operator removed. Under RFC 7396 merge-patch semantics an
-	// omitted key means "leave unchanged" while null means "delete".
-	updateReq := map[string]interface{}{
-		"type": "aws",
+	// Build update request. Optional fields left as nil pointers marshal to
+	// JSON null (their struct tags omit `omitempty`), which under RFC 7396
+	// merge-patch semantics instructs the API to delete the field.
+	updateReq := AwsDynamicSecretUpdateRequest{
+		Type: "aws",
 	}
 
 	if !data.RoleArn.IsNull() {
-		updateReq["roleArn"] = data.RoleArn.ValueString()
+		roleArn := data.RoleArn.ValueString()
+		updateReq.RoleArn = &roleArn
 	}
 
 	if !data.TTL.IsNull() {
-		updateReq["ttl"] = data.TTL.ValueInt64()
+		ttl := data.TTL.ValueInt64()
+		updateReq.TTL = &ttl
 	}
 
-	// Optional fields: emit explicit null when removed from config
 	if !data.ExternalId.IsNull() {
-		updateReq["externalId"] = data.ExternalId.ValueString()
-	} else {
-		updateReq["externalId"] = nil
+		externalId := data.ExternalId.ValueString()
+		updateReq.ExternalId = &externalId
 	}
 
 	if !data.PolicyArns.IsNull() {
-		updateReq["policyArns"] = convertTerraformListToStrings(data.PolicyArns)
-	} else {
-		updateReq["policyArns"] = nil
+		policyArns := convertTerraformListToStrings(data.PolicyArns)
+		updateReq.PolicyArns = &policyArns
 	}
 
 	if !data.Policy.IsNull() {
-		updateReq["policy"] = data.Policy.ValueString()
-	} else {
-		updateReq["policy"] = nil
+		policy := data.Policy.ValueString()
+		updateReq.Policy = &policy
 	}
 
 	if !data.Groups.IsNull() {
-		updateReq["groups"] = convertTerraformListToStrings(data.Groups)
-	} else {
-		updateReq["groups"] = nil
+		groups := convertTerraformListToStrings(data.Groups)
+		updateReq.Groups = &groups
 	}
 
 	if !data.AwsTags.IsNull() {
-		updateReq["awsTags"] = convertTerraformMapToStringPointers(data.AwsTags)
-	} else {
-		updateReq["awsTags"] = nil
+		awsTags := convertTerraformMapToStringPointers(data.AwsTags)
+		updateReq.AwsTags = &awsTags
 	}
 
 	// Update the dynamic secret
