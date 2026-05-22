@@ -37,7 +37,7 @@ type StaticSecretResourceModel struct {
 	Name            types.String `tfsdk:"name"`
 	Folder          types.String `tfsdk:"folder"`
 	SecretWo        types.Map    `tfsdk:"secret_wo"`         // Write-only: map[string]string
-	SecretWoVersion types.Int64  `tfsdk:"secret_wo_version"` // Tracks secret changes
+	SecretWoVersion types.Int64  `tfsdk:"secret_wo_version"` // User-controlled trigger for rotation
 	Path            types.String `tfsdk:"path"`
 	ID              types.String `tfsdk:"id"`
 	CreatedAt       types.String `tfsdk:"created_at"`
@@ -96,11 +96,11 @@ func (r *StaticSecretResource) Schema(ctx context.Context, req resource.SchemaRe
 				Description: "Key-value pairs for the secret (e.g., {password = 'secret123'}). Write-only - not stored in state. Use the ephemeral resource to read values.",
 				ElementType: types.StringType,
 				Required:    true,
-				Sensitive:   true,
+				WriteOnly:   true,
 			},
 			"secret_wo_version": schema.Int64Attribute{
-				Description: "Version tracker for the write-only secret. Increments when secret_wo changes. Stored in state to detect changes.",
-				Computed:    true,
+				Description: "User-controlled version number for the write-only secret. Increment this value to signal that secret_wo has changed and should be re-applied. Write-only values cannot be diffed automatically against state, so this attribute serves as the rotation trigger.",
+				Required:    true,
 			},
 			"path": schema.StringAttribute{
 				Description: "The full path to the secret (computed).",
@@ -193,7 +193,7 @@ func (r *StaticSecretResource) Create(ctx context.Context, req resource.CreateRe
 	// Compute path from name and folder
 	pathStr := buildFolderPath(name, parentFolder)
 	data.Path = types.StringValue(pathStr)
-	data.SecretWoVersion = types.Int64Value(createResp.Metadata.Version)
+	// secret_wo_version is user-controlled; preserve the user's planned value
 	data.CreatedAt = types.StringValue(createResp.Metadata.CreatedAt)
 
 	// Handle tags if provided in the create response
@@ -209,6 +209,9 @@ func (r *StaticSecretResource) Create(ctx context.Context, req resource.CreateRe
 			// Don't return here - secret was created successfully
 		}
 	}
+
+	// WriteOnly prevents framework persistence, but null out as defense-in-depth
+	data.SecretWo = types.MapNull(types.StringType)
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
@@ -254,7 +257,7 @@ func (r *StaticSecretResource) Read(ctx context.Context, req resource.ReadReques
 	// Update state with metadata (NOT the secret value)
 	data.ID = types.StringValue(metadataResp.ID)
 	data.CreatedAt = types.StringValue(metadataResp.CreatedAt)
-	data.SecretWoVersion = types.Int64Value(metadataResp.Version)
+	// secret_wo_version is user-controlled; preserve the value already in state
 
 	// Compute path from name and folder using helper
 	pathStr := buildFolderPath(name, parentFolder)
@@ -293,8 +296,9 @@ func (r *StaticSecretResource) Update(ctx context.Context, req resource.UpdateRe
 	}
 	query := buildFolderQueryParam(parentFolder)
 
-	// Check if secret value changed
-	if !data.SecretWo.Equal(state.SecretWo) {
+	// secret_wo is write-only and cannot be diffed against state; the user-controlled
+	// secret_wo_version is the trigger for rotations. Only push the secret when it changes.
+	if !data.SecretWoVersion.Equal(state.SecretWoVersion) {
 		// Convert Terraform secret map to API format using helper
 		stringMap := convertSecretMap(data.SecretWo.Elements())
 
@@ -347,7 +351,7 @@ func (r *StaticSecretResource) Update(ctx context.Context, req resource.UpdateRe
 	// Update state with metadata
 	data.ID = types.StringValue(metadataResp.ID)
 	data.CreatedAt = types.StringValue(metadataResp.CreatedAt)
-	data.SecretWoVersion = types.Int64Value(metadataResp.Version)
+	// secret_wo_version is user-controlled; preserve the user's planned value
 
 	// Update tags in state - set to null if empty (framework requirement)
 	if len(metadataResp.Tags) > 0 {
@@ -355,6 +359,9 @@ func (r *StaticSecretResource) Update(ctx context.Context, req resource.UpdateRe
 	} else {
 		data.Tags = types.MapNull(types.StringType)
 	}
+
+	// WriteOnly prevents framework persistence, but null out as defense-in-depth
+	data.SecretWo = types.MapNull(types.StringType)
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
@@ -415,7 +422,7 @@ func (r *StaticSecretResource) ImportState(ctx context.Context, req resource.Imp
 	// Note: Secret value must be provided in config after import
 	resp.Diagnostics.AddWarning(
 		"Secret Value Required",
-		"After importing, you must provide the 'secret_wo' attribute in your configuration. The secret value is not retrieved during import for security reasons.",
+		"After importing, you must provide the 'secret_wo' and 'secret_wo_version' attributes in your configuration. The secret value is not retrieved during import for security reasons.",
 	)
 }
 

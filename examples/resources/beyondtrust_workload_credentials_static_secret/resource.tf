@@ -9,6 +9,10 @@ resource "beyondtrust_workload_credentials_static_secret" "api_key" {
     api_url = "https://api.example.com"
   }
 
+  # Increment secret_wo_version to rotate the secret value.
+  # Required because write-only values cannot be diffed automatically.
+  secret_wo_version = 1
+
   tags = {
     application = "backend-service"
     environment = "production"

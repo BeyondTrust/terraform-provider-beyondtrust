@@ -58,8 +58,9 @@ func TestAccStaticSecretResource_basic(t *testing.T) {
 					return p, nil
 				},
 				// secret_wo is write-only and not returned by the API on read
+				// secret_wo_version is user-controlled and not derivable from the API on import
 				// created_at precision differs between create and read responses (API inconsistency)
-				ImportStateVerifyIgnore: []string{"secret_wo", "created_at"},
+				ImportStateVerifyIgnore: []string{"secret_wo", "secret_wo_version", "created_at"},
 			},
 		},
 	})
@@ -106,23 +107,23 @@ func TestAccStaticSecretResource_updateValue(t *testing.T) {
 		ProtoV6ProviderFactories: acctest.ProtoV6ProviderFactories,
 		CheckDestroy:             testAccCheckStaticSecretDestroy,
 		Steps: []resource.TestStep{
-			// Create with initial value
+			// Create with initial value (version 1)
 			{
-				Config: testAccStaticSecretResourceConfig_basic(secretName, secretValue1),
+				Config: testAccStaticSecretResourceConfig_basicWithVersion(secretName, secretValue1, 1),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("beyondtrust_workload_credentials_static_secret.test", "secret_wo_version", "1"),
 				),
 			},
-			// Update value (should create version 2)
+			// Bump version to 2 (triggers re-applying secret_wo with new value)
 			{
-				Config: testAccStaticSecretResourceConfig_basic(secretName, secretValue2),
+				Config: testAccStaticSecretResourceConfig_basicWithVersion(secretName, secretValue2, 2),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("beyondtrust_workload_credentials_static_secret.test", "secret_wo_version", "2"),
 				),
 			},
-			// Update value again (should create version 3)
+			// Bump version to 3 (triggers another re-apply)
 			{
-				Config: testAccStaticSecretResourceConfig_basic(secretName, secretValue3),
+				Config: testAccStaticSecretResourceConfig_basicWithVersion(secretName, secretValue3, 3),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("beyondtrust_workload_credentials_static_secret.test", "secret_wo_version", "3"),
 				),
@@ -261,14 +262,20 @@ func testAccCheckStaticSecretDestroy(s *terraform.State) error {
 
 // testAccStaticSecretResourceConfig_basic returns a basic static secret resource configuration
 func testAccStaticSecretResourceConfig_basic(name, value string) string {
+	return testAccStaticSecretResourceConfig_basicWithVersion(name, value, 1)
+}
+
+// testAccStaticSecretResourceConfig_basicWithVersion returns a basic config with an explicit secret_wo_version
+func testAccStaticSecretResourceConfig_basicWithVersion(name, value string, version int) string {
 	return fmt.Sprintf(`
 resource "beyondtrust_workload_credentials_static_secret" "test" {
   name = %[1]q
   secret_wo = {
     value = %[2]q
   }
+  secret_wo_version = %[3]d
 }
-`, name, value)
+`, name, value, version)
 }
 
 // testAccStaticSecretResourceConfig_inFolder returns a configuration with a secret in a folder
@@ -284,6 +291,7 @@ resource "beyondtrust_workload_credentials_static_secret" "test" {
   secret_wo = {
     value = %[3]q
   }
+  secret_wo_version = 1
 }
 `, folderName, secretName, value)
 }
@@ -302,6 +310,7 @@ resource "beyondtrust_workload_credentials_static_secret" "test" {
   secret_wo = {
     value = %[2]q
   }
+  secret_wo_version = 1
   tags = %[3]s
 }
 `, name, value, tagsStr)
