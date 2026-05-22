@@ -95,16 +95,20 @@ type DynamicSecretConfig struct {
 	AwsTags         *map[string]*string `json:"awsTags,omitempty"`
 }
 
-// AwsDynamicSecretUpdateRequest represents the API request for updating a dynamic secret
+// AwsDynamicSecretUpdateRequest represents the API request for updating a dynamic secret.
+// Optional fields intentionally omit the `omitempty` JSON tag: under RFC 7396
+// merge-patch semantics, omitting a key means "leave unchanged" while sending
+// JSON null means "delete". A nil pointer here marshals to null so removing a
+// field from Terraform config actually clears it on the server.
 type AwsDynamicSecretUpdateRequest struct {
 	Type       string              `json:"type"`
 	RoleArn    *string             `json:"roleArn,omitempty"`
-	ExternalId *string             `json:"externalId,omitempty"`
 	TTL        *int64              `json:"ttl,omitempty"`
-	PolicyArns *[]string           `json:"policyArns,omitempty"`
-	Policy     *string             `json:"policy,omitempty"`
-	Groups     *[]string           `json:"groups,omitempty"`
-	AwsTags    *map[string]*string `json:"awsTags,omitempty"`
+	ExternalId *string             `json:"externalId"`
+	PolicyArns *[]string           `json:"policyArns"`
+	Policy     *string             `json:"policy"`
+	Groups     *[]string           `json:"groups"`
+	AwsTags    *map[string]*string `json:"awsTags"`
 }
 
 func (r *AwsDynamicSecretResource) Metadata(ctx context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
@@ -371,19 +375,26 @@ func (r *AwsDynamicSecretResource) Read(ctx context.Context, req resource.ReadRe
 
 	if secretResp.Config.ExternalId != nil {
 		data.ExternalId = types.StringValue(*secretResp.Config.ExternalId)
+	} else {
+		data.ExternalId = types.StringNull()
 	}
 
-	// Update lists and maps
+	// Update lists and maps — unconditionally clear when absent so state
+	// reflects the actual API value and drift is surfaced by plan.
 	if secretResp.Config.PolicyArns != nil && len(*secretResp.Config.PolicyArns) > 0 {
 		policyArnsElements := make([]attr.Value, 0, len(*secretResp.Config.PolicyArns))
 		for _, arn := range *secretResp.Config.PolicyArns {
 			policyArnsElements = append(policyArnsElements, types.StringValue(arn))
 		}
 		data.PolicyArns = types.ListValueMust(types.StringType, policyArnsElements)
+	} else {
+		data.PolicyArns = types.ListNull(types.StringType)
 	}
 
 	if secretResp.Config.Policy != nil {
 		data.Policy = types.StringValue(*secretResp.Config.Policy)
+	} else {
+		data.Policy = types.StringNull()
 	}
 
 	if secretResp.Config.Groups != nil && len(*secretResp.Config.Groups) > 0 {
@@ -392,6 +403,8 @@ func (r *AwsDynamicSecretResource) Read(ctx context.Context, req resource.ReadRe
 			groupsElements = append(groupsElements, types.StringValue(group))
 		}
 		data.Groups = types.ListValueMust(types.StringType, groupsElements)
+	} else {
+		data.Groups = types.ListNull(types.StringType)
 	}
 
 	if secretResp.Config.AwsTags != nil && len(*secretResp.Config.AwsTags) > 0 {
@@ -402,6 +415,8 @@ func (r *AwsDynamicSecretResource) Read(ctx context.Context, req resource.ReadRe
 			}
 		}
 		data.AwsTags = types.MapValueMust(types.StringType, tagsMap)
+	} else {
+		data.AwsTags = types.MapNull(types.StringType)
 	}
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
@@ -426,25 +441,26 @@ func (r *AwsDynamicSecretResource) Update(ctx context.Context, req resource.Upda
 		query.Set("folder", data.Folder.ValueString())
 	}
 
-	// Build update request with merge patch semantics
+	// Build update request. Optional fields left as nil pointers marshal to
+	// JSON null (their struct tags omit `omitempty`), which under RFC 7396
+	// merge-patch semantics instructs the API to delete the field.
 	updateReq := AwsDynamicSecretUpdateRequest{
 		Type: "aws",
 	}
 
-	// Include changed fields
 	if !data.RoleArn.IsNull() {
 		roleArn := data.RoleArn.ValueString()
 		updateReq.RoleArn = &roleArn
 	}
 
-	if !data.ExternalId.IsNull() {
-		externalId := data.ExternalId.ValueString()
-		updateReq.ExternalId = &externalId
-	}
-
 	if !data.TTL.IsNull() {
 		ttl := data.TTL.ValueInt64()
 		updateReq.TTL = &ttl
+	}
+
+	if !data.ExternalId.IsNull() {
+		externalId := data.ExternalId.ValueString()
+		updateReq.ExternalId = &externalId
 	}
 
 	if !data.PolicyArns.IsNull() {
@@ -488,18 +504,64 @@ func (r *AwsDynamicSecretResource) Update(ctx context.Context, req resource.Upda
 		return
 	}
 
-	// Update state with latest values
+	// Update state with latest values from the API response
 	data.ID = types.StringValue(secretResp.Metadata.ID)
 	data.Path = types.StringValue(secretResp.Path)
 	data.CreatedAt = types.StringValue(secretResp.Metadata.CreatedAt)
 	data.IntegrationId = types.StringValue(secretResp.Config.IntegrationId)
 	data.TTL = types.Int64Value(secretResp.Config.TTL)
 	data.RoleArn = types.StringValue(secretResp.Config.RoleArn)
+	data.CredentialType = types.StringValue(secretResp.Config.CredentialType)
+	data.IntegrationName = types.StringValue(secretResp.Config.IntegrationName)
 
 	if secretResp.Metadata.DeletedAt != nil {
 		data.DeletedAt = types.StringValue(*secretResp.Metadata.DeletedAt)
 	} else {
 		data.DeletedAt = types.StringNull()
+	}
+
+	if secretResp.Config.ExternalId != nil {
+		data.ExternalId = types.StringValue(*secretResp.Config.ExternalId)
+	} else {
+		data.ExternalId = types.StringNull()
+	}
+
+	if secretResp.Config.PolicyArns != nil && len(*secretResp.Config.PolicyArns) > 0 {
+		policyArnsElements := make([]attr.Value, 0, len(*secretResp.Config.PolicyArns))
+		for _, arn := range *secretResp.Config.PolicyArns {
+			policyArnsElements = append(policyArnsElements, types.StringValue(arn))
+		}
+		data.PolicyArns = types.ListValueMust(types.StringType, policyArnsElements)
+	} else {
+		data.PolicyArns = types.ListNull(types.StringType)
+	}
+
+	if secretResp.Config.Policy != nil {
+		data.Policy = types.StringValue(*secretResp.Config.Policy)
+	} else {
+		data.Policy = types.StringNull()
+	}
+
+	if secretResp.Config.Groups != nil && len(*secretResp.Config.Groups) > 0 {
+		groupsElements := make([]attr.Value, 0, len(*secretResp.Config.Groups))
+		for _, group := range *secretResp.Config.Groups {
+			groupsElements = append(groupsElements, types.StringValue(group))
+		}
+		data.Groups = types.ListValueMust(types.StringType, groupsElements)
+	} else {
+		data.Groups = types.ListNull(types.StringType)
+	}
+
+	if secretResp.Config.AwsTags != nil && len(*secretResp.Config.AwsTags) > 0 {
+		tagsMap := make(map[string]attr.Value)
+		for k, v := range *secretResp.Config.AwsTags {
+			if v != nil {
+				tagsMap[k] = types.StringValue(*v)
+			}
+		}
+		data.AwsTags = types.MapValueMust(types.StringType, tagsMap)
+	} else {
+		data.AwsTags = types.MapNull(types.StringType)
 	}
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
