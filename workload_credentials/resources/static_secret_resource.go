@@ -49,9 +49,13 @@ type StaticSecretCreateRequest struct {
 	Secret map[string]string `json:"secret"`
 }
 
-// StaticSecretUpdateRequest represents the API request for updating a static secret
+// StaticSecretUpdateRequest represents the API request for updating a static secret.
+// The Secret map uses interface{} values so callers can emit explicit JSON null
+// for keys removed from configuration: under RFC 7396 merge-patch semantics
+// (which the PATCH endpoint uses) an omitted key means "leave unchanged" while
+// null means "delete". The Update flow populates the map via buildSecretMergePatch.
 type StaticSecretUpdateRequest struct {
-	Secret map[string]interface{} `json:"secret"` // Use interface{} to support null values for deletion
+	Secret map[string]interface{} `json:"secret"`
 }
 
 // StaticSecretMetadataResponse represents the API response for secret metadata
@@ -299,8 +303,12 @@ func (r *StaticSecretResource) Update(ctx context.Context, req resource.UpdateRe
 	// secret_wo is write-only and cannot be diffed against state; the user-controlled
 	// secret_wo_version is the trigger for rotations. Only push the secret when it changes.
 	if !data.SecretWoVersion.Equal(state.SecretWoVersion) {
-		// Fetch the current secret to determine existing key set so we can
-		// emit explicit null for removed keys (RFC 7396 merge-patch semantics).
+		// Fetch the current secret so we know which keys exist on the server.
+		// secret_wo is write-only and not persisted in state, so the server is
+		// the only source of truth for the prior key set. We need the prior keys
+		// to emit explicit JSON null for any key removed from configuration —
+		// under RFC 7396 merge-patch semantics, an omitted key means "leave
+		// unchanged" while null means "delete".
 		var currentSecret StaticSecretResponse
 		if err := r.client.Get(ctx, apiPath, query, &currentSecret); err != nil {
 			resp.Diagnostics.AddError(
@@ -310,26 +318,10 @@ func (r *StaticSecretResource) Update(ctx context.Context, req resource.UpdateRe
 			return
 		}
 
-		// Convert Terraform secret map to API format using helper
-		stringMap := convertSecretMap(data.SecretWo.Elements())
-
-		// Convert to map[string]interface{} for PATCH request
-		secretMap := make(map[string]interface{})
-		for k, v := range stringMap {
-			secretMap[k] = v
-		}
-
-		// Emit null for keys present on the server but absent from the new plan.
-		// Under RFC 7396, null instructs the server to delete the key.
-		for k := range currentSecret.Secret {
-			if _, exists := stringMap[k]; !exists {
-				secretMap[k] = nil
-			}
-		}
-
-		// Use PATCH to update the secret
+		// Build the merge-patch body: new/updated keys with values, removed keys with null.
+		newSecret := convertSecretMap(data.SecretWo.Elements())
 		requestBody := StaticSecretUpdateRequest{
-			Secret: secretMap,
+			Secret: buildSecretMergePatch(currentSecret.Secret, newSecret),
 		}
 
 		var updateResp StaticSecretResponse
@@ -466,6 +458,31 @@ func convertSecretMap(terraformMap map[string]attr.Value) map[string]string {
 	}
 
 	return result
+}
+
+// buildSecretMergePatch builds a merge-patch body for static secret updates.
+// It returns a map where:
+//   - Keys present in newSecret carry their string value
+//   - Keys present in oldSecret but absent from newSecret carry nil
+//     (per RFC 7396 merge-patch semantics, JSON null means "delete this key")
+//
+// The PATCH endpoint sends this map as application/merge-patch+json, so a key
+// that is missing from the body is left unchanged on the server. Without the
+// explicit nil entries, keys removed from configuration would silently persist.
+func buildSecretMergePatch(oldSecret, newSecret map[string]string) map[string]interface{} {
+	patch := make(map[string]interface{}, len(newSecret)+len(oldSecret))
+
+	for k, v := range newSecret {
+		patch[k] = v
+	}
+
+	for k := range oldSecret {
+		if _, exists := newSecret[k]; !exists {
+			patch[k] = nil
+		}
+	}
+
+	return patch
 }
 
 // secretMapsEqual checks if two secret maps are equal.
