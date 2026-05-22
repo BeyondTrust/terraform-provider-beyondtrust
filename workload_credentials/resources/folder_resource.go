@@ -72,7 +72,7 @@ func (r *FolderResource) Schema(ctx context.Context, req resource.SchemaRequest,
 
 		Attributes: map[string]schema.Attribute{
 			"name": schema.StringAttribute{
-				Description: "The name of the folder. Must match pattern: ^[a-zA-Z0-9\\-_@~\\*\\^%]+$ (max 100 chars)",
+				Description: "The name of the folder. Must match pattern: ^[a-zA-Z0-9\\-_@~\\*\\^]+$ (max 100 chars)",
 				Required:    true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),
@@ -377,7 +377,7 @@ func (r *FolderResource) ImportState(ctx context.Context, req resource.ImportSta
 	if !validators.IsValidResourceName(name) {
 		resp.Diagnostics.AddError(
 			"Invalid Import ID",
-			fmt.Sprintf("Name %q parsed from import ID contains invalid characters. Must match pattern: ^[a-zA-Z0-9\\-_@~\\*\\^%%]+$", name),
+			fmt.Sprintf("Name %q parsed from import ID contains invalid characters. Must match pattern: ^[a-zA-Z0-9\\-_@~\\*\\^]+$", name),
 		)
 		return
 	}

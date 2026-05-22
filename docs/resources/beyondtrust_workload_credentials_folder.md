@@ -39,7 +39,7 @@ resource "beyondtrust_workload_credentials_folder" "aws" {
 
 ### Required
 
-- `name` (String) The name of the folder. Must match pattern: ^[a-zA-Z0-9\-_@~\*\^%]+$ (max 100 chars)
+- `name` (String) The name of the folder. Must match pattern: ^[a-zA-Z0-9\-_@~\*\^]+$ (max 100 chars)
 
 ### Optional
 

@@ -8,12 +8,12 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 )
 
-var resourceNamePattern = regexp.MustCompile(`^[a-zA-Z0-9\-_@~\*\^%]+$`)
+var resourceNamePattern = regexp.MustCompile(`^[a-zA-Z0-9\-_@~\*\^]+$`)
 
 type resourceNameValidator struct{}
 
 func (v resourceNameValidator) Description(_ context.Context) string {
-	return "value must match ^[a-zA-Z0-9\\-_@~\\*\\^%]+$"
+	return "value must match ^[a-zA-Z0-9\\-_@~\\*\\^]+$"
 }
 
 func (v resourceNameValidator) MarkdownDescription(ctx context.Context) string {
@@ -30,7 +30,7 @@ func (v resourceNameValidator) ValidateString(_ context.Context, req validator.S
 		resp.Diagnostics.AddAttributeError(
 			req.Path,
 			"Invalid Resource Name",
-			fmt.Sprintf("Name %q contains invalid characters. Must match pattern: ^[a-zA-Z0-9\\-_@~\\*\\^%%]+$", value),
+			fmt.Sprintf("Name %q contains invalid characters. Must match pattern: ^[a-zA-Z0-9\\-_@~\\*\\^]+$", value),
 		)
 	}
 }

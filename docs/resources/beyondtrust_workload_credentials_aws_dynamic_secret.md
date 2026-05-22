@@ -98,7 +98,7 @@ resource "beyondtrust_workload_credentials_aws_dynamic_secret" "admin" {
 
 - `credential_type` (String) The type of AWS credentials to generate. Currently supported: 'assumed_role'. Other types (iam_user, federation_token, session_token) may be added in the future.
 - `integration_name` (String) The name of the AWS integration to use for generating credentials.
-- `name` (String) The name of the dynamic secret. Must match pattern: ^[a-zA-Z0-9\-_@~\*\^%]+$ (max 100 chars).
+- `name` (String) The name of the dynamic secret. Must match pattern: ^[a-zA-Z0-9\-_@~\*\^]+$ (max 100 chars).
 - `role_arn` (String) The ARN of the AWS IAM role to assume when generating credentials. Must match pattern: arn:aws:iam::[0-9]+:role/.+
 - `ttl` (Number) Time-to-live in seconds for generated credentials. For assumed_role: 900-43200 (15 min - 12 hours). For other types: 900-129600 (15 min - 36 hours).
 
