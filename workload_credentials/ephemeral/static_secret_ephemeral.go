@@ -9,9 +9,11 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/ephemeral"
 	"github.com/hashicorp/terraform-plugin-framework/ephemeral/schema"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/beyondtrust/terraform-provider-beyondtrust/internal/client"
+	"github.com/beyondtrust/terraform-provider-beyondtrust/internal/validators"
 )
 
 // Ensure provider defined types fully satisfy framework interfaces.
@@ -62,10 +64,16 @@ func (e *StaticSecretEphemeral) Schema(ctx context.Context, req ephemeral.Schema
 			"name": schema.StringAttribute{
 				Description: "The name of the secret to read.",
 				Required:    true,
+				Validators: []validator.String{
+					validators.ResourceNameValidator(),
+				},
 			},
 			"folder": schema.StringAttribute{
-				Description: "The parent folder path (e.g., 'production' or 'production/aws'). Leave empty for root level.",
+				Description: "The parent folder path (e.g., 'production' or 'production/aws'). Leave empty for root level. Each segment must match: ^[a-zA-Z0-9\\-_@~\\*\\^]{1,130}$.",
 				Optional:    true,
+				Validators: []validator.String{
+					validators.FolderPathValidator(),
+				},
 			},
 			"version": schema.Int64Attribute{
 				Description: "The specific version of the secret to read. If not provided, reads the latest version. After reading, this will be set to the actual version that was read.",
