@@ -23,9 +23,10 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
 
       - name: Attach SBOM
-        run: gh release upload --clobber "${{ github.event.release.tag_name }}" "${{ steps.sbom.outputs.fileName }}"
+        run: gh release upload --clobber "$TAG_NAME" "${{ steps.sbom.outputs.fileName }}"
         env:
           GITHUB_TOKEN: ${{ github.token }}
+          TAG_NAME: ${{ github.event.release.tag_name }}
 
   promote-jfrog-prod:
     name: Promote to Jfrog's Prod environment
@@ -52,14 +53,18 @@ jobs:
       - name: Extract version
         id: info
         run: |
-          VERSION="${{ github.event.release.tag_name }}"
+          VERSION="$TAG_NAME"
           echo "version=${VERSION#v}" >> $GITHUB_OUTPUT
+        env:
+          TAG_NAME: ${{ github.event.release.tag_name }}
 
       - name: Download provider artifacts from Artifactory
         run: |
           jf rt download \
-            "eng-tf-provider-prod-local/beyondtrust/beyondtrust/${{ steps.info.outputs.version }}/terraform-provider-beyondtrust_*" \
+            "eng-tf-provider-prod-local/beyondtrust/beyondtrust/${VERSION}/terraform-provider-beyondtrust_*" \
             dist/ --flat=true
+        env:
+          VERSION: ${{ steps.info.outputs.version }}
 
       - name: Import GPG key
         id: import_gpg
@@ -70,13 +75,16 @@ jobs:
 
       - name: Sign SHA256SUMS
         run: |
-          VERSION="${{ steps.info.outputs.version }}"
           gpg --batch --yes --detach-sign \
-            --local-user "${{ steps.import_gpg.outputs.fingerprint }}" \
+            --local-user "$GPG_FINGERPRINT" \
             --output "dist/terraform-provider-beyondtrust_${VERSION}_SHA256SUMS.sig" \
             "dist/terraform-provider-beyondtrust_${VERSION}_SHA256SUMS"
+        env:
+          VERSION: ${{ steps.info.outputs.version }}
+          GPG_FINGERPRINT: ${{ steps.import_gpg.outputs.fingerprint }}
 
       - name: Upload artifacts to GitHub release
-        run: gh release upload --clobber "${{ github.event.release.tag_name }}" dist/terraform-provider-beyondtrust_*
+        run: gh release upload --clobber "$TAG_NAME" dist/terraform-provider-beyondtrust_*
         env:
           GITHUB_TOKEN: ${{ github.token }}
+          TAG_NAME: ${{ github.event.release.tag_name }}
