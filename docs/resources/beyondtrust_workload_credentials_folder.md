@@ -39,11 +39,11 @@ resource "beyondtrust_workload_credentials_folder" "aws" {
 
 ### Required
 
-- `name` (String) The name of the folder. Must match pattern: ^[a-zA-Z0-9\-_@~\*\^%]+$ (max 100 chars)
+- `name` (String) The name of the folder. Must match pattern: ^[a-zA-Z0-9\-_@~\*\^]{1,130}$ (single path segment, max 130 chars).
 
 ### Optional
 
-- `folder` (String) The parent folder path (e.g., 'production' or 'production/aws'). Leave empty for root level.
+- `folder` (String) The parent folder path (e.g., 'production' or 'production/aws'). Leave empty for root level. Each segment must match: ^[a-zA-Z0-9\-_@~\*\^]{1,130}$.
 - `tags` (Map of String) Key-value tags for the folder (max 50 tags, max 256 chars per value).
 
 ### Read-Only
