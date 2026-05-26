@@ -9,9 +9,11 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/beyondtrust/terraform-provider-beyondtrust/internal/client"
+	"github.com/beyondtrust/terraform-provider-beyondtrust/internal/validators"
 )
 
 // Ensure provider defined types fully satisfy framework interfaces.
@@ -70,17 +72,23 @@ func (r *FolderResource) Schema(ctx context.Context, req resource.SchemaRequest,
 
 		Attributes: map[string]schema.Attribute{
 			"name": schema.StringAttribute{
-				Description: "The name of the folder. Must match pattern: ^[a-zA-Z0-9\\-_@~\\*\\^%]+$ (max 100 chars)",
+				Description: "The name of the folder. Must match pattern: ^[a-zA-Z0-9\\-_@~\\*\\^]{1,130}$ (single path segment, max 130 chars).",
 				Required:    true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),
 				},
+				Validators: []validator.String{
+					validators.ResourceNameValidator(),
+				},
 			},
 			"folder": schema.StringAttribute{
-				Description: "The parent folder path (e.g., 'production' or 'production/aws'). Leave empty for root level.",
+				Description: "The parent folder path (e.g., 'production' or 'production/aws'). Leave empty for root level. Each segment must match: ^[a-zA-Z0-9\\-_@~\\*\\^]{1,130}$.",
 				Optional:    true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),
+				},
+				Validators: []validator.String{
+					validators.FolderPathValidator(),
 				},
 			},
 			"path": schema.StringAttribute{
@@ -368,6 +376,21 @@ func (r *FolderResource) ImportState(ctx context.Context, req resource.ImportSta
 
 	// Parse the import path
 	name, parentFolder := parseImportPath(fullPath)
+
+	if !validators.IsValidResourceName(name) {
+		resp.Diagnostics.AddError(
+			"Invalid Import ID",
+			fmt.Sprintf("Name %q parsed from import ID is invalid. Must match: ^[a-zA-Z0-9\\-_@~\\*\\^]{1,130}$", name),
+		)
+		return
+	}
+	if !validators.IsValidFolderPath(parentFolder) {
+		resp.Diagnostics.AddError(
+			"Invalid Import ID",
+			fmt.Sprintf("Folder %q parsed from import ID is invalid. Each segment must match: ^[a-zA-Z0-9\\-_@~\\*\\^]{1,130}$", parentFolder),
+		)
+		return
+	}
 
 	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("name"), name)...)
 	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("folder"), parentFolder)...)

@@ -60,7 +60,7 @@ output "secret_version" {
 
 ### Optional
 
-- `folder` (String) The parent folder path (e.g., 'production' or 'production/aws'). Leave empty for root level.
+- `folder` (String) The parent folder path (e.g., 'production' or 'production/aws'). Leave empty for root level. Each segment must match: ^[a-zA-Z0-9\-_@~\*\^]{1,130}$.
 - `version` (Number) The specific version of the secret to read. If not provided, reads the latest version. After reading, this will be set to the actual version that was read.
 
 ### Read-Only
