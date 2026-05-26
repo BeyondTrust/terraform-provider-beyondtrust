@@ -54,6 +54,51 @@ func TestNewClient(t *testing.T) {
 			wantErr: false,
 		},
 		{
+			name: "rejects URL with fragment",
+			config: &Config{
+				BaseURL:     "https://api.example.com#",
+				AccessToken: "test-token",
+				Timeout:     "30s",
+			},
+			wantErr: true,
+		},
+		{
+			name: "rejects URL with fragment and content",
+			config: &Config{
+				BaseURL:     "https://api.example.com#frag",
+				AccessToken: "test-token",
+				Timeout:     "30s",
+			},
+			wantErr: true,
+		},
+		{
+			name: "rejects URL with query string",
+			config: &Config{
+				BaseURL:     "https://api.example.com?x=",
+				AccessToken: "test-token",
+				Timeout:     "30s",
+			},
+			wantErr: true,
+		},
+		{
+			name: "rejects URL with bare question mark",
+			config: &Config{
+				BaseURL:     "https://api.example.com?",
+				AccessToken: "test-token",
+				Timeout:     "30s",
+			},
+			wantErr: true,
+		},
+		{
+			name: "rejects URL without scheme",
+			config: &Config{
+				BaseURL:     "api.example.com",
+				AccessToken: "test-token",
+				Timeout:     "30s",
+			},
+			wantErr: true,
+		},
+		{
 			name: "invalid timeout",
 			config: &Config{
 				BaseURL:     "https://api.example.com",
