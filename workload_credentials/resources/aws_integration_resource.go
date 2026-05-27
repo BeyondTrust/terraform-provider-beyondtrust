@@ -45,7 +45,6 @@ type AwsIntegrationResourceModel struct {
 
 // AwsIntegrationCreateRequest represents the API request for creating an integration
 type AwsIntegrationCreateRequest struct {
-	Type       string  `json:"type"`
 	RoleArn    string  `json:"roleArn"`
 	ExternalId *string `json:"externalId,omitempty"`
 }
@@ -69,7 +68,6 @@ type Config struct {
 
 // AwsIntegrationUpdateRequest represents the API request for updating an integration
 type AwsIntegrationUpdateRequest struct {
-	Type       string  `json:"type"`
 	RoleArn    *string `json:"roleArn,omitempty"`
 	ExternalId *string `json:"externalId,omitempty"`
 }
@@ -150,7 +148,6 @@ func (r *AwsIntegrationResource) Create(ctx context.Context, req resource.Create
 
 	// Build request body
 	createReq := AwsIntegrationCreateRequest{
-		Type:    "aws",
 		RoleArn: data.RoleArn.ValueString(),
 	}
 
@@ -270,9 +267,7 @@ func (r *AwsIntegrationResource) Update(ctx context.Context, req resource.Update
 	apiPath := r.client.BuildPath("/integrations/aws/" + name)
 
 	// Build update request with merge patch semantics
-	updateReq := AwsIntegrationUpdateRequest{
-		Type: "aws",
-	}
+	updateReq := AwsIntegrationUpdateRequest{}
 
 	// Only include fields that changed
 	if !data.RoleArn.IsNull() {
