@@ -4,6 +4,7 @@
 package resources
 
 import (
+	"encoding/json"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
@@ -204,4 +205,92 @@ func TestSecretMapsEqual(t *testing.T) {
 			assert.Equal(t, tt.shouldEqual, result, tt.description)
 		})
 	}
+}
+
+// TestBuildSecretMergePatch verifies the merge-patch body is built so that
+// removed keys carry an explicit JSON null. Under RFC 7396, an omitted key
+// means "leave unchanged" while null means "delete". The PATCH endpoint
+// receives this map as application/merge-patch+json, so if a key removed from
+// configuration is also omitted from the body the server silently retains it.
+func TestBuildSecretMergePatch(t *testing.T) {
+	t.Run("removed key emits nil", func(t *testing.T) {
+		oldSecret := map[string]string{
+			"password":        "p1",
+			"legacy_password": "p0",
+		}
+		newSecret := map[string]string{
+			"password": "p2",
+		}
+
+		patch := buildSecretMergePatch(oldSecret, newSecret)
+
+		val, ok := patch["legacy_password"]
+		assert.True(t, ok, "removed key must be present in the patch so the server deletes it")
+		assert.Nil(t, val, "removed key must carry nil so JSON marshals to null")
+		assert.Equal(t, "p2", patch["password"], "retained key must carry its new value")
+	})
+
+	t.Run("added key carries value", func(t *testing.T) {
+		oldSecret := map[string]string{"password": "p1"}
+		newSecret := map[string]string{
+			"password": "p1",
+			"token":    "t1",
+		}
+
+		patch := buildSecretMergePatch(oldSecret, newSecret)
+
+		assert.Equal(t, "p1", patch["password"])
+		assert.Equal(t, "t1", patch["token"])
+		_, hasNullEntry := patch["nonexistent"]
+		assert.False(t, hasNullEntry, "keys that never existed must not appear in the patch")
+	})
+
+	t.Run("identical maps still emit all current values", func(t *testing.T) {
+		secret := map[string]string{"password": "p1"}
+
+		patch := buildSecretMergePatch(secret, secret)
+
+		assert.Equal(t, "p1", patch["password"])
+		assert.Len(t, patch, 1)
+	})
+
+	t.Run("empty new map nulls every prior key", func(t *testing.T) {
+		oldSecret := map[string]string{
+			"a": "1",
+			"b": "2",
+		}
+
+		patch := buildSecretMergePatch(oldSecret, map[string]string{})
+
+		for k := range oldSecret {
+			val, ok := patch[k]
+			assert.True(t, ok, "prior key %q must be present so server deletes it", k)
+			assert.Nil(t, val, "prior key %q must carry nil to marshal as JSON null", k)
+		}
+	})
+
+	t.Run("marshals to JSON null for removed keys", func(t *testing.T) {
+		oldSecret := map[string]string{
+			"password":        "p1",
+			"legacy_password": "p0",
+		}
+		newSecret := map[string]string{
+			"password": "p2",
+		}
+
+		req := StaticSecretUpdateRequest{
+			Secret: buildSecretMergePatch(oldSecret, newSecret),
+		}
+		data, err := json.Marshal(req)
+		assert.NoError(t, err)
+
+		var got struct {
+			Secret map[string]json.RawMessage `json:"secret"`
+		}
+		assert.NoError(t, json.Unmarshal(data, &got))
+
+		assert.Equal(t, "null", string(got.Secret["legacy_password"]),
+			"removed key must marshal to JSON null under RFC 7396 merge-patch semantics")
+		assert.Equal(t, `"p2"`, string(got.Secret["password"]))
+	})
 }
