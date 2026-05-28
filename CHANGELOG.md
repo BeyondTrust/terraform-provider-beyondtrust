@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+### 1.0.0 / 2026-05-28
+
+#### Features
+
+* add test cleanup helpers and improve acceptance tests  ([#36](https://github.com/BeyondTrust/terraform-provider-beyondtrust/issues/36))
+* configure oidc auth for acceptance tests CI ([#45](https://github.com/BeyondTrust/terraform-provider-beyondtrust/issues/45))
+* implement typed error handling ([#33](https://github.com/BeyondTrust/terraform-provider-beyondtrust/issues/33))
+
+#### Bug Fixes
+
+* Add name and folder path validators with regex patterns ([#53](https://github.com/BeyondTrust/terraform-provider-beyondtrust/issues/53))
+* AWS Dynamic Secret merge-patch semantics for optional fields ([#49](https://github.com/BeyondTrust/terraform-provider-beyondtrust/issues/49))
+* prevent CI/CD script injection via release tag name in promote workflow
+* Secret key deletion in PATCH requests via RFC 7396 merge-patch ([#51](https://github.com/BeyondTrust/terraform-provider-beyondtrust/issues/51))
+* Update Terraform version requirement to 1.11 for write-only attributes ([#48](https://github.com/BeyondTrust/terraform-provider-beyondtrust/issues/48))
+* Validate base URL to prevent SSRF via fragment/query injection ([#50](https://github.com/BeyondTrust/terraform-provider-beyondtrust/issues/50))
+
 ## [Unreleased]
 
 ## [1.0.0] - TBD
