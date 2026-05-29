@@ -1,0 +1,120 @@
+name: Release
+
+# Release pipeline. release-please keeps a release PR up to date on every push to
+# main (version bump + CHANGELOG). When that PR is merged, release-please creates
+# the git tag and a DRAFT GitHub release; GoReleaser then builds and GPG-signs the
+# artifacts and uploads them to that release; finally the release is published,
+# which is what the Terraform Registry webhook ingests.
+#
+# Everything runs as dependent jobs in a SINGLE workflow run, so the release does
+# not rely on the tag push triggering a separate workflow (events created with the
+# default GITHUB_TOKEN do not trigger other workflows) — no PAT or GitHub App token
+# is required.
+#
+# Reference: https://developer.hashicorp.com/terraform/registry/providers/publishing
+on:
+  push:
+    branches:
+      - main
+
+permissions: {}
+
+jobs:
+  release-please:
+    name: Release Please
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write       # create the git tag and the draft release
+      pull-requests: write  # maintain the release PR
+    outputs:
+      release_created: ${{ steps.release.outputs.release_created }}
+      tag_name: ${{ steps.release.outputs.tag_name }}
+    steps:
+      - uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
+        id: release
+        with:
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+
+  goreleaser:
+    name: GoReleaser
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: release-please
+    if: needs.release-please.outputs.release_created == 'true'
+    permissions:
+      contents: write  # upload artifacts to the draft release
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ needs.release-please.outputs.tag_name }}
+          fetch-depth: 0  # Required for GoReleaser to access full tag history
+
+      - name: Setup Go
+        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
+        with:
+          go-version-file: go.mod
+          cache: true
+          cache-dependency-path: '**/go.sum'
+
+      - name: Import GPG key
+        id: import_gpg
+        uses: crazy-max/ghaction-import-gpg@2dc316deee8e90f13e1a351ab510b4d5bc0c82cd # v7.0.0
+        with:
+          gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
+          passphrase: ${{ secrets.GPG_PASSPHRASE }}
+
+      - name: Run GoReleaser
+        uses: goreleaser/goreleaser-action@5daf1e915a5f0af01ddbcd89a43b8061ff4f1a89 # v7.2.2
+        with:
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GPG_FINGERPRINT: ${{ steps.import_gpg.outputs.fingerprint }}
+
+  sbom:
+    name: Generate SBOM
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: [release-please, goreleaser]
+    if: needs.release-please.outputs.release_created == 'true'
+    permissions:
+      contents: write  # attach the SBOM to the draft release
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ needs.release-please.outputs.tag_name }}
+
+      - name: Generate SBOM
+        id: sbom
+        uses: advanced-security/sbom-generator-action@6fe43abf522b2e7a19bc769aec1e6c848614b517 # v0.0.2
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+
+      - name: Attach SBOM to draft release
+        run: gh release upload --clobber "$TAG_NAME" "${{ steps.sbom.outputs.fileName }}"
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          TAG_NAME: ${{ needs.release-please.outputs.tag_name }}
+
+  publish:
+    name: Publish Release
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs: [release-please, goreleaser, sbom]
+    if: needs.release-please.outputs.release_created == 'true'
+    permissions:
+      contents: write  # flip the release out of draft
+    steps:
+      - name: Publish GitHub release
+        # All signed artifacts, checksums and the SBOM are now attached. Flipping
+        # the release out of draft fires the "release: published" event that the
+        # Terraform Registry webhook listens for, so the registry ingests a
+        # complete release in a single pass.
+        run: gh release edit "$TAG_NAME" --repo "$GITHUB_REPOSITORY" --draft=false --latest
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          TAG_NAME: ${{ needs.release-please.outputs.tag_name }}

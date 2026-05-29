@@ -65,7 +65,7 @@ jobs:
           terraform_version: ${{ steps.terraform-version.outputs.version }}
       - name: "Get GitHub OIDC Token"
         id: oidc
-        uses: actions/github-script@v9
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
           script: |
             const token = await core.getIDToken('${{ secrets.BEYONDTRUST_SITE_ID }}')
