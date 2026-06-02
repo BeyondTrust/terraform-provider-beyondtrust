@@ -1,9 +1,9 @@
 # Security Scanning
 
-Three workflows, all reporting to the **Security** tab where applicable. Code-scanning
-uploads need `security-events: write`, which fork/Dependabot PRs do not get, so those
-jobs are gated to same-repo, non-Dependabot PRs and otherwise rely on push-to-`main`
-and the weekly schedule.
+Scanning reports to the **Security** tab where applicable. Code-scanning uploads need
+`security-events: write` (+ `actions: read`), which fork/Dependabot PRs do not get, so
+those jobs are gated to same-repo, non-Dependabot PRs and otherwise rely on
+push-to-`main` and the weekly schedule.
 
 ## `security.yml`
 
@@ -17,9 +17,13 @@ Triggered on push to `main`, PRs, and a weekly cron (Mondays 09:00 UTC).
 
 ## `codeql.yml`
 
-CodeQL static analysis for Go. Triggered on push to `main`, PRs, and the weekly cron.
-Init → autobuild → analyze, uploading results to the Security tab. Gated (SARIF
-upload).
+CodeQL static analysis for Go (advanced setup). Triggered on push to `main`, PRs, and
+the weekly cron. Init → autobuild → analyze, uploading results to the Security tab
+(`security-events: write` + `actions: read`). Gated (SARIF upload).
+
+> This advanced workflow requires GitHub's **default code-scanning setup to be
+> disabled** in repo settings — the two cannot coexist ("CodeQL analyses from advanced
+> configurations cannot be processed when the default setup is enabled").
 
 ## `scorecard.yml`
 
@@ -30,13 +34,16 @@ badge.
 
 ## Security Gate (Policy as Code)
 
-A `security-gate` job runs **before building/publishing** — in both
-[`build-candidate.yml`](../workflows/build-candidate.yml) (PRs) and
-[`release.yml`](../workflows/release.yml) (before `goreleaser`). It uses
+A `security-gate` job runs in [`release.yml`](../workflows/release.yml) **before
+`goreleaser`**, so a release is blocked if code-scanning alerts are overdue. It uses
 [`advanced-security/policy-as-code`](https://github.com/advanced-security/policy-as-code)
 via the [`security-gate`](../actions/security-gate/action.yml) composite action and
-fails the build when an open **Code Scanning** alert is past the remediation SLA
-defined in [`.github/security-policy.yml`](../security-policy.yml).
+fails when an open **Code Scanning** alert is past the remediation SLA defined in
+[`.github/security-policy.yml`](../security-policy.yml).
+
+> It runs only on the release (push) path, not on PRs: policy-as-code's PR "alert
+> diff" call returns `403` with the Actions token, whereas the push path lists
+> repo-level alerts, which the token can read.
 
 - **Code scanning only** for now. Dependabot and secret-scanning alerts require a
   GitHub App/PAT to read, so the gate disables them (`--disable-dependabot`,

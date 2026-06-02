@@ -20,6 +20,6 @@ the repository before using them.
   and does not use this action.
 - `megalinter` is consumed by the reusable [`megalinter.yml`](../workflows/megalinter.yml)
   workflow — see [linting.md](linting.md).
-- `security-gate` is used by `build-candidate.yml` and `release.yml`; it reads the
+- `security-gate` is used by `release.yml` (before `goreleaser`); it reads the
   policy at [`.github/security-policy.yml`](../security-policy.yml) — see
   [security.md](security.md).

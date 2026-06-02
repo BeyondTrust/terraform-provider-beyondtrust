@@ -31,8 +31,9 @@ for the security gate).
   works as a public repository.
 - **Concurrency.** Every workflow defines a `concurrency` group (above
   `permissions`) and cancels superseded runs. `release.yml` groups by workflow only.
-- **Hardened checkout.** Every `actions/checkout` sets `persist-credentials: false`
-  (no job pushes back to the repo via the stored token).
+- **Hardened checkout.** Every `actions/checkout` sets `persist-credentials: false`,
+  except `megalinter.yml` which needs persisted credentials for its authenticated
+  base-ref git diff on a private repo.
 - **Conventions.** Jobs are named in Title Case; steps in sentence case. A blank line
   separates each job and each step.
 
@@ -52,7 +53,6 @@ secrets are gated accordingly:
 | `security / trivy` | **skipped** | SARIF upload needs `security-events: write`. |
 | `codeql / analyze` | **skipped** | SARIF upload needs `security-events: write`. |
 | `megalinter` | **skipped** | Status reporter + SARIF upload need write. |
-| `build-candidate / security-gate` | runs | Reads Code Scanning alerts (`security-events: read`); no write/secrets. |
 | `build-candidate / build` | runs | Snapshot build needs no secrets. |
 | `validate-pr-title` | runs | Core check works; comment steps degrade. |
 
@@ -75,6 +75,7 @@ is automatic; no PAT or GitHub App token is used anywhere.
 - **Signed commits** are enforced by a **branch ruleset** ("Require signed commits"),
   not a workflow.
 - **Suggested required status checks:** `Unit Tests`, the `lint` jobs, `govulncheck`,
-  `Security Gate`, `GoReleaser Snapshot Build`, `Validate PR Title`. Avoid requiring the full/shallow
+  `Analyze Go`, `GoReleaser Snapshot Build`, `Validate PR Title`. (`Security Gate` runs
+  on release, not PRs, so it isn't a PR status check.) Avoid requiring the full/shallow
   MegaLinter checks — they are mutually exclusive by path filter, so requiring one
   blocks PRs that take the other path.

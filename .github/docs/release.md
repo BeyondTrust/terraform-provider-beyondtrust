@@ -7,8 +7,7 @@ dry-run build across the full OS/arch matrix with **no signing, no publish, and 
 secrets**. It proves the code still produces a releasable artifact set, catching
 `.goreleaser.yml` or compile breakage on the PR that introduces it (including
 Dependabot dependency bumps). Uses `fetch-depth: 0` so GoReleaser can compute the
-version from tag history. The `build` job is gated behind a `security-gate` job (see
-[security.md](security.md)).
+version from tag history.
 
 ## `release.yml`
 
