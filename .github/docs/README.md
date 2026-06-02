@@ -15,6 +15,10 @@ published to the Terraform Registry) so they stay internal to contributors.
 | [release.md](release.md) | `build-candidate.yml`, `release.yml`, release-please. |
 | [secrets.md](secrets.md) | All CI secrets/variables and whether each is required. |
 
+Related config files: [`.github/trivy.yaml`](../trivy.yaml) (Trivy scan settings) and
+[`.github/security-policy.yml`](../security-policy.yml) (Code Scanning remediation SLA
+for the security gate).
+
 ## Principles
 
 - **Least privilege.** Every workflow sets `permissions: {}` at the top and grants
@@ -48,6 +52,7 @@ secrets are gated accordingly:
 | `security / trivy` | **skipped** | SARIF upload needs `security-events: write`. |
 | `codeql / analyze` | **skipped** | SARIF upload needs `security-events: write`. |
 | `megalinter` | **skipped** | Status reporter + SARIF upload need write. |
+| `build-candidate / security-gate` | runs | Reads Code Scanning alerts (`security-events: read`); no write/secrets. |
 | `build-candidate / build` | runs | Snapshot build needs no secrets. |
 | `validate-pr-title` | runs | Core check works; comment steps degrade. |
 
@@ -70,6 +75,6 @@ is automatic; no PAT or GitHub App token is used anywhere.
 - **Signed commits** are enforced by a **branch ruleset** ("Require signed commits"),
   not a workflow.
 - **Suggested required status checks:** `Unit Tests`, the `lint` jobs, `govulncheck`,
-  `GoReleaser Snapshot Build`, `Validate PR Title`. Avoid requiring the full/shallow
+  `Security Gate`, `GoReleaser Snapshot Build`, `Validate PR Title`. Avoid requiring the full/shallow
   MegaLinter checks — they are mutually exclusive by path filter, so requiring one
   blocks PRs that take the other path.

@@ -43,11 +43,29 @@ jobs:
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
 
+  security-gate:
+    name: Security Gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: release-please
+    if: needs.release-please.outputs.release_created == 'true'
+    permissions:
+      contents: read
+      security-events: read  # read Code Scanning alerts to evaluate the SLA policy
+    steps:
+      - name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          persist-credentials: false
+
+      - name: Security gate
+        uses: ./.github/actions/security-gate
+
   goreleaser:
     name: GoReleaser
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    needs: release-please
+    needs: [release-please, security-gate]
     if: needs.release-please.outputs.release_created == 'true'
     permissions:
       contents: write  # upload artifacts to the draft release
@@ -113,15 +131,20 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     needs: [release-please, goreleaser, sbom]
-    if: needs.release-please.outputs.release_created == 'true'
+    # Runs after sbom for ordering, but the SBOM is best-effort: publish proceeds
+    # even if sbom failed, as long as the signed artifacts (goreleaser) are present.
+    if: >-
+      always() &&
+      needs.release-please.outputs.release_created == 'true' &&
+      needs.goreleaser.result == 'success'
     permissions:
       contents: write  # flip the release out of draft
     steps:
       - name: Publish GitHub release
-        # All signed artifacts, checksums and the SBOM are now attached. Flipping
-        # the release out of draft fires the "release: published" event that the
-        # Terraform Registry webhook listens for, so the registry ingests a
-        # complete release in a single pass.
+        # Signed artifacts and checksums (and the SBOM, when it succeeded) are now
+        # attached. Flipping the release out of draft fires the "release: published"
+        # event that the Terraform Registry webhook listens for, so the registry
+        # ingests a complete release in a single pass.
         run: gh release edit "$TAG_NAME" --repo "$GITHUB_REPOSITORY" --draft=false --latest
         env:
           GITHUB_TOKEN: ${{ github.token }}

@@ -13,7 +13,7 @@ Triggered on push to `main`, PRs, and a weekly cron (Mondays 09:00 UTC).
 |-----|-------|-------|
 | `govulncheck` | Go module vulnerabilities | Runs everywhere; no write/secrets. |
 | `dependency-review` | PR dependency diff | PR-only; the key gate for dependency bumps. |
-| `trivy` | Filesystem (`vuln`,`secret`) + config (IaC misconfig) scans | Uploads two SARIF categories (`trivy-fs`, `trivy-config`), severity `CRITICAL,HIGH`. Gated (SARIF upload). |
+| `trivy` | Single filesystem scan: `vuln`, `secret`, and `misconfig` (IaC) | One scan covers all three (no separate `config` scan needed); settings live in [`.github/trivy.yaml`](../trivy.yaml). Uploads one SARIF category (`trivy`). Gated (SARIF upload). |
 
 ## `codeql.yml`
 
@@ -28,9 +28,28 @@ Triggered on push to `main`, branch-protection-rule changes, and the weekly cron
 PR trigger). Uploads SARIF and publishes results to the public Scorecard API for a
 badge.
 
+## Security Gate (Policy as Code)
+
+A `security-gate` job runs **before building/publishing** — in both
+[`build-candidate.yml`](../workflows/build-candidate.yml) (PRs) and
+[`release.yml`](../workflows/release.yml) (before `goreleaser`). It uses
+[`advanced-security/policy-as-code`](https://github.com/advanced-security/policy-as-code)
+via the [`security-gate`](../actions/security-gate/action.yml) composite action and
+fails the build when an open **Code Scanning** alert is past the remediation SLA
+defined in [`.github/security-policy.yml`](../security-policy.yml).
+
+- **Code scanning only** for now. Dependabot and secret-scanning alerts require a
+  GitHub App/PAT to read, so the gate disables them (`--disable-dependabot`,
+  `--disable-secret-scanning`, `--disable-dependencies`,
+  `--disable-dependency-licensing`) and runs token-free on `github.token`
+  (`security-events: read`).
+- The policy is **SLA-driven**: `level: all` keeps every severity in scope, and the
+  `remediate` windows decide what blocks — alerts within their window do not fail
+  the build. Tune the day values to match BeyondTrust's SLA.
+
 ## Gating condition
 
-The push/PR/schedule workflows use:
+The push/PR/schedule scanning workflows use:
 
 ```yaml
 if: >-

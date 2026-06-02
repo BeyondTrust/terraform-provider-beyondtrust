@@ -9,6 +9,7 @@ the repository before using them.
 | [`setup-go`](../actions/setup-go/action.yml) | Runs `actions/setup-go` from `go.mod` with module caching enabled. | `check-latest` (default `true`) |
 | [`setup-terraform`](../actions/setup-terraform/action.yml) | Reads `.terraform-version` and installs that exact Terraform CLI. | — |
 | [`megalinter`](../actions/megalinter/action.yml) | Runs MegaLinter (documentation flavor), archives reports, and uploads SARIF to the Security tab. | `validate-all-codebase`, `github-token` |
+| [`security-gate`](../actions/security-gate/action.yml) | Fails the build when an open Code Scanning alert is past its remediation SLA (Policy as Code, code scanning only, token-free). | — |
 
 ## Notes
 
@@ -19,3 +20,6 @@ the repository before using them.
   and does not use this action.
 - `megalinter` is consumed by the reusable [`megalinter.yml`](../workflows/megalinter.yml)
   workflow — see [linting.md](linting.md).
+- `security-gate` is used by `build-candidate.yml` and `release.yml`; it reads the
+  policy at [`.github/security-policy.yml`](../security-policy.yml) — see
+  [security.md](security.md).

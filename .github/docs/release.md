@@ -7,7 +7,8 @@ dry-run build across the full OS/arch matrix with **no signing, no publish, and 
 secrets**. It proves the code still produces a releasable artifact set, catching
 `.goreleaser.yml` or compile breakage on the PR that introduces it (including
 Dependabot dependency bumps). Uses `fetch-depth: 0` so GoReleaser can compute the
-version from tag history.
+version from tag history. The `build` job is gated behind a `security-gate` job (see
+[security.md](security.md)).
 
 ## `release.yml`
 
@@ -17,15 +18,22 @@ Triggered on push to `main`. Runs as **dependent jobs in a single workflow run**
 push to main
   └─ release-please ── maintains the release PR; on merge cuts the tag
   │                    + a DRAFT GitHub release (outputs release_created, tag_name)
-  ├─ goreleaser ────── (if release_created) build + GPG-sign → upload to draft
-  ├─ sbom ──────────── generate SBOM → attach to draft
+  ├─ security-gate ─── (if release_created) fail if Code Scanning alerts are past SLA
+  ├─ goreleaser ────── (needs security-gate) build + GPG-sign → upload to draft
+  ├─ sbom ──────────── generate SBOM → attach to draft (best-effort)
   └─ publish ───────── flip release out of draft → fires "release: published"
                        → Terraform Registry webhook ingests the complete release
 ```
 
-The `goreleaser`, `sbom`, and `publish` jobs are gated on
+The `security-gate`, `goreleaser`, `sbom`, and `publish` jobs are gated on
 `needs.release-please.outputs.release_created == 'true'`, so they run only when a
-release PR merge actually cuts a release.
+release PR merge actually cuts a release. `security-gate` (Policy as Code, code
+scanning SLA) must pass before `goreleaser` builds — see [security.md](security.md).
+
+`publish` runs after `sbom` for ordering, but the **SBOM is best-effort**: publish
+proceeds even if `sbom` fails, as long as `goreleaser` succeeded
+(`if: always() && … && needs.goreleaser.result == 'success'`). A failed SBOM does not
+block the release.
 
 ### release-please configuration
 

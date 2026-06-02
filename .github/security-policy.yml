@@ -1,0 +1,19 @@
+# GHAS Policy as Code — remediation SLA policy.
+# Reference: https://github.com/advanced-security/policy-as-code
+#
+# Consumed by the `security-gate` composite action, which fails a build/release when
+# an open Code Scanning alert has been open longer than the SLA (in days) for its
+# severity. Alerts still within their window do not block.
+#
+# Code Scanning only for now: Dependabot and secret-scanning alerts require a GitHub
+# App/PAT to read, so they are disabled in the gate and intentionally omitted here.
+# Tune the day values below to match BeyondTrust's remediation SLA.
+codescanning:
+  # `all` keeps every severity in scope; the remediate windows below decide what
+  # actually blocks, so nothing fails purely for existing — only for being overdue.
+  level: all
+  remediate:
+    critical: 7
+    high: 30
+    medium: 90
+    all: 180
