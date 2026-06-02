@@ -7,7 +7,7 @@ automatic `GITHUB_TOKEN`.
 ## Required — referenced in CI
 
 | Secret | Used by | Required | Notes |
-|--------|---------|:--------:|-------|
+| --- | --- | --- | --- |
 | `GITHUB_TOKEN` | build-candidate, megalinter, release (goreleaser), validate-pr-title | auto | Provided automatically by GitHub; nothing to provision. |
 | `GPG_PRIVATE_KEY` | `release.yml` → goreleaser | ✅ | Signs the release checksums; the Terraform Registry requires signed releases. |
 | `GPG_PASSPHRASE` | `release.yml` → goreleaser | ✅ | Passphrase for `GPG_PRIVATE_KEY`. |
@@ -23,7 +23,7 @@ from GitHub OIDC at runtime** (not stored as a secret).
 ## Gaps — expected by tests but not configured in CI
 
 | Secret | Effect if unset | Recommendation |
-|--------|-----------------|----------------|
+| --- | --- | --- |
 | `BEYONDTRUST_AWS_ACCOUNT_ID` | The AWS *integration* tests `t.Skip` (`internal/acctest/aws_helpers.go`), so they are **silently skipped** in CI despite the two role-ARN secrets being set. | Add to the acceptance-tests job `env:` (as a secret) to actually run those tests. |
 | `BEYONDTRUST_TEST_AWS_EXTERNAL_ID` | Optional — a random external ID is generated per run. | Leave unset unless deterministic external-ID testing is needed. |
 
@@ -33,7 +33,7 @@ These environment variables are read by the provider/tests but have defaults or 
 optional, so they are intentionally **not** provided in CI:
 
 | Variable | Purpose |
-|----------|---------|
+| --- | --- |
 | `BEYONDTRUST_API_VERSION` | API version; defaults to `client.DefaultAPIVersion`. |
 | `BEYONDTRUST_API_PATH_VERSION` | API path version override. |
 | `BEYONDTRUST_INSECURE` | Disable TLS verification (local/dev only). |

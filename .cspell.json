@@ -64,6 +64,10 @@
         "clearsign",
         "gpgsign",
         "keyid",
-        "signingkey"
+        "signingkey",
+        "SARIF",
+        "autobuild",
+        "govulncheck",
+        "misconfig"
     ]
 }

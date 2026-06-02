@@ -13,7 +13,7 @@ version from tag history.
 
 Triggered on push to `main`. Runs as **dependent jobs in a single workflow run**:
 
-```
+```text
 push to main
   └─ release-please ── maintains the release PR; on merge cuts the tag
   │                    + a DRAFT GitHub release (outputs release_created, tag_name)

@@ -7,7 +7,7 @@ published to the Terraform Registry) so they stay internal to contributors.
 ## Index
 
 | Doc | Covers |
-|-----|--------|
+| --- | --- |
 | [composite-actions.md](composite-actions.md) | Shared composite actions in `.github/actions/`. |
 | [testing.md](testing.md) | `tests.yml` — unit and acceptance tests. |
 | [linting.md](linting.md) | `lint.yml`, MegaLinter, PR-title validation. |
@@ -44,7 +44,7 @@ On **Dependabot PRs** (and **fork PRs** once public) GitHub provides a **read-on
 secrets are gated accordingly:
 
 | Job | On Dependabot / fork PR | Reason |
-|-----|-------------------------|--------|
+| --- | --- | --- |
 | `tests / unit-tests` | runs | No secrets needed. |
 | `tests / acceptance-tests` | **skipped** | Needs OIDC + BeyondTrust secrets. |
 | `lint / *` | runs | No secrets/write needed. |

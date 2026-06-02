@@ -5,7 +5,7 @@
 Triggered on PRs to `main`. Three independent jobs:
 
 | Job | What it does |
-|-----|--------------|
+| --- | --- |
 | `docs-validation` | `setup-go` + `setup-terraform`, installs `tfplugindocs`, runs `make docs-validate`. |
 | `golangci-lint` | `setup-go`, installs `golangci-lint` + `gofumpt`, runs `make lint`. Runs on Dependabot PRs too (dependency bumps are exactly when lint matters). |
 | `terraform-fmt` | `terraform fmt -check -recursive examples/` against a pinned Terraform version. |
@@ -19,7 +19,7 @@ The run logic is centralized in the [`megalinter`](../actions/megalinter/action.
 composite action, wrapped by a reusable workflow and two thin callers:
 
 | File | Role |
-|------|------|
+| --- | --- |
 | [`megalinter.yml`](../workflows/megalinter.yml) | Reusable workflow (`workflow_call`), input `full`. Calls the composite action. |
 | [`megalinter-full.yml`](../workflows/megalinter-full.yml) | PRs that **touch** linter config (`.github/workflows/megalinter*.yml`, `.mega-linter.yml`, `.github/linters/**`) → full-codebase scan. |
 | [`megalinter-shallow.yml`](../workflows/megalinter-shallow.yml) | PRs that **don't** touch linter config → changed-files-only scan. |

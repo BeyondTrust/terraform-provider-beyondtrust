@@ -5,7 +5,7 @@ actions require `actions/checkout` to run first, so the calling job always check
 the repository before using them.
 
 | Action | Purpose | Inputs |
-|--------|---------|--------|
+| --- | --- | --- |
 | [`setup-go`](../actions/setup-go/action.yml) | Runs `actions/setup-go` from `go.mod` with module caching enabled. | `check-latest` (default `true`) |
 | [`setup-terraform`](../actions/setup-terraform/action.yml) | Reads `.terraform-version` and installs that exact Terraform CLI. | — |
 | [`megalinter`](../actions/megalinter/action.yml) | Runs MegaLinter (documentation flavor), archives reports, and uploads SARIF to the Security tab. | `validate-all-codebase`, `github-token` |

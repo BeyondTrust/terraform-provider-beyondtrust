@@ -10,7 +10,7 @@ push-to-`main` and the weekly schedule.
 Triggered on push to `main`, PRs, and a weekly cron (Mondays 09:00 UTC).
 
 | Job | Scope | Notes |
-|-----|-------|-------|
+| --- | --- | --- |
 | `govulncheck` | Go module vulnerabilities | Runs everywhere; no write/secrets. |
 | `dependency-review` | PR dependency diff | PR-only; the key gate for dependency bumps. |
 | `trivy` | Single filesystem scan: `vuln`, `secret`, and `misconfig` (IaC) | One scan covers all three (no separate `config` scan needed); settings live in [`.github/trivy.yaml`](../trivy.yaml). Uploads one SARIF category (`trivy`). Gated (SARIF upload). |
