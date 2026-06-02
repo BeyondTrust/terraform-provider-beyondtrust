@@ -5,6 +5,10 @@ on:
     branches:
       - main
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions: {}
 
 jobs:
@@ -15,18 +19,15 @@ jobs:
     permissions:
       contents: read
     steps:
-      - name: "Checkout"
+      - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - name: "Setup Go"
-        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
-        with:
-          go-version-file: "go.mod"
-          cache: true
-          check-latest: true
-          cache-dependency-path: |
-            **/go.sum
+
+      - name: Setup Go
+        uses: ./.github/actions/setup-go
+
       - name: Run unit tests
         run: make test-unit
+
       - name: Upload coverage
         uses: codecov/codecov-action@e79a6962e0d4c0c17b229090214935d2e33f8354 # v6.0.1
         if: always()
@@ -42,34 +43,26 @@ jobs:
     permissions:
       contents: read
       id-token: write  # Required for GitHub OIDC
-    if: github.event_name == 'push' || (github.event_name == 'pull_request' &&
-      github.event.pull_request.head.repo.full_name == github.repository &&
-      github.actor != 'dependabot[bot]')
+    if: github.event.pull_request.head.repo.full_name == github.repository &&
+      github.actor != 'dependabot[bot]'
     steps:
-      - name: "Checkout"
+      - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - name: "Setup Go"
-        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
-        with:
-          go-version-file: "go.mod"
-          cache: true
-          check-latest: true
-          cache-dependency-path: |
-            **/go.sum
-      - name: "Read Terraform version"
-        id: terraform-version
-        run: echo "version=$(tr -d '\r\n' < .terraform-version)" >> "$GITHUB_OUTPUT"
-      - name: "Setup Terraform"
-        uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
-        with:
-          terraform_version: ${{ steps.terraform-version.outputs.version }}
-      - name: "Get GitHub OIDC Token"
+
+      - name: Setup Go
+        uses: ./.github/actions/setup-go
+
+      - name: Setup Terraform
+        uses: ./.github/actions/setup-terraform
+
+      - name: Get GitHub OIDC token
         id: oidc
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
           script: |
             const token = await core.getIDToken('${{ secrets.BEYONDTRUST_SITE_ID }}')
             core.setOutput('token', token)
+
       - name: Run acceptance tests
         run: make test-acc
         env:
@@ -80,6 +73,7 @@ jobs:
           BEYONDTRUST_TEST_AWS_ROLE_ARN: ${{ secrets.BEYONDTRUST_TEST_AWS_ROLE_ARN }}
           BEYONDTRUST_TEST_AWS_ROLE_ARN_2: ${{ secrets.BEYONDTRUST_TEST_AWS_ROLE_ARN_2 }}
           TF_ACC: "1"
+
       - name: Upload coverage
         uses: codecov/codecov-action@e79a6962e0d4c0c17b229090214935d2e33f8354 # v6.0.1
         if: always()

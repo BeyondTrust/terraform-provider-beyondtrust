@@ -1,5 +1,5 @@
 ---
-name: "Validate PR Title"
+name: Validate PR Title
 
 on:
   pull_request:
@@ -9,20 +9,27 @@ on:
       - edited
       - synchronize
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions: {}
 
 jobs:
   validate-pr-title:
+    name: Validate PR Title
     runs-on: ubuntu-latest
     permissions:
       contents: read
       pull-requests: write
     steps:
-      - uses: amannn/action-semantic-pull-request@48f256284bd46cdaab1048c3721360e808335d50 # v6.1.1
+      - name: Validate PR title
+        uses: amannn/action-semantic-pull-request@48f256284bd46cdaab1048c3721360e808335d50 # v6.1.1
         id: validate_pr_title
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - name: "Failed PR title validation"
+          GITHUB_TOKEN: ${{ github.token }}
+
+      - name: Comment on failed validation
         if: failure()
         uses: thollander/actions-comment-pull-request@24bffb9b452ba05a4f3f77933840a6a841d1b32b # v3.0.1
         with:
@@ -33,7 +40,8 @@ jobs:
             ```
             ${{ steps.validate_pr_title.outputs.error_message }}
             ```
-      - name: "Succeeded PR title validation"
+
+      - name: Comment on successful validation
         if: success()
         uses: thollander/actions-comment-pull-request@24bffb9b452ba05a4f3f77933840a6a841d1b32b # v3.0.1
         with:

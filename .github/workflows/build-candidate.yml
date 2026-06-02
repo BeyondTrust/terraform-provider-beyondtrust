@@ -1,0 +1,39 @@
+# Validates that the GoReleaser build matrix compiles on every PR, before the
+# real Release workflow runs it on main. Snapshot mode skips GPG signing,
+# publishing and the GitHub release, so no secrets are needed and it is safe to
+# run on PRs from forks.
+name: Build Candidate
+
+on:
+  pull_request:
+    branches:
+      - main
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions: {}
+
+jobs:
+  build:
+    name: GoReleaser Snapshot Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0  # GoReleaser needs full tag history to compute the version
+
+      - name: Setup Go
+        uses: ./.github/actions/setup-go
+
+      - name: Run GoReleaser
+        uses: goreleaser/goreleaser-action@5daf1e915a5f0af01ddbcd89a43b8061ff4f1a89 # v7.2.2
+        with:
+          args: release --snapshot --clean
+        env:
+          GITHUB_TOKEN: ${{ github.token }}

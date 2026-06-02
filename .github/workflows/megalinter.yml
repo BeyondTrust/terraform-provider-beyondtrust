@@ -11,32 +11,21 @@ on:
 permissions: {}
 
 jobs:
-  btsw-linter:
-    name: "btsw:Lint Code Base"
+  lint-codebase:
+    name: Lint Code Base
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     permissions:
       actions: read
       contents: read
       pull-requests: write
       security-events: write
     steps:
-      - name: Checkout Code
+      - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - name: Lint Code Base
-        uses: oxsecurity/megalinter/flavors/documentation@0e3ce9b9c8c10effb9b269509cc47ca17cae31c7 # v9.5.0
-        env:
-          VALIDATE_ALL_CODEBASE: ${{ inputs.full }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      # Upload MegaLinter artifacts
-      - name: Archive production artifacts
-        if: success() || failure()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+
+      - name: Run MegaLinter
+        uses: ./.github/actions/megalinter
         with:
-          name: MegaLinter reports
-          path: |
-            megalinter-reports
-      - name: Upload MegaLinter scan results to GitHub Security tab
-        if: (success() || failure()) && hashFiles('megalinter-reports/megalinter-report.sarif') != ''
-        uses: github/codeql-action/upload-sarif@9e0d7b8d25671d64c341c19c0152d693099fb5ba # v4.35.5
-        with:
-          sarif_file: "megalinter-reports/megalinter-report.sarif"
+          validate-all-codebase: ${{ inputs.full }}
+          github-token: ${{ github.token }}
