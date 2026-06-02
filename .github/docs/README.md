@@ -27,6 +27,8 @@ published to the Terraform Registry) so they stay internal to contributors.
   works as a public repository.
 - **Concurrency.** Every workflow defines a `concurrency` group (above
   `permissions`) and cancels superseded runs. `release.yml` groups by workflow only.
+- **Hardened checkout.** Every `actions/checkout` sets `persist-credentials: false`
+  (no job pushes back to the repo via the stored token).
 - **Conventions.** Jobs are named in Title Case; steps in sentence case. A blank line
   separates each job and each step.
 
