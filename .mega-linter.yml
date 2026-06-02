@@ -7,40 +7,28 @@ FLAVOR_SUGGESTIONS: false
 # Apply fixes automatically (disabled by default, enable if you want auto-fixes)
 APPLY_FIXES: none
 
-# Disable linters that overlap with golangci-lint
+# Disable linters that overlap with golangci-lint, plus the noisy doc linters.
 DISABLE_LINTERS:
-  - GO_GOLANGCI_LINT  # We use golangci-lint directly in test.yml
-  - GO_REVIVE         # Covered by golangci-lint
+  - GO_GOLANGCI_LINT       # We use golangci-lint directly in lint.yml
+  - GO_REVIVE              # Covered by golangci-lint
+  - MARKDOWN_MARKDOWNLINT  # MD060 table-column-style is too strict for hand-written tables
+  - SPELL_CSPELL           # Too noisy for Go/security terminology (SARIF, govulncheck, ...)
 
 # Enable specific linters for non-Go files
 ENABLE_LINTERS:
   - BASH_SHELLCHECK
-  - MARKDOWN_MARKDOWNLINT
   - MARKDOWN_MARKDOWN_LINK_CHECK
   - TERRAFORM_TFLINT
   - TERRAFORM_TERRASCAN
   - YAML_YAMLLINT
   - JSON_JSONLINT
-  - SPELL_CSPELL
 
 # File exclusions
 FILTER_REGEX_EXCLUDE: |
   (\.git/|\.terraform/|node_modules/|vendor/|\.vscode/|\.idea/|coverage.*\.out|.*_test\.go)
 
-# Markdown settings
-MARKDOWN_MARKDOWNLINT_CONFIG_FILE: .markdownlint.json
-MARKDOWN_MARKDOWNLINT_DISABLE_ERRORS: false
-
 # Terraform settings
 TERRAFORM_TFLINT_CONFIG_FILE: .tflint.hcl
-
-# YAML settings
-YAML_YAMLLINT_CONFIG_FILE: .yamllint.yml
-
-# Spell checker settings
-SPELL_CSPELL_CONFIG_FILE: .cspell.json
-SPELL_CSPELL_FILE_EXTENSIONS:
-  - .md
 
 # Disable linters that might be too noisy
 DISABLE:
