@@ -42,8 +42,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
-      contents: read
-      pull-requests: write
+      contents: read  # the action reads the dependency graph; no PR comment step, so no write needed
     if: github.event_name == 'pull_request'
     steps:
       - name: Checkout
