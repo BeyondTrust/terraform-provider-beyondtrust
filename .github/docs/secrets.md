@@ -8,7 +8,7 @@ automatic `GITHUB_TOKEN`.
 
 | Secret | Used by | Required | Notes |
 | --- | --- | --- | --- |
-| `GITHUB_TOKEN` | build-candidate, megalinter, release (goreleaser), validate-pr-title | auto | Provided automatically by GitHub; nothing to provision. |
+| `GITHUB_TOKEN` | build-snapshot, megalinter, release (goreleaser), validate-pr-title | auto | Provided automatically by GitHub; nothing to provision. |
 | `GPG_PRIVATE_KEY` | `release.yml` → goreleaser | ✅ | Signs the release checksums; the Terraform Registry requires signed releases. |
 | `GPG_PASSPHRASE` | `release.yml` → goreleaser | ✅ | Passphrase for `GPG_PRIVATE_KEY`. |
 | `BEYONDTRUST_API_URL` | `tests.yml` (acceptance) | ✅ | Acceptance config rejects an empty value (`internal/acctest/config.go`). |

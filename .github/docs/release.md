@@ -1,13 +1,14 @@
 # Build & Release
 
-## `build-candidate.yml`
+## `build-snapshot.yml`
 
-Triggered on every PR to `main`. Runs `goreleaser release --snapshot --clean` — a
-dry-run build across the full OS/arch matrix with **no signing, no publish, and no
-secrets**. It proves the code still produces a releasable artifact set, catching
-`.goreleaser.yml` or compile breakage on the PR that introduces it (including
-Dependabot dependency bumps). Uses `fetch-depth: 0` so GoReleaser can compute the
-version from tag history.
+Triggered on every PR to `main`. Runs `goreleaser release --snapshot --clean
+--skip=sign` — a dry-run build across the full OS/arch matrix with **no publish and no
+secrets** (`--skip=sign` because snapshot mode still runs the signs stage, and the GPG
+key is intentionally absent here). It proves the code still produces a releasable
+artifact set, catching `.goreleaser.yml` or compile breakage on the PR that introduces
+it (including Dependabot dependency bumps). Uses `fetch-depth: 0` so GoReleaser can
+compute the version from tag history.
 
 ## `release.yml`
 

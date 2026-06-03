@@ -12,7 +12,7 @@ published to the Terraform Registry) so they stay internal to contributors.
 | [testing.md](testing.md) | `tests.yml` — unit and acceptance tests. |
 | [linting.md](linting.md) | `lint.yml`, MegaLinter, PR-title validation. |
 | [security.md](security.md) | `security.yml`, `codeql.yml`, `scorecard.yml`. |
-| [release.md](release.md) | `build-candidate.yml`, `release.yml`, release-please. |
+| [release.md](release.md) | `build-snapshot.yml`, `release.yml`, release-please. |
 | [secrets.md](secrets.md) | All CI secrets/variables and whether each is required. |
 
 Related config files: [`.github/trivy.yaml`](../trivy.yaml) (Trivy scan settings) and
@@ -53,7 +53,7 @@ secrets are gated accordingly:
 | `security / trivy` | **skipped** | SARIF upload needs `security-events: write`. |
 | `codeql / analyze` | **skipped** | SARIF upload needs `security-events: write`. |
 | `megalinter` | **skipped** | Status reporter + SARIF upload need write. |
-| `build-candidate / build` | runs | Snapshot build needs no secrets. |
+| `build-snapshot / build` | runs | Snapshot build needs no secrets. |
 | `validate-pr-title` | runs | Core check works; comment steps degrade. |
 
 Skipped security scans are still covered on push-to-`main` and the weekly schedule.

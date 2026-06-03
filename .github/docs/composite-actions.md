@@ -13,7 +13,7 @@ the repository before using them.
 
 ## Notes
 
-- `setup-go` is used by every Go job (tests, lint, security, build-candidate,
+- `setup-go` is used by every Go job (tests, lint, security, build-snapshot,
   release) so caching and the Go version stay consistent in one place.
 - `setup-terraform` centralizes the `.terraform-version` read used by the docs and
   acceptance-test jobs. The `terraform-fmt` job pins its own version independently
