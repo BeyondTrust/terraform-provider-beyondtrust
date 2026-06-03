@@ -68,6 +68,7 @@
         "SARIF",
         "autobuild",
         "govulncheck",
-        "misconfig"
+        "misconfig",
+        "SLSA"
     ]
 }
