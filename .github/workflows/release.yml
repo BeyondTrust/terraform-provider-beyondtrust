@@ -18,10 +18,9 @@ on:
     branches:
       - main
 
-concurrency:
-  group: ${{ github.workflow }}
-  cancel-in-progress: true
-
+# No concurrency group: release runs must never be cancelled mid-flight (a cancelled
+# run can leave a partially-populated draft release/tag). release-please merges are
+# infrequent, so overlapping runs are not a concern.
 permissions: {}
 
 jobs:

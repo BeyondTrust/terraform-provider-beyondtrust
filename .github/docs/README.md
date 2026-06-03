@@ -29,8 +29,9 @@ for the security gate).
 - **No private org dependencies.** Workflows use only public actions — no
   `BeyondTrust/*` actions, reusable workflows, or GitHub App tokens — so the repo
   works as a public repository.
-- **Concurrency.** Every workflow defines a `concurrency` group (above
-  `permissions`) and cancels superseded runs. `release.yml` groups by workflow only.
+- **Concurrency.** Every PR-triggered workflow defines a `concurrency` group (above
+  `permissions`) and cancels superseded runs. `release.yml` has **no** concurrency group
+  so an in-flight release is never cancelled.
 - **Hardened checkout.** Every `actions/checkout` sets `persist-credentials: false`,
   except `megalinter.yml` which needs persisted credentials for its authenticated
   base-ref git diff on a private repo.
