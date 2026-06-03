@@ -68,7 +68,9 @@ jobs:
     needs: [release-please, security-gate]
     if: needs.release-please.outputs.release_created == 'true'
     permissions:
-      contents: write  # upload artifacts to the draft release
+      contents: write       # upload artifacts to the draft release
+      id-token: write       # OIDC for keyless signing of the build provenance attestation
+      attestations: write   # store the build provenance attestation
     steps:
       - name: Checkout
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
@@ -94,6 +96,14 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
           GPG_FINGERPRINT: ${{ steps.import_gpg.outputs.fingerprint }}
+
+      - name: Attest build provenance
+        # Signed SLSA provenance for the published zips (verify with `gh attestation
+        # verify <zip> --repo <owner>/<repo>`). Supplementary to the GPG-signed
+        # checksums the Terraform Registry verifies.
+        uses: actions/attest-build-provenance@a2bbfa25375fe432b6a289bc6b6cd05ecd0c4c32 # v4.1.0
+        with:
+          subject-path: 'dist/*.zip'
 
   # GitHub's Dependency Graph REST API returns an SPDX 2.3 SBOM directly;
   # the advanced-security/sbom-generator-action wrapper is deprecated in

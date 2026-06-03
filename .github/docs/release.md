@@ -19,7 +19,8 @@ push to main
   └─ release-please ── maintains the release PR; on merge cuts the tag
   │                    + a DRAFT GitHub release (outputs release_created, tag_name)
   ├─ security-gate ─── (if release_created) fail if Code Scanning alerts are past SLA
-  ├─ goreleaser ────── (needs security-gate) build + GPG-sign → upload to draft
+  ├─ goreleaser ────── (needs security-gate) build + GPG-sign → upload to draft;
+  │                    attest SLSA build provenance for the zips (actions/attest-build-provenance)
   ├─ sbom ──────────── generate SBOM → attach to draft (best-effort)
   └─ publish ───────── flip release out of draft → fires "release: published"
                        → Terraform Registry webhook ingests the complete release
