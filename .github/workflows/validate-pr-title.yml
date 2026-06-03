@@ -30,7 +30,10 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
 
       - name: Comment on failed validation
-        if: failure()
+        # Fork PRs get a read-only token, so commenting would 403. The check status
+        # already reflects the result, so gate to same-repo PRs and stay best-effort.
+        if: failure() && github.event.pull_request.head.repo.full_name == github.repository
+        continue-on-error: true
         uses: thollander/actions-comment-pull-request@24bffb9b452ba05a4f3f77933840a6a841d1b32b # v3.0.1
         with:
           comment-tag: validate-pr-title
@@ -42,7 +45,8 @@ jobs:
             ```
 
       - name: Comment on successful validation
-        if: success()
+        if: success() && github.event.pull_request.head.repo.full_name == github.repository
+        continue-on-error: true
         uses: thollander/actions-comment-pull-request@24bffb9b452ba05a4f3f77933840a6a841d1b32b # v3.0.1
         with:
           comment-tag: validate-pr-title
