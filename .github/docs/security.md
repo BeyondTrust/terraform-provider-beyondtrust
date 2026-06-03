@@ -50,9 +50,11 @@ fails when an open **Code Scanning** alert is past the remediation SLA defined i
   `--disable-secret-scanning`, `--disable-dependencies`,
   `--disable-dependency-licensing`) and runs token-free on `github.token`
   (`security-events: read`).
-- The policy is **SLA-driven**: `level: all` keeps every severity in scope, and the
-  `remediate` windows decide what blocks — alerts within their window do not fail
-  the build. Tune the day values to match BeyondTrust's SLA.
+- The policy is **SLA-driven**: settings live in the policy's `general` block (applies to
+  every enabled check; only Code Scanning is enabled). `level: low` scopes the gate to the
+  four security severities, and the `remediate` windows decide what blocks — alerts within
+  their window do not fail the build. Current SLA (days): critical 10, high 15, medium 20,
+  low 90.
 
 ## Gating condition
 
