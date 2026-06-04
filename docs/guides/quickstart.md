@@ -1,3 +1,9 @@
+---
+page_title: "Quick Start Guide"
+description: |-
+  Get started with the BeyondTrust Terraform Provider in 5 minutes.
+---
+
 # Quick Start Guide
 
 Get started with the BeyondTrust Terraform Provider in 5 minutes.
@@ -15,7 +21,7 @@ You need access to a BeyondTrust BeyondTrust Workload Credentials instance.
 
 ### 2. Terraform Installed
 
-- **Terraform 1.10+** (for ephemeral resources - recommended)
+- **Terraform 1.11+** (for ephemeral resources and write-only attributes — recommended)
 - **Terraform 1.0+** (for basic functionality without ephemeral resources)
 
 Check your version:
@@ -53,7 +59,7 @@ Create `main.tf`:
 
 ```hcl
 terraform {
-  required_version = ">= 1.10"
+  required_version = ">= 1.11"
 
   required_providers {
     beyondtrust = {
@@ -190,21 +196,19 @@ Type `yes` to confirm deletion.
 
 ### Basic Usage
 
-- [Folder Management](resources/beyondtrust_workload_credentials_folder.md) - Organize secrets hierarchically
-- [Static Secrets](resources/beyondtrust_workload_credentials_static_secret.md) - Store write-only secrets
-- [Ephemeral Resources](ephemeral-resources/beyondtrust_workload_credentials_static_secret.md) - Read secrets without state storage
+- [Folder Management](../resources/workload_credentials_folder.md) - Organize secrets hierarchically
+- [Static Secrets](../resources/workload_credentials_static_secret.md) - Store write-only secrets
+- [Ephemeral Resources](../ephemeral-resources/workload_credentials_static_secret.md) - Read secrets without state storage
 
 ### AWS Integration
 
-- [AWS Integration Setup](../examples/aws-integration/README.md) - Complete guide with IAM setup
-- [AWS Integration Resource](resources/beyondtrust_workload_credentials_aws_integration.md) - Reference documentation
-- [AWS Dynamic Secrets](resources/beyondtrust_workload_credentials_aws_dynamic_secret.md) - Generate temporary AWS credentials
+- [AWS Integration Resource](../resources/workload_credentials_aws_integration.md) - Reference documentation
+- [AWS Dynamic Secrets](../resources/workload_credentials_aws_dynamic_secret.md) - Generate temporary AWS credentials
 
 ### Advanced Topics
 
 - **Import Existing Resources**: See import examples in each resource documentation
-- **Multi-Account AWS Setup**: Check `examples/aws-integration/complete-setup.tf`
-- **GitHub Actions Integration**: See `examples/github-actions/`
+- **Terraform Version Requirements**: See the [Terraform Version Requirements](terraform-version-requirements.md) guide
 
 ## Common Issues
 
@@ -213,7 +217,6 @@ Type `yes` to confirm deletion.
 **Best Approach**: Contact your BeyondTrust Workload Credentials platform administrator to obtain your site ID. This is the most reliable method.
 
 **If you already have access:**
-- **JWT Token Method**: Decode your access token to extract the `tenant_id` claim (see "Obtaining Your Site ID" section above)
 - **Browser DevTools**: The UUID is sent with every API request as `X-BT-Site-ID` header
 - **Multiple Sites**: If your organization has multiple sites, ensure you're using the correct site ID for your environment
 
@@ -238,7 +241,7 @@ curl -H "Authorization: Bearer ${BEYONDTRUST_ACCESS_TOKEN}" \
 **Error**: `Ephemeral resources require Terraform 1.10 or later`
 
 **Solutions**:
-- Upgrade to Terraform 1.10+: <https://www.terraform.io/downloads>
+- Upgrade to Terraform 1.11+: <https://www.terraform.io/downloads>
 - Or remove ephemeral resource blocks (you can still use regular resources)
 
 ### Resource Not Found on Import
@@ -269,13 +272,3 @@ curl -H "Authorization: Bearer ${BEYONDTRUST_ACCESS_TOKEN}" \
 - **Examples**: Working examples in the `examples/` directory
 - **Issues**: Report bugs at [GitHub Issues](https://github.com/beyondtrust/terraform-provider-beyondtrust/issues)
 - **Support**: Contact BeyondTrust support for Workload Credentials-related questions
-
-## Terraform Version Requirements
-
-| Feature                                                | Minimum Terraform Version |
-|--------------------------------------------------------|---------------------------|
-| Basic Resources (folder, integration, dynamic secrets) | 1.0+                      |
-| Ephemeral Resources (read secrets without state)       | 1.10+                     |
-| All Features                                           | 1.10+ (recommended)       |
-
-See [TERRAFORM_VERSION_REQUIREMENTS.md](TERRAFORM_VERSION_REQUIREMENTS.md) for detailed version compatibility information.
