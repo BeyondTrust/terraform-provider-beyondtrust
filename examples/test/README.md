@@ -7,7 +7,7 @@ This directory contains a test configuration to validate the BeyondTrust Terrafo
 1. Running Workload Credentials instance
 2. Valid API access token - obtain from [app.beyondtrust.io](https://app.beyondtrust.io):
    - Navigate to **User Settings** → **Manage Profile** → **Personal Access Tokens**
-3. Site ID (UUID) - See [QUICKSTART.md](../../docs/QUICKSTART.md#obtaining-your-site-id) for detailed instructions
+3. Site ID (UUID) - See [Quick Start Guide](../../docs/guides/quickstart.md#obtaining-your-site-id) for detailed instructions
 
 ## Setup for Local Development
 

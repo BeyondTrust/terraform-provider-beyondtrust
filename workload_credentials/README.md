@@ -11,7 +11,7 @@ For general provider configuration and usage, see the [main README](../README.md
 
 > **Note**: Workload Credentials resources use **ephemeral resources** for secure secret handling, which require Terraform 1.10 or later.
 > Ephemeral resources ensure sensitive values are never persisted in state or plan files.
-> See [Terraform Version Requirements](../docs/TERRAFORM_VERSION_REQUIREMENTS.md) for details.
+> See [Terraform Version Requirements](../docs/guides/terraform-version-requirements.md) for details.
 
 ## Use Cases
 
