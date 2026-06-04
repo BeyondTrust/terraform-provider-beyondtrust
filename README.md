@@ -1,4 +1,4 @@
-<!-- markdownlint-disable MD041 -->
+<img width="941" height="722" alt="image" src="https://github.com/user-attachments/assets/81af5837-eb2f-4f84-81a8-9d0f8a423ad5" /><!-- markdownlint-disable MD041 -->
 <a href="https://www.beyondtrust.com">
     <img src=".github/beyondtrust_logo.svg" alt="BeyondTrust" title="BeyondTrust" align="right" height="50">
 </a>
@@ -19,28 +19,31 @@ This unified provider consolidates management of BeyondTrust services, enabling 
 
 Manage secrets, dynamic credentials, and AWS integrations for [BeyondTrust Workload Credentials](https://docs.beyondtrust.com/bt-docs/docs/secrets-on-pathfinder).
 
-**Resources:**
-- `beyondtrust_workload_credentials_folder` - Organize secrets in hierarchical folders
-- `beyondtrust_workload_credentials_static_secret` - Manage static secrets (write-only)
-- `beyondtrust_workload_credentials_aws_integration` - Configure AWS integrations
-- `beyondtrust_workload_credentials_aws_dynamic_secret` - Provision dynamic AWS credentials
+#### Resources
 
-**Ephemeral Resources:**
-- `beyondtrust_workload_credentials_static_secret` - Read secrets without persisting to state
+- `beyondtrust_workload_credentials_folder` - Organize secrets in hierarchical folders.
+- `beyondtrust_workload_credentials_static_secret` - Manage static secrets (write-only).
+- `beyondtrust_workload_credentials_aws_integration` - Configure AWS integrations.
+- `beyondtrust_workload_credentials_aws_dynamic_secret` - Provision dynamic AWS credentials.
 
-**Data Sources:**
-- `beyondtrust_workload_credentials_aws_integration` - Query AWS integration details
+#### Ephemeral resources
+
+- `beyondtrust_workload_credentials_static_secret` - Read secrets without persisting values to Terraform state.
+
+#### Data sources
+
+- `beyondtrust_workload_credentials_aws_integration` - Query AWS integration details.
 
 For detailed Workload Credentials documentation, examples, and setup instructions, see [workload_credentials/README.md](./workload_credentials/README.md).
 
-### Future Products
+### Additional Products
 
-Additional BeyondTrust products will be added to this provider
+Support for additional BeyondTrust products will be added in future releases.
 
 ## Requirements
 
-- [Terraform](https://www.terraform.io/downloads.html) >= 1.10 (for ephemeral resources) or >= 1.0 (for basic functionality)
-- [Go](https://golang.org/doc/install) >= 1.25.8 (for development)
+- [Terraform](https://www.terraform.io/downloads.html) 1.0 or later (basic functionality) or 1.10 or later (for ephemeral resources)
+- [Go](https://golang.org/doc/install) 1.25.8 or later (development only)
 - Access to one or more BeyondTrust products with API access
 
 > **Note**: Some resources use **ephemeral resources** for secure secret handling, which require Terraform 1.10 or later.
@@ -49,7 +52,7 @@ Additional BeyondTrust products will be added to this provider
 
 ## Quick Start
 
-### Installation
+### Install the provider
 
 ```terraform
 terraform {
@@ -62,9 +65,9 @@ terraform {
 }
 ```
 
-### Configuration
+### Configure authentication
 
-Configure the provider with environment variables:
+Configure authentication using environment variables:
 
 ```bash
 export BEYONDTRUST_API_URL="https://api.beyondtrust.io"
@@ -72,7 +75,9 @@ export BEYONDTRUST_ACCESS_TOKEN="your-access-token"
 export BEYONDTRUST_SITE_ID="your-site-id"
 ```
 
-Then use the provider in your Terraform configuration:
+### Create resourceds
+
+Use the provider in your Terraform configuration:
 
 ```terraform
 provider "beyondtrust" {
@@ -84,6 +89,8 @@ provider "beyondtrust" {
 ```
 
 ### Example Usage
+
+The following example creates a folder, stores a secret, retrieves it through an ephemeral resource, and uses the value in another Terraform resource.
 
 ```terraform
 # Create a folder for organizing secrets
@@ -125,12 +132,12 @@ For more examples, see the [examples](./examples) directory.
 
 ## Documentation
 
-### Product-Specific Documentation
+### Product Documentation
 
 - **[Workload Credentials](./workload_credentials/README.md)** - Secrets management and dynamic credentials
 - More products coming soon...
 
-### General Documentation
+### Provider Documentation
 
 - [Terraform Registry Docs](https://registry.terraform.io/providers/beyondtrust/beyondtrust/latest/docs) - Complete resource documentation
 - [Quick Start Guide](./docs/QUICKSTART.md) - Get started quickly
@@ -150,9 +157,9 @@ For more examples, see the [examples](./examples) directory.
 Before committing or pushing code, run local checks:
 
 ```bash
-make pre-commit        # Full checks (~8s)
-make pre-commit-quick  # Fast checks (~4s)
-make ci-local         # CI simulation (~12s)
+make pre-commit        # Full checks
+make pre-commit-quick  # Fast checks
+make ci-local          # CI simulation
 ```
 
 Install git hook for automatic checks (optional):
@@ -167,6 +174,8 @@ make build
 ```
 
 ### Testing
+
+Acceptance tests require access to supported BeyondTrust products and appropriate API credentials.
 
 ```bash
 # Run unit tests
