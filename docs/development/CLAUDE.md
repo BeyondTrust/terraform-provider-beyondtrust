@@ -686,7 +686,6 @@ See `CODEGEN.md` for detailed usage.
 - `README.md` - Provider usage and examples
 - `DEVELOPMENT.md` - Detailed local development setup
 - `TESTING.md` - Testing guide with environment variables
-- `TODO.md` - Comprehensive technical debt tracking
 - [Terraform Version Requirements](../guides/terraform-version-requirements.md) - Version compatibility matrix
 
 ## Development Tips

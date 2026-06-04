@@ -767,42 +767,11 @@ Secrets retrieved via ephemeral resources:
 
 ### CSRF Token Handling
 
-**Current Status**: Disabled pending backend fix
-
-**Reason**: Backend `/session` endpoint requires admin permissions
-
-**Implementation** (`internal/client/client.go:263-273`):
-```go
-// TODO: Re-enable CSRF token support once session endpoint permissions are fixed
-// if requireCSRF {
-//     if err := c.ensureCSRFToken(req.Context()); err != nil {
-//         return nil, fmt.Errorf("failed to get CSRF token: %w", err)
-//     }
-//     if c.csrfToken != "" {
-//         req.Header.Set("X-CSRF-Token", c.csrfToken)
-//     }
-// }
-```
+CSRF token acquisition is implemented in `internal/client/client.go` and wired into all mutating requests (POST/PUT/PATCH/DELETE) via the `X-CSRF-Token` header.
 
 ### Credential Validation
 
-**Current Status**: Disabled pending backend fix
-
-**Reason**: Backend `/session` endpoint requires admin permissions
-
-**Implementation** (`internal/provider/provider.go:215-224`):
-```go
-// TODO: Re-enable once /session endpoint permissions are fixed
-// if err := apiClient.ValidateSession(ctx); err != nil {
-//     resp.Diagnostics.AddError(
-//         "Unable to Authenticate with BeyondTrust API",
-//         "The provider could not authenticate with the BeyondTrust API. "+
-//             "Please check your access token and API URL. "+
-//             "Error: "+err.Error(),
-//     )
-//     return
-// }
-```
+Session validation is implemented in `internal/provider/provider.go` and called during provider configuration to verify credentials before any resource operations.
 
 ## Extension Points
 
