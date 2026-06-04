@@ -30,7 +30,7 @@ jobs:
 
   promote-jfrog-prod:
     name: Promote to Jfrog's Prod environment
-    uses: BeyondTrust/workflows/.github/workflows/promote-jfrog-release-bundle.yaml@be7f4ea5857150301cad1e6b0f13e340a267df23 # v4.18.0
+    uses: BeyondTrust/workflows/.github/workflows/promote-jfrog-release-bundle.yaml@eb990fc270d99b73d6772d93cc78856b849b6d8c # v4.18.1
     permissions:
       pull-requests: write
     secrets: inherit
