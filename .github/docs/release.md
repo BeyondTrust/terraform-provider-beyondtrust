@@ -20,8 +20,8 @@ push to main
   │                    + a DRAFT GitHub release (outputs release_created, tag_name)
   ├─ security-gate ─── (if release_created) fail if Code Scanning alerts are past SLA
   ├─ goreleaser ────── (needs security-gate) build + GPG-sign → upload to draft;
-  │                    attest SLSA build provenance for the zips (actions/attest-build-provenance)
-  ├─ sbom ──────────── generate SBOM → attach to draft (best-effort)
+  │                    attest SLSA provenance for the zips + SHA256SUMS (actions/attest-build-provenance)
+  ├─ sbom ──────────── generate dependency-graph SBOM → attach to draft (best-effort)
   └─ publish ───────── flip release out of draft → fires "release: published"
                        → Terraform Registry webhook ingests the complete release
 ```
@@ -35,6 +35,10 @@ scanning SLA) must pass before `goreleaser` builds — see [security.md](securit
 proceeds even if `sbom` fails, as long as `goreleaser` succeeded
 (`if: always() && … && needs.goreleaser.result == 'success'`). A failed SBOM does not
 block the release.
+
+The SBOM is sourced from GitHub's **Dependency Graph** (the default branch's resolved
+dependencies) — a dependency-level SBOM, **not** a build-time, per-artifact bill of
+materials of the compiled binaries.
 
 ### release-please configuration
 

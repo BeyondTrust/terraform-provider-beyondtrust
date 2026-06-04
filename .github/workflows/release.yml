@@ -98,16 +98,22 @@ jobs:
           GPG_FINGERPRINT: ${{ steps.import_gpg.outputs.fingerprint }}
 
       - name: Attest build provenance
-        # Signed SLSA provenance for the published zips (verify with `gh attestation
-        # verify <zip> --repo <owner>/<repo>`). Supplementary to the GPG-signed
-        # checksums the Terraform Registry verifies.
+        # Signed SLSA provenance for the published zips AND the SHA256SUMS manifest —
+        # the checksum file is the integrity anchor consumers verify against, so it is
+        # attested too (verify with `gh attestation verify <file> --repo <owner>/<repo>`).
+        # Supplementary to the GPG signature the Terraform Registry verifies.
         uses: actions/attest-build-provenance@a2bbfa25375fe432b6a289bc6b6cd05ecd0c4c32 # v4.1.0
         with:
-          subject-path: 'dist/*.zip'
+          subject-path: |
+            dist/*.zip
+            dist/*_SHA256SUMS
 
   # GitHub's Dependency Graph REST API returns an SPDX 2.3 SBOM directly;
-  # the advanced-security/sbom-generator-action wrapper is deprecated in
-  # favor of this endpoint.
+  # the advanced-security/sbom-generator-action wrapper is deprecated in favor of this
+  # endpoint. Note: this is a DEPENDENCY-GRAPH SBOM (the default branch's resolved
+  # dependencies), not a build-time SBOM of the compiled binaries — it reflects what the
+  # module depends on, not a per-artifact bill of materials. It is best-effort and never
+  # blocks publish (see the publish job's `if`).
   sbom:
     name: Generate SBOM
     runs-on: ubuntu-latest
