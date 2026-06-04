@@ -58,8 +58,8 @@ resource "kubernetes_secret" "api_credentials" {
 ### Required
 
 - `name` (String) The name of the secret. Must match pattern: ^[a-zA-Z0-9\-_@~\*\^]{1,130}$ (single path segment, max 130 chars).
-- `secret_wo` (Map of String, Write-Only) Key-value pairs for the secret (e.g., {password = 'secret123'}). Write-only - not stored in state. Use the ephemeral resource to read values.
-- `secret_wo_version` (Number) User-controlled version number for the write-only secret. Increment this value to signal that `secret_wo` has changed and should be re-applied. Write-only values cannot be diffed automatically against state, so this attribute serves as the rotation trigger.
+- `secret_wo` (Map of String) Key-value pairs for the secret (e.g., {password = 'secret123'}). Write-only - not stored in state. Use the ephemeral resource to read values.
+- `secret_wo_version` (Number) User-controlled version number for the write-only secret. Increment this value to signal that secret_wo has changed and should be re-applied. Write-only values cannot be diffed automatically against state, so this attribute serves as the rotation trigger.
 
 ### Optional
 
@@ -77,13 +77,13 @@ resource "kubernetes_secret" "api_credentials" {
 Import is supported using the following syntax:
 
 ```shell
+#!/bin/bash
 # Import a root-level secret
 terraform import beyondtrust_workload_credentials_static_secret.api_key api-key
 
 # Import a secret in a folder (use full path)
 terraform import beyondtrust_workload_credentials_static_secret.api_key production/api-key
 
-# Note: After import, you must provide both the secret_wo and secret_wo_version
-# attributes in your configuration. The secret value is not retrieved during
-# import for security reasons.
+# Note: After import, you must provide the secret_wo attribute in your configuration.
+# The secret value is not retrieved during import for security reasons.
 ```
