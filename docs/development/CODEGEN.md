@@ -52,7 +52,6 @@ The generator recognizes Workload Credentials-specific patterns:
 - Path-based resources (name + folder query parameter)
 - Merge patch semantics (RFC 7396)
 - Soft deletes (permanent query parameter)
-- CSRF token requirements
 
 ## Workflow
 
