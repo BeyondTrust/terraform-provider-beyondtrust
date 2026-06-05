@@ -18,9 +18,13 @@ on:
     branches:
       - main
 
-# No concurrency group: release runs must never be cancelled mid-flight (a cancelled
-# run can leave a partially-populated draft release/tag). release-please merges are
-# infrequent, so overlapping runs are not a concern.
+# Serialize releases: only one release pipeline runs at a time. cancel-in-progress is
+# false so a newer push queues behind the in-flight run instead of cancelling it — a
+# cancelled run can leave a partially-populated draft release/tag, and overlapping runs
+# could race on the same draft release/tag.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
 
 permissions: {}
 
