@@ -195,15 +195,6 @@ All requests include:
 - `X-BT-Site-ID: <uuid>` - Tenant/site ID for multi-tenancy
 - `X-BT-Role: <role>` - Optional role (sets `X-BT-Auth-Type: CUSTOM-IDP`)
 
-### CSRF Token Handling
-
-**Currently Disabled:** Backend `/session` endpoint requires admin permissions. When fixed:
-1. Enable session validation in `provider.Configure()`
-2. Enable CSRF token acquisition in `client.ensureCSRFToken()`
-3. CSRF token automatically added to POST/PUT/PATCH/DELETE requests
-
-See: `internal/client/client.go:233`, `internal/provider/provider.go:204`
-
 ### Merge-Patch Semantics (RFC 7396)
 
 Updates use `PATCH` with `Content-Type: application/merge-patch+json`:
@@ -483,22 +474,9 @@ func (r *Resource) updateTags(ctx context.Context, resourcePath string, oldTags,
 
 ### Error Handling Pattern
 
-**Current (needs improvement):**
 ```go
 if err != nil {
     if strings.Contains(err.Error(), "404") {
-        resp.State.RemoveResource(ctx)
-        return
-    }
-    resp.Diagnostics.AddError("Read Error", err.Error())
-    return
-}
-```
-
-**TODO: Typed errors:**
-```go
-if err != nil {
-    if apiErr, ok := err.(*client.APIError); ok && apiErr.StatusCode == 404 {
         resp.State.RemoveResource(ctx)
         return
     }
@@ -639,11 +617,6 @@ resource "beyondtrust_example" "test" {
 - **Code duplication**: Extract repeated tag management and import logic to shared helpers
 - **Plan modifiers**: Add `RequiresReplace` for all immutable attributes, `UseStateForUnknown` for computed attributes
 
-### Backend Dependencies
-
-- **CSRF/Session endpoint**: Backend `/session` endpoint requires admin permissions (blocks CSRF protection)
-- **Missing APIs**: OIDC trust and Policy APIs not yet available from backend
-
 ### Test Coverage
 
 - **Unit coverage**: Current 68.1% (target: 80%+)
@@ -689,7 +662,7 @@ resource "kubernetes_secret" "db" {
 }
 ```
 
-See `TERRAFORM_VERSION_REQUIREMENTS.md` for version compatibility details.
+See [Terraform Version Requirements](../guides/terraform-version-requirements.md) for version compatibility details.
 
 ## Code Generation
 
@@ -712,8 +685,7 @@ See `CODEGEN.md` for detailed usage.
 - `README.md` - Provider usage and examples
 - `DEVELOPMENT.md` - Detailed local development setup
 - `TESTING.md` - Testing guide with environment variables
-- `TODO.md` - Comprehensive technical debt tracking
-- `TERRAFORM_VERSION_REQUIREMENTS.md` - Version compatibility matrix
+- [Terraform Version Requirements](../guides/terraform-version-requirements.md) - Version compatibility matrix
 
 ## Development Tips
 
