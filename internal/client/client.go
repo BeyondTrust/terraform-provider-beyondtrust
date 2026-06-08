@@ -26,7 +26,6 @@ type Client struct {
 	APIPathVersion string // Optional path version (e.g., "v1" or empty string)
 	Role           string // X-BT-Role header value (when set, auth type is always CUSTOM-IDP)
 	HTTPClient     *http.Client
-	csrfToken      string
 	ServiceName    string // Optional service name for user agent
 }
 
@@ -161,7 +160,8 @@ func (c *Client) BuildPath(endpoint string) string {
 	return fmt.Sprintf("/site/%s/secrets/%s%s", c.SiteID, c.APIPathVersion, endpoint)
 }
 
-// ValidateSession validates the access token by checking the session endpoint
+// ValidateSession validates the access token by calling GET /session.
+// A 200 response indicates the credentials are valid.
 func (c *Client) ValidateSession(ctx context.Context) error {
 	path := c.BuildPath("/session")
 
@@ -170,68 +170,11 @@ func (c *Client) ValidateSession(ctx context.Context) error {
 		return fmt.Errorf("error creating session validation request: %w", err)
 	}
 
-	resp, err := c.do(req, false)
+	resp, err := c.do(req)
 	if err != nil {
 		return fmt.Errorf("session validation failed: %w", err)
 	}
 	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("session validation failed with status %d", resp.StatusCode)
-	}
-
-	return nil
-}
-
-// ensureCSRFToken ensures the CSRF token is cached
-func (c *Client) ensureCSRFToken(ctx context.Context) error {
-	if c.csrfToken != "" {
-		return nil
-	}
-
-	path := c.BuildPath("/session")
-
-	req, err := c.newRequest(ctx, "GET", path, nil, nil)
-	if err != nil {
-		return fmt.Errorf("error creating CSRF token request: %w", err)
-	}
-
-	resp, err := c.do(req, false)
-	if err != nil {
-		return fmt.Errorf("CSRF token acquisition failed: %w", err)
-	}
-	defer resp.Body.Close()
-
-	// Try to get CSRF token from response header
-	csrfToken := resp.Header.Get("X-CSRF-Token")
-	if csrfToken == "" {
-		// Try from cookie
-		for _, cookie := range resp.Cookies() {
-			if cookie.Name == "csrf_token" || cookie.Name == "CSRF-Token" {
-				csrfToken = cookie.Value
-				break
-			}
-		}
-	}
-
-	if csrfToken == "" {
-		// Try from response body
-		body, err := io.ReadAll(resp.Body)
-		if err != nil {
-			return fmt.Errorf("failed to read session response: %w", err)
-		}
-
-		var sessionData map[string]interface{}
-		if err := json.Unmarshal(body, &sessionData); err == nil {
-			if token, ok := sessionData["csrfToken"].(string); ok {
-				csrfToken = token
-			}
-		}
-	}
-
-	if csrfToken != "" {
-		c.csrfToken = csrfToken
-	}
 
 	return nil
 }
@@ -301,18 +244,7 @@ func (c *Client) newMergePatchRequest(ctx context.Context, path string, query ur
 }
 
 // do performs the HTTP request
-func (c *Client) do(req *http.Request, requireCSRF bool) (*http.Response, error) {
-	// TODO: Re-enable CSRF token support once session endpoint permissions are fixed
-	// Add CSRF token for mutation operations
-	// if requireCSRF {
-	// 	if err := c.ensureCSRFToken(req.Context()); err != nil {
-	// 		return nil, fmt.Errorf("failed to get CSRF token: %w", err)
-	// 	}
-	// 	if c.csrfToken != "" {
-	// 		req.Header.Set("X-CSRF-Token", c.csrfToken)
-	// 	}
-	// }
-
+func (c *Client) do(req *http.Request) (*http.Response, error) {
 	resp, err := c.HTTPClient.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("HTTP request failed: %w", err)
@@ -357,10 +289,6 @@ func (c *Client) DoRequest(ctx context.Context, method, path string, query url.V
 	var req *http.Request
 	var err error
 
-	// Determine if CSRF token is required
-	requireCSRF := method == "POST" || method == "PUT" || method == "PATCH" || method == "DELETE"
-
-	// Create request based on method
 	if method == "PATCH" && body != nil {
 		req, err = c.newMergePatchRequest(ctx, path, query, body)
 	} else {
@@ -371,7 +299,7 @@ func (c *Client) DoRequest(ctx context.Context, method, path string, query url.V
 		return err
 	}
 
-	resp, err := c.do(req, requireCSRF)
+	resp, err := c.do(req)
 	if err != nil {
 		return err
 	}
