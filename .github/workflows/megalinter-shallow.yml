@@ -11,10 +11,20 @@ on:
       - .mega-linter.yml
       - .github/linters/**
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions: {}
 
 jobs:
   lint:
+    name: MegaLinter
+    # MegaLinter's status reporter and SARIF upload need a writable token, which
+    # fork and Dependabot PRs do not get, so skip them on those PRs.
+    if: >-
+      github.actor != 'dependabot[bot]' &&
+      github.event.pull_request.head.repo.full_name == github.repository
     permissions:
       actions: read
       contents: read
