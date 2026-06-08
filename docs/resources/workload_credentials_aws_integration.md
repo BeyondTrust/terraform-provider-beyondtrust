@@ -62,6 +62,7 @@ resource "beyondtrust_workload_credentials_aws_integration" "production_secure" 
 Import is supported using the following syntax:
 
 ```shell
+#!/bin/bash
 # Import an AWS integration by name
 terraform import beyondtrust_workload_credentials_aws_integration.production production-aws-account
 

@@ -38,7 +38,7 @@ The tests will **automatically create and cleanup IAM roles** using your AWS cre
 
 3. **BeyondTrust Credentials** - Obtain from [app.beyondtrust.io](https://app.beyondtrust.io) (Pathfinder platform):
    - Access token: **User Settings** → **Manage Profile** → **Personal Access Tokens**
-   - Site ID (UUID): See [QUICKSTART.md](QUICKSTART.md#obtaining-your-site-id) for detailed instructions
+   - Site ID (UUID): See [Quick Start Guide](guides/quickstart.md#obtaining-your-site-id) for detailed instructions
 
 4. **BeyondTrust AWS Account ID** - Set the AWS account ID that your BeyondTrust Workload Credentials uses:
    ```bash

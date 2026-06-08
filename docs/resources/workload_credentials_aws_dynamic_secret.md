@@ -124,6 +124,7 @@ resource "beyondtrust_workload_credentials_aws_dynamic_secret" "admin" {
 Import is supported using the following syntax:
 
 ```shell
+#!/bin/bash
 # Import a root-level dynamic secret
 terraform import beyondtrust_workload_credentials_aws_dynamic_secret.developer developer-readonly-creds
 

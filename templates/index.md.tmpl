@@ -1,0 +1,55 @@
+---
+page_title: "Provider: BeyondTrust"
+description: |-
+{{ .Description | plainmarkdown | trimspace | prefixlines "  " }}
+---
+
+# BeyondTrust Provider
+
+{{ .Description | trimspace }}
+
+## Authentication
+
+The provider authenticates using a **personal access token** issued by the BeyondTrust Pathfinder Platform.
+
+To obtain credentials:
+
+1. Log in to [BeyondTrust Pathfinder](https://app.beyondtrust.io)
+2. Navigate to **User Settings → Manage Profile → Personal Access Tokens**
+3. Create a token and copy it — you will not be able to retrieve it again
+
+The provider also requires your **Site ID** (a UUID identifying your tenant) and the **API URL** for your Workload Credentials instance. Contact your BeyondTrust administrator if you do not have these values.
+
+### Environment Variables (Recommended)
+
+Set credentials via environment variables to keep them out of your Terraform configuration files:
+
+```shell
+export BEYONDTRUST_API_URL="https://app.beyondtrust.io"
+export BEYONDTRUST_ACCESS_TOKEN="your-token"
+export BEYONDTRUST_SITE_ID="550e8400-e29b-41d4-a716-446655440000"
+```
+
+With environment variables configured, the provider block needs no explicit credentials:
+
+```hcl
+provider "beyondtrust" {}
+```
+
+### Explicit Configuration
+
+For non-sensitive values you may set them directly. Always use Terraform variables or a secrets manager for the access token — never hard-code it:
+
+```hcl
+provider "beyondtrust" {
+  api_url      = "https://app.beyondtrust.io"
+  access_token = var.beyondtrust_access_token
+  site_id      = var.beyondtrust_site_id
+}
+```
+
+## Example Usage
+
+{{tffile "examples/provider/provider.tf"}}
+
+{{ .SchemaMarkdown | trimspace }}

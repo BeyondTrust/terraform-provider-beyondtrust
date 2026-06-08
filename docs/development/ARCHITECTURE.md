@@ -9,7 +9,7 @@ This guide is intended for:
 - Maintainers reviewing pull requests and architectural changes
 - Engineers extending the provider with new resources or functionality
 
-For user-facing documentation, see [README.md](../../README.md) and [QUICKSTART.md](../QUICKSTART.md).
+For user-facing documentation, see [README.md](../../README.md) and [Quick Start Guide](../guides/quickstart.md).
 
 ## Overview
 
@@ -120,8 +120,9 @@ terraform-provider-beyondtrust/
 │   └── ephemeral-resources/
 │
 └── docs/                            # Auto-generated provider documentation
-    ├── QUICKSTART.md
-    ├── TERRAFORM_VERSION_REQUIREMENTS.md
+    ├── guides/
+    │   ├── quickstart.md
+    │   └── terraform-version-requirements.md
     ├── development/
     │   ├── ARCHITECTURE.md (this file)
     │   ├── DEVELOPMENT.md
@@ -673,7 +674,7 @@ func TestAccFolderResource_basic(t *testing.T) {
 - Requires Terraform 1.10+ for ephemeral resource support
 - More complex lifecycle (Open → Read → Close)
 
-**See**: [TERRAFORM_VERSION_REQUIREMENTS.md](../TERRAFORM_VERSION_REQUIREMENTS.md)
+**See**: [Terraform Version Requirements](../guides/terraform-version-requirements.md)
 
 ### 3. Path-Based Resource Identification
 
