@@ -186,20 +186,18 @@ type BeyondTrustProviderModel struct {
 - HTTP request/response handling
 - Standard header injection (Authorization, API-Version, Site-ID, Role)
 - Path construction with optional version segment
-- CSRF token handling (currently disabled)
 - Error response parsing into typed errors
 
 **Key Types:**
 ```go
 type Client struct {
-    BaseURL        string        // e.g., https://api.workload-credentials.example.com
+    BaseURL        string        // e.g., https://api.beyondtrust.io
     AccessToken    string        // Bearer token
     SiteID         string        // Tenant/site UUID
     APIVersion     string        // Header version (date-based)
     APIPathVersion string        // Optional path version (empty or "v1")
     Role           string        // X-BT-Role header value
     HTTPClient     *http.Client  // Configured with TLS settings and timeout
-    csrfToken      string        // CSRF token (cached, currently unused)
 }
 
 type APIError struct {
@@ -316,7 +314,7 @@ client.Client method (Post/Get/Patch/Delete)
    ├─ Build path: client.BuildPath("/folders")
    ├─ Create request: client.newRequest(method, path, query, body)
    ├─ Inject headers: Authorization, API-Version, Site-ID, Role
-   ├─ Execute request: client.do(req, requireCSRF)
+   ├─ Execute request: client.do(req)
    ├─ Handle errors: parse APIError from response
    └─ Unmarshal response into result struct
    ↓
@@ -765,13 +763,9 @@ Secrets retrieved via ephemeral resources:
 
 **Warning**: `insecure: true` should only be used for local development with self-signed certificates.
 
-### CSRF Token Handling
-
-CSRF token acquisition is implemented in `internal/client/client.go` and wired into all mutating requests (POST/PUT/PATCH/DELETE) via the `X-CSRF-Token` header.
-
 ### Credential Validation
 
-Session validation is implemented in `internal/provider/provider.go` and called during provider configuration to verify credentials before any resource operations.
+Session validation is implemented via `client.ValidateSession` and called during provider configuration (`internal/provider/provider.go`). It calls `GET /session` and treats a 200 response as valid credentials. A 401 or 403 surfaces immediately as a provider configuration error before any resource operations run.
 
 ## Extension Points
 
