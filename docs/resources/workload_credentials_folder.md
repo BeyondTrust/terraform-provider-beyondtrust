@@ -58,6 +58,7 @@ resource "beyondtrust_workload_credentials_folder" "aws" {
 Import is supported using the following syntax:
 
 ```shell
+#!/bin/bash
 # Import a root-level folder
 terraform import beyondtrust_workload_credentials_folder.production production
 

@@ -48,7 +48,7 @@ Workload Credentials is part of the BeyondTrust Pathfinder platform:
 1. Log in to [app.beyondtrust.io](https://app.beyondtrust.io)
 2. Navigate to **User Settings** → **Manage Profile** → **Personal Access Tokens**
 3. Create a token
-4. Obtain your Site ID - See [QUICKSTART.md](../QUICKSTART.md#obtaining-your-site-id) for detailed instructions
+4. Obtain your Site ID - See [Quick Start Guide](../guides/quickstart.md#obtaining-your-site-id) for detailed instructions
 
 #### Required Environment Variables
 

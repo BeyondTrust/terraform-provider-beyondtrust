@@ -65,7 +65,7 @@ func (p *BeyondTrustProvider) Schema(ctx context.Context, req provider.SchemaReq
 		Description: "The BeyondTrust provider allows you to manage BeyondTrust resources (Workload Credentials and other BeyondTrust services) using infrastructure as code.",
 		Attributes: map[string]schema.Attribute{
 			"api_url": schema.StringAttribute{
-				Description: "The base URL for the BeyondTrust API (e.g., https://api.workload-credentials.example.com). Can also be set via " + constants.EnvAPIURL + " environment variable.",
+				Description: "The base URL for the BeyondTrust API (e.g., <https://app.beyondtrust.io>). Can also be set via " + constants.EnvAPIURL + " environment variable.",
 				Optional:    true,
 			},
 			"access_token": schema.StringAttribute{
@@ -224,16 +224,15 @@ func (p *BeyondTrustProvider) Configure(ctx context.Context, req provider.Config
 	}
 
 	// Validate the client by checking the session
-	// TODO: Re-enable once /session endpoint permissions are fixed
-	// if err := apiClient.ValidateSession(ctx); err != nil {
-	// 	resp.Diagnostics.AddError(
-	// 		"Unable to Authenticate with BeyondTrust API",
-	// 		"The provider could not authenticate with the BeyondTrust API. "+
-	// 			"Please check your access token and API URL. "+
-	// 			"Error: "+err.Error(),
-	// 	)
-	// 	return
-	// }
+	if err := apiClient.ValidateSession(ctx); err != nil {
+		resp.Diagnostics.AddError(
+			"Unable to Authenticate with BeyondTrust API",
+			"The provider could not authenticate with the BeyondTrust API. "+
+				"Please check your access token and API URL. "+
+				"Error: "+err.Error(),
+		)
+		return
+	}
 
 	// Make the client available to resources, data sources, and ephemeral resources
 	resp.DataSourceData = apiClient

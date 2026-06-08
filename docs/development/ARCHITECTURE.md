@@ -9,7 +9,7 @@ This guide is intended for:
 - Maintainers reviewing pull requests and architectural changes
 - Engineers extending the provider with new resources or functionality
 
-For user-facing documentation, see [README.md](../../README.md) and [QUICKSTART.md](../QUICKSTART.md).
+For user-facing documentation, see [README.md](../../README.md) and [Quick Start Guide](../guides/quickstart.md).
 
 ## Overview
 
@@ -120,8 +120,9 @@ terraform-provider-beyondtrust/
 │   └── ephemeral-resources/
 │
 └── docs/                            # Auto-generated provider documentation
-    ├── QUICKSTART.md
-    ├── TERRAFORM_VERSION_REQUIREMENTS.md
+    ├── guides/
+    │   ├── quickstart.md
+    │   └── terraform-version-requirements.md
     ├── development/
     │   ├── ARCHITECTURE.md (this file)
     │   ├── DEVELOPMENT.md
@@ -185,20 +186,18 @@ type BeyondTrustProviderModel struct {
 - HTTP request/response handling
 - Standard header injection (Authorization, API-Version, Site-ID, Role)
 - Path construction with optional version segment
-- CSRF token handling (currently disabled)
 - Error response parsing into typed errors
 
 **Key Types:**
 ```go
 type Client struct {
-    BaseURL        string        // e.g., https://api.workload-credentials.example.com
+    BaseURL        string        // e.g., https://api.beyondtrust.io
     AccessToken    string        // Bearer token
     SiteID         string        // Tenant/site UUID
     APIVersion     string        // Header version (date-based)
     APIPathVersion string        // Optional path version (empty or "v1")
     Role           string        // X-BT-Role header value
     HTTPClient     *http.Client  // Configured with TLS settings and timeout
-    csrfToken      string        // CSRF token (cached, currently unused)
 }
 
 type APIError struct {
@@ -315,7 +314,7 @@ client.Client method (Post/Get/Patch/Delete)
    ├─ Build path: client.BuildPath("/folders")
    ├─ Create request: client.newRequest(method, path, query, body)
    ├─ Inject headers: Authorization, API-Version, Site-ID, Role
-   ├─ Execute request: client.do(req, requireCSRF)
+   ├─ Execute request: client.do(req)
    ├─ Handle errors: parse APIError from response
    └─ Unmarshal response into result struct
    ↓
@@ -675,7 +674,7 @@ func TestAccFolderResource_basic(t *testing.T) {
 - Requires Terraform 1.10+ for ephemeral resource support
 - More complex lifecycle (Open → Read → Close)
 
-**See**: [TERRAFORM_VERSION_REQUIREMENTS.md](../TERRAFORM_VERSION_REQUIREMENTS.md)
+**See**: [Terraform Version Requirements](../guides/terraform-version-requirements.md)
 
 ### 3. Path-Based Resource Identification
 
@@ -764,44 +763,9 @@ Secrets retrieved via ephemeral resources:
 
 **Warning**: `insecure: true` should only be used for local development with self-signed certificates.
 
-### CSRF Token Handling
-
-**Current Status**: Disabled pending backend fix
-
-**Reason**: Backend `/session` endpoint requires admin permissions
-
-**Implementation** (`internal/client/client.go:263-273`):
-```go
-// TODO: Re-enable CSRF token support once session endpoint permissions are fixed
-// if requireCSRF {
-//     if err := c.ensureCSRFToken(req.Context()); err != nil {
-//         return nil, fmt.Errorf("failed to get CSRF token: %w", err)
-//     }
-//     if c.csrfToken != "" {
-//         req.Header.Set("X-CSRF-Token", c.csrfToken)
-//     }
-// }
-```
-
 ### Credential Validation
 
-**Current Status**: Disabled pending backend fix
-
-**Reason**: Backend `/session` endpoint requires admin permissions
-
-**Implementation** (`internal/provider/provider.go:215-224`):
-```go
-// TODO: Re-enable once /session endpoint permissions are fixed
-// if err := apiClient.ValidateSession(ctx); err != nil {
-//     resp.Diagnostics.AddError(
-//         "Unable to Authenticate with BeyondTrust API",
-//         "The provider could not authenticate with the BeyondTrust API. "+
-//             "Please check your access token and API URL. "+
-//             "Error: "+err.Error(),
-//     )
-//     return
-// }
-```
+Session validation is implemented via `client.ValidateSession` and called during provider configuration (`internal/provider/provider.go`). It calls `GET /session` and treats a 200 response as valid credentials. A 401 or 403 surfaces immediately as a provider configuration error before any resource operations run.
 
 ## Extension Points
 

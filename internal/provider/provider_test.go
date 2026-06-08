@@ -2,6 +2,9 @@ package provider
 
 import (
 	"context"
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"testing"
 
@@ -97,6 +100,9 @@ func TestProviderSchema(t *testing.T) {
 
 // TestProviderConfigure_EnvVarPrecedence validates that environment variables are used when config is not set.
 func TestProviderConfigure_EnvVarPrecedence(t *testing.T) {
+	server := newSessionMockServer(t)
+	defer server.Close()
+
 	tests := []struct {
 		name    string
 		envVars map[string]string
@@ -105,7 +111,7 @@ func TestProviderConfigure_EnvVarPrecedence(t *testing.T) {
 		{
 			name: "all env vars set",
 			envVars: map[string]string{
-				"BEYONDTRUST_API_URL":      "https://env.example.com",
+				"BEYONDTRUST_API_URL":      server.URL,
 				"BEYONDTRUST_ACCESS_TOKEN": "env-token",
 				"BEYONDTRUST_SITE_ID":      "env-site-123",
 			},
@@ -122,7 +128,7 @@ func TestProviderConfigure_EnvVarPrecedence(t *testing.T) {
 		{
 			name: "missing access_token",
 			envVars: map[string]string{
-				"BEYONDTRUST_API_URL": "https://env.example.com",
+				"BEYONDTRUST_API_URL": server.URL,
 				"BEYONDTRUST_SITE_ID": "env-site-123",
 			},
 			wantErr: true,
@@ -130,7 +136,7 @@ func TestProviderConfigure_EnvVarPrecedence(t *testing.T) {
 		{
 			name: "missing site_id",
 			envVars: map[string]string{
-				"BEYONDTRUST_API_URL":      "https://env.example.com",
+				"BEYONDTRUST_API_URL":      server.URL,
 				"BEYONDTRUST_ACCESS_TOKEN": "env-token",
 			},
 			wantErr: true,
@@ -199,6 +205,9 @@ func TestProviderConfigure_EnvVarPrecedence(t *testing.T) {
 
 // TestProviderConfigure_ConfigOverridesEnv validates that config values override environment variables.
 func TestProviderConfigure_ConfigOverridesEnv(t *testing.T) {
+	server := newSessionMockServer(t)
+	defer server.Close()
+
 	tests := []struct {
 		name         string
 		envVars      map[string]string
@@ -208,12 +217,12 @@ func TestProviderConfigure_ConfigOverridesEnv(t *testing.T) {
 		{
 			name: "config overrides all env vars",
 			envVars: map[string]string{
-				"BEYONDTRUST_API_URL":      "https://env.example.com",
+				"BEYONDTRUST_API_URL":      server.URL,
 				"BEYONDTRUST_ACCESS_TOKEN": "env-token",
 				"BEYONDTRUST_SITE_ID":      "env-site-123",
 			},
 			configValues: map[string]interface{}{
-				"api_url":      "https://config.example.com",
+				"api_url":      server.URL,
 				"access_token": "config-token",
 				"site_id":      "config-site-456",
 			},
@@ -222,12 +231,12 @@ func TestProviderConfigure_ConfigOverridesEnv(t *testing.T) {
 		{
 			name: "config overrides partial env vars",
 			envVars: map[string]string{
-				"BEYONDTRUST_API_URL":      "https://env.example.com",
+				"BEYONDTRUST_API_URL":      server.URL,
 				"BEYONDTRUST_ACCESS_TOKEN": "env-token",
 				"BEYONDTRUST_SITE_ID":      "env-site-123",
 			},
 			configValues: map[string]interface{}{
-				"api_url": "https://config.example.com",
+				"api_url": server.URL,
 			},
 			wantErr: false,
 		},
@@ -235,7 +244,7 @@ func TestProviderConfigure_ConfigOverridesEnv(t *testing.T) {
 			name:    "config only, no env vars",
 			envVars: map[string]string{},
 			configValues: map[string]interface{}{
-				"api_url":      "https://config.example.com",
+				"api_url":      server.URL,
 				"access_token": "config-token",
 				"site_id":      "config-site-456",
 			},
@@ -283,6 +292,9 @@ func TestProviderConfigure_ConfigOverridesEnv(t *testing.T) {
 
 // TestProviderConfigure_OptionalFields validates that optional fields and defaults work correctly.
 func TestProviderConfigure_OptionalFields(t *testing.T) {
+	server := newSessionMockServer(t)
+	defer server.Close()
+
 	tests := []struct {
 		name         string
 		configValues map[string]interface{}
@@ -291,7 +303,7 @@ func TestProviderConfigure_OptionalFields(t *testing.T) {
 		{
 			name: "with valid timeout",
 			configValues: map[string]interface{}{
-				"api_url":      "https://test.example.com",
+				"api_url":      server.URL,
 				"access_token": "test-token",
 				"site_id":      "test-site-123",
 				"timeout":      "60s",
@@ -301,7 +313,7 @@ func TestProviderConfigure_OptionalFields(t *testing.T) {
 		{
 			name: "with all optional fields",
 			configValues: map[string]interface{}{
-				"api_url":          "https://test.example.com",
+				"api_url":          server.URL,
 				"access_token":     "test-token",
 				"site_id":          "test-site-123",
 				"api_version":      "2025-01-01",
@@ -376,8 +388,11 @@ func TestProviderConfigure_TimeoutValidation(t *testing.T) {
 			prov := New("test")()
 
 			// Create config with timeout
+			server := newSessionMockServer(t)
+			defer server.Close()
+
 			configValue := buildConfigValue(map[string]interface{}{
-				"api_url":      "https://test.example.com",
+				"api_url":      server.URL,
 				"access_token": "test-token",
 				"site_id":      "test-site-123",
 				"timeout":      tt.timeout,
@@ -405,6 +420,16 @@ func TestProviderConfigure_TimeoutValidation(t *testing.T) {
 }
 
 // Helper functions
+
+// newSessionMockServer starts a test HTTP server that mocks the /session endpoint for validating API client sessions.
+func newSessionMockServer(t *testing.T) *httptest.Server {
+	t.Helper()
+	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(map[string]bool{"valid": true})
+	}))
+}
 
 // clearEnvVars clears all BeyondTrust-related environment variables.
 func clearEnvVars() {

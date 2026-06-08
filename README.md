@@ -48,7 +48,7 @@ Support for additional BeyondTrust products will be added in future releases.
 
 > **Note**: Some resources use **ephemeral resources** for secure secret handling, which require Terraform 1.10 or later.
 > Ephemeral resources ensure sensitive values are never persisted in state or plan files.
-> See [Terraform Version Requirements](docs/TERRAFORM_VERSION_REQUIREMENTS.md) for details.
+> See [Terraform Version Requirements](docs/guides/terraform-version-requirements.md) for details.
 
 ## Quick Start
 
@@ -140,8 +140,8 @@ For more examples, see the [examples](./examples) directory.
 ### Provider Documentation
 
 - [Terraform Registry Docs](https://registry.terraform.io/providers/beyondtrust/beyondtrust/latest/docs) - Complete resource documentation
-- [Quick Start Guide](./docs/QUICKSTART.md) - Get started quickly
-- [Terraform Version Requirements](./docs/TERRAFORM_VERSION_REQUIREMENTS.md) - Version compatibility information
+- [Quick Start Guide](./docs/guides/quickstart.md) - Get started quickly
+- [Terraform Version Requirements](./docs/guides/terraform-version-requirements.md) - Version compatibility information
 
 ### Development Documentation
 
