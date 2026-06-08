@@ -35,7 +35,7 @@ Download from: <https://www.terraform.io/downloads>
 
 ### Using the BeyondTrust Pathfinder Platform
 
-1. Log in to app.beyondtrust.io
+1. Log in to [app.beyondtrust.io](https://app.beyondtrust.io)
 2. Navigate to **User Settings** → **Manage Profile** -> **Personal Access Tokens**
 3. Click **Create Token**
 4. Copy the access token (you won't be able to see it again!)
