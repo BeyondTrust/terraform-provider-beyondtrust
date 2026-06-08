@@ -4,7 +4,9 @@
       "release-type": "simple",
       "extra-files": [
         "README.md"
-      ]
+      ],
+      "draft": true,
+      "force-tag-creation": true
     }
   },
   "always-update": true
