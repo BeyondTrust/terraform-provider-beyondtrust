@@ -196,19 +196,19 @@ Type `yes` to confirm deletion.
 
 ### Basic Usage
 
-- [Folder Management](../resources/workload_credentials_folder.md) - Organize secrets hierarchically
-- [Static Secrets](../resources/workload_credentials_static_secret.md) - Store write-only secrets
-- [Ephemeral Resources](../ephemeral-resources/workload_credentials_static_secret.md) - Read secrets without state storage
+- [Folder Management](https://registry.terraform.io/providers/beyondtrust/beyondtrust/latest/docs/resources/workload_credentials_folder) - Organize secrets hierarchically
+- [Static Secrets](https://registry.terraform.io/providers/beyondtrust/beyondtrust/latest/docs/resources/workload_credentials_static_secret) - Store write-only secrets
+- [Ephemeral Resources](https://registry.terraform.io/providers/beyondtrust/beyondtrust/latest/docs/ephemeral-resources/workload_credentials_static_secret) - Read secrets without state storage
 
 ### AWS Integration
 
-- [AWS Integration Resource](../resources/workload_credentials_aws_integration.md) - Reference documentation
-- [AWS Dynamic Secrets](../resources/workload_credentials_aws_dynamic_secret.md) - Generate temporary AWS credentials
+- [AWS Integration Resource](https://registry.terraform.io/providers/beyondtrust/beyondtrust/latest/docs/resources/workload_credentials_aws_integration) - Reference documentation
+- [AWS Dynamic Secrets](https://registry.terraform.io/providers/beyondtrust/beyondtrust/latest/docs/resources/workload_credentials_aws_dynamic_secret) - Generate temporary AWS credentials
 
 ### Advanced Topics
 
 - **Import Existing Resources**: See import examples in each resource documentation
-- **Terraform Version Requirements**: See the [Terraform Version Requirements](terraform-version-requirements.md) guide
+- **Terraform Version Requirements**: See the [Terraform Version Requirements](https://registry.terraform.io/providers/beyondtrust/beyondtrust/latest/docs/guides/terraform-version-requirements) guide
 
 ## Common Issues
 
