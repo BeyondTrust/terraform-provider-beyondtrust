@@ -380,88 +380,6 @@ func TestClientSecureMode(t *testing.T) {
 	assert.False(t, transport.TLSClientConfig.InsecureSkipVerify)
 }
 
-// TestEnsureCSRFToken_FromHeader validates CSRF token extraction from response header (primary method).
-func TestEnsureCSRFToken_FromHeader(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Set CSRF token in header
-		w.Header().Set("X-CSRF-Token", "test-csrf-from-header")
-		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
-	}))
-	defer server.Close()
-
-	client, err := NewClient(&Config{
-		BaseURL:     server.URL,
-		AccessToken: "test-token",
-		SiteID:      "test-site",
-		APIVersion:  "DefaultAPIVersion",
-		Timeout:     "30s",
-	})
-	require.NoError(t, err)
-
-	// Call ensureCSRFToken
-	err = client.ensureCSRFToken(context.Background())
-	assert.NoError(t, err)
-	assert.Equal(t, "test-csrf-from-header", client.csrfToken)
-}
-
-// TestEnsureCSRFToken_Caching validates that CSRF token is cached and not re-fetched.
-func TestEnsureCSRFToken_Caching(t *testing.T) {
-	callCount := 0
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		callCount++
-		w.Header().Set("X-CSRF-Token", "test-csrf-token")
-		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
-	}))
-	defer server.Close()
-
-	client, err := NewClient(&Config{
-		BaseURL:     server.URL,
-		AccessToken: "test-token",
-		SiteID:      "test-site",
-		APIVersion:  "DefaultAPIVersion",
-		Timeout:     "30s",
-	})
-	require.NoError(t, err)
-
-	// First call should fetch token
-	err = client.ensureCSRFToken(context.Background())
-	assert.NoError(t, err)
-	assert.Equal(t, "test-csrf-token", client.csrfToken)
-	assert.Equal(t, 1, callCount)
-
-	// Second call should use cached token
-	err = client.ensureCSRFToken(context.Background())
-	assert.NoError(t, err)
-	assert.Equal(t, "test-csrf-token", client.csrfToken)
-	assert.Equal(t, 1, callCount, "CSRF token should be cached, no additional API call")
-}
-
-// TestEnsureCSRFToken_NoToken validates behavior when no CSRF token is provided.
-func TestEnsureCSRFToken_NoToken(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// No CSRF token in any location
-		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
-	}))
-	defer server.Close()
-
-	client, err := NewClient(&Config{
-		BaseURL:     server.URL,
-		AccessToken: "test-token",
-		SiteID:      "test-site",
-		APIVersion:  "DefaultAPIVersion",
-		Timeout:     "30s",
-	})
-	require.NoError(t, err)
-
-	// Call ensureCSRFToken - should not error even if no token is found
-	err = client.ensureCSRFToken(context.Background())
-	assert.NoError(t, err)
-	assert.Equal(t, "", client.csrfToken)
-}
-
 // TestHandleErrorResponse_StructuredJSON validates error parsing from structured JSON.
 func TestHandleErrorResponse_StructuredJSON(t *testing.T) {
 	tests := []struct {
@@ -544,7 +462,7 @@ func TestValidateSession_Success(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/site/test-site/secrets/session" {
 			w.WriteHeader(http.StatusOK)
-			json.NewEncoder(w).Encode(map[string]string{"status": "valid"})
+			w.Write([]byte("{}"))
 			return
 		}
 		w.WriteHeader(http.StatusNotFound)

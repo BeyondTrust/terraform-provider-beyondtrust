@@ -80,7 +80,6 @@ internal/provider/provider.go
 internal/client/client.go
   ├── HTTP client with Workload Credentials API conventions
   ├── Header management (auth, API version, site ID)
-  ├── CSRF token handling (currently disabled)
   └── Merge-patch request building
   ↓
 workload_credentials/resources/*.go
