@@ -75,7 +75,7 @@ export BEYONDTRUST_ACCESS_TOKEN="your-access-token"
 export BEYONDTRUST_SITE_ID="your-site-id"
 ```
 
-### Create resourceds
+### Create resources
 
 Use the provider in your Terraform configuration:
 
