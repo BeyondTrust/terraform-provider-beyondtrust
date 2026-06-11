@@ -1,8 +1,3 @@
-<img width="941" height="722" alt="image" src="https://github.com/user-attachments/assets/81af5837-eb2f-4f84-81a8-9d0f8a423ad5" /><!-- markdownlint-disable MD041 -->
-<a href="https://www.beyondtrust.com">
-    <img src=".github/beyondtrust_logo.svg" alt="BeyondTrust" title="BeyondTrust" align="right" height="50">
-</a>
-
 # BeyondTrust Terraform Provider
 <!-- markdownlint-enable MD041 -->
 
