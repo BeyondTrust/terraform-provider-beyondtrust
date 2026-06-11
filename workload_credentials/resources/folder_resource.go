@@ -52,10 +52,11 @@ type FolderMetadataResponse struct {
 
 // FolderCreateResponse represents the API response when creating a folder
 type FolderCreateResponse struct {
-	ID       string `json:"id"`
-	Path     string `json:"path"`
-	Type     string `json:"type"`
-	Metadata struct {
+	ID        string `json:"id"`
+	Path      string `json:"path"`
+	Type      string `json:"type"`
+	CreatedAt string `json:"createdAt"`
+	Metadata  struct {
 		ID        string            `json:"id"`
 		Tags      map[string]string `json:"tags,omitempty"`
 		CreatedAt string            `json:"createdAt"`
@@ -353,6 +354,7 @@ func (r *FolderResource) Delete(ctx context.Context, req resource.DeleteRequest,
 		parentFolder = data.Folder.ValueString()
 	}
 	query := buildQueryParameters(parentFolder, "delete", true)
+	query.Set("recursive", "true")
 
 	// Delete the folder
 	err := r.client.Delete(ctx, apiPath, query)

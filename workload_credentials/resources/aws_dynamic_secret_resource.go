@@ -54,6 +54,8 @@ type AwsDynamicSecretResourceModel struct {
 	ID              types.String `tfsdk:"id"`
 	IntegrationId   types.String `tfsdk:"integration_id"`
 	CreatedAt       types.String `tfsdk:"created_at"`
+	Version         types.Int64  `tfsdk:"version"`
+	CreatedBy       types.String `tfsdk:"created_by"`
 	DeletedAt       types.String `tfsdk:"deleted_at"`
 }
 
@@ -80,6 +82,7 @@ type AwsDynamicSecretResponse struct {
 		Version   int     `json:"version"`
 		CreatedAt string  `json:"createdAt"`
 		DeletedAt *string `json:"deletedAt,omitempty"`
+		CreatedBy string  `json:"createdBy,omitempty"`
 	} `json:"metadata"`
 }
 
@@ -88,7 +91,7 @@ type DynamicSecretConfig struct {
 	CredentialType  string              `json:"credentialType"`
 	TTL             int64               `json:"ttl"`
 	IntegrationId   string              `json:"integrationId"`
-	IntegrationName string              `json:"integrationName"`
+	IntegrationName string              `json:"integrationName,omitempty"` // present in POST response, absent in GET
 	RoleArn         string              `json:"roleArn"`
 	ExternalId      *string             `json:"externalId,omitempty"`
 	PolicyArns      *[]string           `json:"policyArns,omitempty"`
@@ -104,8 +107,8 @@ type DynamicSecretConfig struct {
 // field from Terraform config actually clears it on the server.
 type AwsDynamicSecretUpdateRequest struct {
 	Type       string              `json:"type"`
-	RoleArn    *string             `json:"roleArn,omitempty"`
-	TTL        *int64              `json:"ttl,omitempty"`
+	RoleArn    *string             `json:"roleArn"`
+	TTL        *int64              `json:"ttl"`
 	ExternalId *string             `json:"externalId"`
 	PolicyArns *[]string           `json:"policyArns"`
 	Policy     *string             `json:"policy"`
@@ -143,12 +146,18 @@ func (r *AwsDynamicSecretResource) Schema(ctx context.Context, req resource.Sche
 				},
 			},
 			"integration_name": schema.StringAttribute{
-				Description: "The name of the AWS integration to use for generating credentials.",
+				Description: "The name of the AWS integration to use for generating credentials. Changing this requires replacing the resource.",
 				Required:    true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.RequiresReplace(),
+				},
 			},
 			"credential_type": schema.StringAttribute{
-				Description: "The type of AWS credentials to generate. Currently supported: 'assumed_role'. Other types (iam_user, federation_token, session_token) may be added in the future.",
+				Description: "The type of AWS credentials to generate. Currently supported: 'assumed_role'. Changing this requires replacing the resource.",
 				Required:    true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.RequiresReplace(),
+				},
 			},
 			"role_arn": schema.StringAttribute{
 				Description: "The ARN of the AWS IAM role to assume when generating credentials. Must match pattern: arn:aws:iam::[0-9]+:role/.+",
@@ -206,6 +215,20 @@ func (r *AwsDynamicSecretResource) Schema(ctx context.Context, req resource.Sche
 			"created_at": schema.StringAttribute{
 				Description: "The timestamp when the dynamic secret was created.",
 				Computed:    true,
+			},
+			"version": schema.Int64Attribute{
+				Description: "The current version of the dynamic secret.",
+				Computed:    true,
+				PlanModifiers: []planmodifier.Int64{
+					int64planmodifier.UseStateForUnknown(),
+				},
+			},
+			"created_by": schema.StringAttribute{
+				Description: "The ID of the user who created the dynamic secret.",
+				Computed:    true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
 			},
 			"deleted_at": schema.StringAttribute{
 				Description: "The timestamp when the dynamic secret was soft-deleted (if applicable).",
@@ -305,6 +328,12 @@ func (r *AwsDynamicSecretResource) Create(ctx context.Context, req resource.Crea
 	data.ID = types.StringValue(createResp.Metadata.ID)
 	data.Path = types.StringValue(createResp.Path)
 	data.CreatedAt = types.StringValue(createResp.Metadata.CreatedAt)
+	data.Version = types.Int64Value(int64(createResp.Metadata.Version))
+	if createResp.Metadata.CreatedBy != "" {
+		data.CreatedBy = types.StringValue(createResp.Metadata.CreatedBy)
+	} else {
+		data.CreatedBy = types.StringNull()
+	}
 	data.IntegrationId = types.StringValue(createResp.Config.IntegrationId)
 
 	if createResp.Metadata.DeletedAt != nil {
@@ -317,7 +346,9 @@ func (r *AwsDynamicSecretResource) Create(ctx context.Context, req resource.Crea
 	data.TTL = types.Int64Value(createResp.Config.TTL)
 	data.RoleArn = types.StringValue(createResp.Config.RoleArn)
 	data.CredentialType = types.StringValue(createResp.Config.CredentialType)
-	data.IntegrationName = types.StringValue(createResp.Config.IntegrationName)
+	if createResp.Config.IntegrationName != "" {
+		data.IntegrationName = types.StringValue(createResp.Config.IntegrationName)
+	}
 
 	if createResp.Config.ExternalId != nil {
 		data.ExternalId = types.StringValue(*createResp.Config.ExternalId)
@@ -367,6 +398,12 @@ func (r *AwsDynamicSecretResource) Read(ctx context.Context, req resource.ReadRe
 	data.ID = types.StringValue(secretResp.Metadata.ID)
 	data.Path = types.StringValue(secretResp.Path)
 	data.CreatedAt = types.StringValue(secretResp.Metadata.CreatedAt)
+	data.Version = types.Int64Value(int64(secretResp.Metadata.Version))
+	if secretResp.Metadata.CreatedBy != "" {
+		data.CreatedBy = types.StringValue(secretResp.Metadata.CreatedBy)
+	} else {
+		data.CreatedBy = types.StringNull()
+	}
 	data.IntegrationId = types.StringValue(secretResp.Config.IntegrationId)
 
 	if secretResp.Metadata.DeletedAt != nil {
@@ -379,7 +416,7 @@ func (r *AwsDynamicSecretResource) Read(ctx context.Context, req resource.ReadRe
 	data.TTL = types.Int64Value(secretResp.Config.TTL)
 	data.RoleArn = types.StringValue(secretResp.Config.RoleArn)
 	data.CredentialType = types.StringValue(secretResp.Config.CredentialType)
-	data.IntegrationName = types.StringValue(secretResp.Config.IntegrationName)
+	// integration_name is not returned by the server; keep the state value already in data
 
 	if secretResp.Config.ExternalId != nil {
 		data.ExternalId = types.StringValue(*secretResp.Config.ExternalId)
@@ -516,11 +553,17 @@ func (r *AwsDynamicSecretResource) Update(ctx context.Context, req resource.Upda
 	data.ID = types.StringValue(secretResp.Metadata.ID)
 	data.Path = types.StringValue(secretResp.Path)
 	data.CreatedAt = types.StringValue(secretResp.Metadata.CreatedAt)
+	data.Version = types.Int64Value(int64(secretResp.Metadata.Version))
+	if secretResp.Metadata.CreatedBy != "" {
+		data.CreatedBy = types.StringValue(secretResp.Metadata.CreatedBy)
+	} else {
+		data.CreatedBy = types.StringNull()
+	}
 	data.IntegrationId = types.StringValue(secretResp.Config.IntegrationId)
 	data.TTL = types.Int64Value(secretResp.Config.TTL)
 	data.RoleArn = types.StringValue(secretResp.Config.RoleArn)
 	data.CredentialType = types.StringValue(secretResp.Config.CredentialType)
-	data.IntegrationName = types.StringValue(secretResp.Config.IntegrationName)
+	// integration_name is not returned by the server; keep the plan value already in data
 
 	if secretResp.Metadata.DeletedAt != nil {
 		data.DeletedAt = types.StringValue(*secretResp.Metadata.DeletedAt)
