@@ -43,6 +43,9 @@ type StaticSecretResourceModel struct {
 	Path            types.String `tfsdk:"path"`
 	ID              types.String `tfsdk:"id"`
 	CreatedAt       types.String `tfsdk:"created_at"`
+	DeletedAt       types.String `tfsdk:"deleted_at"`
+	Version         types.Int64  `tfsdk:"version"`
+	CreatedBy       types.String `tfsdk:"created_by"`
 	Tags            types.Map    `tfsdk:"tags"`
 }
 
@@ -66,6 +69,8 @@ type StaticSecretMetadataResponse struct {
 	Tags      map[string]string `json:"tags,omitempty"`
 	Version   int64             `json:"version"`
 	CreatedAt string            `json:"createdAt"`
+	DeletedAt *string           `json:"deletedAt,omitempty"`
+	CreatedBy string            `json:"createdBy,omitempty"`
 }
 
 // StaticSecretResponse represents the full API response (with secret value)
@@ -130,6 +135,24 @@ func (r *StaticSecretResource) Schema(ctx context.Context, req resource.SchemaRe
 			},
 			"created_at": schema.StringAttribute{
 				Description: "The timestamp when the secret was created.",
+				Computed:    true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
+			},
+			"deleted_at": schema.StringAttribute{
+				Description: "The timestamp when the secret was soft-deleted (if applicable).",
+				Computed:    true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
+			},
+			"version": schema.Int64Attribute{
+				Description: "The current version number of the secret.",
+				Computed:    true,
+			},
+			"created_by": schema.StringAttribute{
+				Description: "The ID of the user who created the secret.",
 				Computed:    true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
@@ -207,6 +230,17 @@ func (r *StaticSecretResource) Create(ctx context.Context, req resource.CreateRe
 	data.Path = types.StringValue(pathStr)
 	// secret_wo_version is user-controlled; preserve the user's planned value
 	data.CreatedAt = types.StringValue(createResp.Metadata.CreatedAt)
+	if createResp.Metadata.DeletedAt != nil {
+		data.DeletedAt = types.StringValue(*createResp.Metadata.DeletedAt)
+	} else {
+		data.DeletedAt = types.StringNull()
+	}
+	data.Version = types.Int64Value(createResp.Metadata.Version)
+	if createResp.Metadata.CreatedBy != "" {
+		data.CreatedBy = types.StringValue(createResp.Metadata.CreatedBy)
+	} else {
+		data.CreatedBy = types.StringNull()
+	}
 
 	// Handle tags if provided in the create response
 	if len(createResp.Metadata.Tags) > 0 {
@@ -237,7 +271,6 @@ func (r *StaticSecretResource) Read(ctx context.Context, req resource.ReadReques
 		return
 	}
 
-	// Build the API path for metadata only (don't read the secret value)
 	name := data.Name.ValueString()
 	apiPath := r.client.BuildPath(fmt.Sprintf("/static/%s/metadata", name))
 
@@ -248,7 +281,6 @@ func (r *StaticSecretResource) Read(ctx context.Context, req resource.ReadReques
 	}
 	query := buildFolderQueryParam(parentFolder)
 
-	// Get secret metadata
 	var metadataResp StaticSecretMetadataResponse
 	err := r.client.Get(ctx, apiPath, query, &metadataResp)
 	if err != nil {
@@ -269,6 +301,17 @@ func (r *StaticSecretResource) Read(ctx context.Context, req resource.ReadReques
 	// Update state with metadata (NOT the secret value)
 	data.ID = types.StringValue(metadataResp.ID)
 	data.CreatedAt = types.StringValue(metadataResp.CreatedAt)
+	if metadataResp.DeletedAt != nil {
+		data.DeletedAt = types.StringValue(*metadataResp.DeletedAt)
+	} else {
+		data.DeletedAt = types.StringNull()
+	}
+	data.Version = types.Int64Value(metadataResp.Version)
+	if metadataResp.CreatedBy != "" {
+		data.CreatedBy = types.StringValue(metadataResp.CreatedBy)
+	} else {
+		data.CreatedBy = types.StringNull()
+	}
 	// secret_wo_version is user-controlled; preserve the value already in state
 
 	// Compute path from name and folder using helper
@@ -281,9 +324,6 @@ func (r *StaticSecretResource) Read(ctx context.Context, req resource.ReadReques
 	} else {
 		data.Tags = types.MapNull(types.StringType)
 	}
-
-	// IMPORTANT: Secret value is not updated here - it remains from the plan
-	// This ensures the secret can be updated if changed in config
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
@@ -354,11 +394,12 @@ func (r *StaticSecretResource) Update(ctx context.Context, req resource.UpdateRe
 		}
 	}
 
-	// Read back the updated secret metadata
-	metadataPath := r.client.BuildPath(fmt.Sprintf("/static/%s/metadata", name))
+	// Read back the updated secret via metadata endpoint
+	refreshPath := r.client.BuildPath(fmt.Sprintf("/static/%s/metadata", name))
+	refreshQuery := buildFolderQueryParam(parentFolder)
 
 	var metadataResp StaticSecretMetadataResponse
-	err := r.client.Get(ctx, metadataPath, query, &metadataResp)
+	err := r.client.Get(ctx, refreshPath, refreshQuery, &metadataResp)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error Reading Updated Secret",
@@ -370,6 +411,17 @@ func (r *StaticSecretResource) Update(ctx context.Context, req resource.UpdateRe
 	// Update state with metadata
 	data.ID = types.StringValue(metadataResp.ID)
 	data.CreatedAt = types.StringValue(metadataResp.CreatedAt)
+	if metadataResp.DeletedAt != nil {
+		data.DeletedAt = types.StringValue(*metadataResp.DeletedAt)
+	} else {
+		data.DeletedAt = types.StringNull()
+	}
+	data.Version = types.Int64Value(metadataResp.Version)
+	if metadataResp.CreatedBy != "" {
+		data.CreatedBy = types.StringValue(metadataResp.CreatedBy)
+	} else {
+		data.CreatedBy = types.StringNull()
+	}
 	// secret_wo_version is user-controlled; preserve the user's planned value
 
 	// Update tags in state - set to null if empty (framework requirement)
