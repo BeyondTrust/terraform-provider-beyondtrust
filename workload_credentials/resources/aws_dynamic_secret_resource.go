@@ -87,16 +87,17 @@ type AwsDynamicSecretResponse struct {
 }
 
 type DynamicSecretConfig struct {
-	Type           string              `json:"type"`
-	CredentialType string              `json:"credentialType"`
-	TTL            int64               `json:"ttl"`
-	IntegrationId  string              `json:"integrationId"`
-	RoleArn        string              `json:"roleArn"`
-	ExternalId     *string             `json:"externalId,omitempty"`
-	PolicyArns     *[]string           `json:"policyArns,omitempty"`
-	Policy         *string             `json:"policy,omitempty"`
-	Groups         *[]string           `json:"groups,omitempty"`
-	AwsTags        *map[string]*string `json:"awsTags,omitempty"`
+	Type            string              `json:"type"`
+	CredentialType  string              `json:"credentialType"`
+	TTL             int64               `json:"ttl"`
+	IntegrationId   string              `json:"integrationId"`
+	IntegrationName string              `json:"integrationName,omitempty"` // present in POST response, absent in GET
+	RoleArn         string              `json:"roleArn"`
+	ExternalId      *string             `json:"externalId,omitempty"`
+	PolicyArns      *[]string           `json:"policyArns,omitempty"`
+	Policy          *string             `json:"policy,omitempty"`
+	Groups          *[]string           `json:"groups,omitempty"`
+	AwsTags         *map[string]*string `json:"awsTags,omitempty"`
 }
 
 // AwsDynamicSecretUpdateRequest represents the API request for updating a dynamic secret.
@@ -345,7 +346,9 @@ func (r *AwsDynamicSecretResource) Create(ctx context.Context, req resource.Crea
 	data.TTL = types.Int64Value(createResp.Config.TTL)
 	data.RoleArn = types.StringValue(createResp.Config.RoleArn)
 	data.CredentialType = types.StringValue(createResp.Config.CredentialType)
-	// integration_name is not returned by the server; keep the plan value already in data
+	if createResp.Config.IntegrationName != "" {
+		data.IntegrationName = types.StringValue(createResp.Config.IntegrationName)
+	}
 
 	if createResp.Config.ExternalId != nil {
 		data.ExternalId = types.StringValue(*createResp.Config.ExternalId)
