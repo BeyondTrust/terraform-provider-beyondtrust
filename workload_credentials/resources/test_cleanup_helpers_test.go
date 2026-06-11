@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"strings"
 	"testing"
 
 	"github.com/beyondtrust/terraform-provider-beyondtrust/internal/acctest"
@@ -68,8 +69,15 @@ func registerAwsDynamicSecretCleanup(t *testing.T, path string) {
 			return
 		}
 
-		apiPath := client.BuildPath(fmt.Sprintf("/dynamic/%s", path))
-		err = client.Delete(context.Background(), apiPath, nil)
+		name := path
+		query := url.Values{}
+		if i := strings.LastIndex(path, "/"); i >= 0 {
+			query.Set("folder", path[:i])
+			name = path[i+1:]
+		}
+		query.Set("permanent", "true")
+		apiPath := client.BuildPath(fmt.Sprintf("/dynamic/%s", name))
+		err = client.Delete(context.Background(), apiPath, query)
 
 		if err == nil {
 			t.Logf("WARNING: Cleanup deleted AWS dynamic secret %s (Terraform destroy didn't work)", path)
