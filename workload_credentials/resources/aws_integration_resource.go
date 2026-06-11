@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -41,35 +42,36 @@ type AwsIntegrationResourceModel struct {
 	ExternalId types.String `tfsdk:"external_id"`
 	ID         types.String `tfsdk:"id"`
 	CreatedAt  types.String `tfsdk:"created_at"`
+	Version    types.Int64  `tfsdk:"version"`
+	CreatedBy  types.String `tfsdk:"created_by"`
 }
 
 // AwsIntegrationCreateRequest represents the API request for creating an integration
 type AwsIntegrationCreateRequest struct {
-	RoleArn    string  `json:"roleArn"`
-	ExternalId *string `json:"externalId,omitempty"`
+	RoleArn string `json:"roleArn"`
 }
 
 // AwsIntegrationResponse represents the API response for an integration
 type AwsIntegrationResponse struct {
-	Name     string `json:"name"`
-	Type     string `json:"type"`
-	Config   Config `json:"config"`
+	Name     string               `json:"name"`
+	Type     string               `json:"type"`
+	Config   AwsIntegrationConfig `json:"config"`
 	Metadata struct {
 		ID        string `json:"id"`
 		Version   int    `json:"version"`
 		CreatedAt string `json:"createdAt"`
+		CreatedBy string `json:"createdBy,omitempty"`
 	} `json:"metadata"`
 }
 
-type Config struct {
+type AwsIntegrationConfig struct {
 	RoleArn    *string `json:"roleArn,omitempty"`
 	ExternalId *string `json:"externalId,omitempty"`
 }
 
 // AwsIntegrationUpdateRequest represents the API request for updating an integration
 type AwsIntegrationUpdateRequest struct {
-	RoleArn    *string `json:"roleArn,omitempty"`
-	ExternalId *string `json:"externalId,omitempty"`
+	RoleArn *string `json:"roleArn,omitempty"`
 }
 
 func (r *AwsIntegrationResource) Metadata(ctx context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
@@ -96,9 +98,12 @@ func (r *AwsIntegrationResource) Schema(ctx context.Context, req resource.Schema
 				Required:    true,
 			},
 			"external_id": schema.StringAttribute{
-				Description: "The external ID for the role trust relationship. Required for confused deputy prevention. Must be 2-1224 characters, alphanumeric plus _+=,.@:\\/- characters.",
-				Required:    true,
+				Description: "The external ID for the role trust relationship. Server-generated UUID used for confused deputy prevention. Use this value in the IAM role trust policy condition.",
+				Computed:    true,
 				Sensitive:   true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
 			},
 			"id": schema.StringAttribute{
 				Description: "The unique identifier (UUID) of the integration.",
@@ -110,6 +115,20 @@ func (r *AwsIntegrationResource) Schema(ctx context.Context, req resource.Schema
 			"created_at": schema.StringAttribute{
 				Description: "The timestamp when the integration was created.",
 				Computed:    true,
+			},
+			"version": schema.Int64Attribute{
+				Description: "The current version of the integration.",
+				Computed:    true,
+				PlanModifiers: []planmodifier.Int64{
+					int64planmodifier.UseStateForUnknown(),
+				},
+			},
+			"created_by": schema.StringAttribute{
+				Description: "The ID of the user who created the integration.",
+				Computed:    true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
 			},
 		},
 	}
@@ -151,11 +170,6 @@ func (r *AwsIntegrationResource) Create(ctx context.Context, req resource.Create
 		RoleArn: data.RoleArn.ValueString(),
 	}
 
-	if !data.ExternalId.IsNull() && data.ExternalId.ValueString() != "" {
-		externalId := data.ExternalId.ValueString()
-		createReq.ExternalId = &externalId
-	}
-
 	// Create the integration with retry for AWS IAM eventual consistency
 	// AWS IAM roles can take time to propagate after creation
 	var createResp AwsIntegrationResponse
@@ -195,6 +209,12 @@ func (r *AwsIntegrationResource) Create(ctx context.Context, req resource.Create
 	// Update the model with response data
 	data.ID = types.StringValue(createResp.Metadata.ID)
 	data.CreatedAt = types.StringValue(createResp.Metadata.CreatedAt)
+	data.Version = types.Int64Value(int64(createResp.Metadata.Version))
+	if createResp.Metadata.CreatedBy != "" {
+		data.CreatedBy = types.StringValue(createResp.Metadata.CreatedBy)
+	} else {
+		data.CreatedBy = types.StringNull()
+	}
 
 	// Update with actual values from response (may have been normalized by API)
 	if createResp.Config.RoleArn != nil {
@@ -241,14 +261,21 @@ func (r *AwsIntegrationResource) Read(ctx context.Context, req resource.ReadRequ
 	// Update state with response data
 	data.ID = types.StringValue(integrationResp.Metadata.ID)
 	data.CreatedAt = types.StringValue(integrationResp.Metadata.CreatedAt)
+	data.Version = types.Int64Value(int64(integrationResp.Metadata.Version))
+	if integrationResp.Metadata.CreatedBy != "" {
+		data.CreatedBy = types.StringValue(integrationResp.Metadata.CreatedBy)
+	} else {
+		data.CreatedBy = types.StringNull()
+	}
 
 	// Update configuration (role_arn might change)
 	if integrationResp.Config.RoleArn != nil {
 		data.RoleArn = types.StringValue(*integrationResp.Config.RoleArn)
 	}
 
-	// Note: External ID is not returned in GET response for security reasons,
-	// so we keep the value from state
+	if integrationResp.Config.ExternalId != nil {
+		data.ExternalId = types.StringValue(*integrationResp.Config.ExternalId)
+	}
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
@@ -275,11 +302,6 @@ func (r *AwsIntegrationResource) Update(ctx context.Context, req resource.Update
 		updateReq.RoleArn = &roleArn
 	}
 
-	if !data.ExternalId.IsNull() {
-		externalId := data.ExternalId.ValueString()
-		updateReq.ExternalId = &externalId
-	}
-
 	// Update the integration
 	err := r.client.Patch(ctx, apiPath, nil, updateReq)
 	if err != nil {
@@ -304,9 +326,19 @@ func (r *AwsIntegrationResource) Update(ctx context.Context, req resource.Update
 	// Update state with response data
 	data.ID = types.StringValue(integrationResp.Metadata.ID)
 	data.CreatedAt = types.StringValue(integrationResp.Metadata.CreatedAt)
+	data.Version = types.Int64Value(int64(integrationResp.Metadata.Version))
+	if integrationResp.Metadata.CreatedBy != "" {
+		data.CreatedBy = types.StringValue(integrationResp.Metadata.CreatedBy)
+	} else {
+		data.CreatedBy = types.StringNull()
+	}
 
 	if integrationResp.Config.RoleArn != nil {
 		data.RoleArn = types.StringValue(*integrationResp.Config.RoleArn)
+	}
+
+	if integrationResp.Config.ExternalId != nil {
+		data.ExternalId = types.StringValue(*integrationResp.Config.ExternalId)
 	}
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
