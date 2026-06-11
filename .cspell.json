@@ -69,6 +69,18 @@
         "autobuild",
         "govulncheck",
         "misconfig",
-        "SLSA"
+        "SLSA",
+        "int64planmodifier",
+        "omitempty",
+        "createdBy",
+        "createdby",
+        "integrationId",
+        "credentialType",
+        "roleArn",
+        "externalId",
+        "policyArns",
+        "awsTags",
+        "AwsIntegrationConfig",
+        "buildVersionsList"
     ]
 }

@@ -26,13 +26,12 @@ func getTestRoleArn2(t *testing.T) string {
 }
 
 func getTestTargetRoleArn(t *testing.T) string {
-	return getTestRoleArn(t)
+	return acctest.GetAWSTargetRoleARN(t)
 }
 
 func TestAccAwsIntegrationResource_basic(t *testing.T) {
 	integrationName := acctest.RandomIntegrationName()
 	roleArn := getTestRoleArn(t)
-	externalId := acctest.RandomString(32)
 
 	// Register cleanup as safety net in case Terraform destroy fails
 	registerAwsIntegrationCleanup(t, integrationName)
@@ -44,11 +43,11 @@ func TestAccAwsIntegrationResource_basic(t *testing.T) {
 		Steps: []resource.TestStep{
 			// Create and Read testing
 			{
-				Config: testAccAwsIntegrationResourceConfig_basic(integrationName, roleArn, externalId),
+				Config: testAccAwsIntegrationResourceConfig_basic(integrationName, roleArn),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("beyondtrust_workload_credentials_aws_integration.test", "name", integrationName),
 					resource.TestCheckResourceAttr("beyondtrust_workload_credentials_aws_integration.test", "role_arn", roleArn),
-					resource.TestCheckResourceAttr("beyondtrust_workload_credentials_aws_integration.test", "external_id", externalId),
+					resource.TestCheckResourceAttrSet("beyondtrust_workload_credentials_aws_integration.test", "external_id"),
 					resource.TestCheckResourceAttrSet("beyondtrust_workload_credentials_aws_integration.test", "id"),
 					resource.TestCheckResourceAttrSet("beyondtrust_workload_credentials_aws_integration.test", "created_at"),
 				),
@@ -69,9 +68,8 @@ func TestAccAwsIntegrationResource_basic(t *testing.T) {
 					}
 					return name, nil
 				},
-				// external_id is sensitive and not returned by the API
 				// created_at precision differs between create and read responses (API inconsistency)
-				ImportStateVerifyIgnore: []string{"external_id", "created_at"},
+				ImportStateVerifyIgnore: []string{"created_at"},
 			},
 		},
 	})
@@ -81,7 +79,6 @@ func TestAccAwsIntegrationResource_updateRole(t *testing.T) {
 	integrationName := acctest.RandomIntegrationName()
 	roleArn1 := getTestRoleArn(t)
 	roleArn2 := getTestRoleArn2(t)
-	externalId := acctest.RandomString(32)
 
 	// Register cleanup as safety net in case Terraform destroy fails
 	registerAwsIntegrationCleanup(t, integrationName)
@@ -93,48 +90,16 @@ func TestAccAwsIntegrationResource_updateRole(t *testing.T) {
 		Steps: []resource.TestStep{
 			// Create with first role
 			{
-				Config: testAccAwsIntegrationResourceConfig_basic(integrationName, roleArn1, externalId),
+				Config: testAccAwsIntegrationResourceConfig_basic(integrationName, roleArn1),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("beyondtrust_workload_credentials_aws_integration.test", "role_arn", roleArn1),
 				),
 			},
 			// Update to second role
 			{
-				Config: testAccAwsIntegrationResourceConfig_basic(integrationName, roleArn2, externalId),
+				Config: testAccAwsIntegrationResourceConfig_basic(integrationName, roleArn2),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("beyondtrust_workload_credentials_aws_integration.test", "role_arn", roleArn2),
-				),
-			},
-		},
-	})
-}
-
-func TestAccAwsIntegrationResource_updateExternalId(t *testing.T) {
-	integrationName := acctest.RandomIntegrationName()
-	roleArn := getTestRoleArn(t)
-	externalId1 := acctest.RandomString(32)
-	externalId2 := acctest.RandomString(32)
-
-	// Register cleanup as safety net in case Terraform destroy fails
-	registerAwsIntegrationCleanup(t, integrationName)
-
-	resource.ParallelTest(t, resource.TestCase{
-		PreCheck:                 func() { acctest.PreCheck(t); acctest.PreCheckAWS(t) },
-		ProtoV6ProviderFactories: acctest.ProtoV6ProviderFactories,
-		CheckDestroy:             testAccCheckAwsIntegrationDestroy,
-		Steps: []resource.TestStep{
-			// Create with first external ID
-			{
-				Config: testAccAwsIntegrationResourceConfig_basic(integrationName, roleArn, externalId1),
-				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("beyondtrust_workload_credentials_aws_integration.test", "external_id", externalId1),
-				),
-			},
-			// Update to second external ID
-			{
-				Config: testAccAwsIntegrationResourceConfig_basic(integrationName, roleArn, externalId2),
-				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("beyondtrust_workload_credentials_aws_integration.test", "external_id", externalId2),
 				),
 			},
 		},
@@ -145,7 +110,6 @@ func TestAccAwsIntegrationResource_nameImmutable(t *testing.T) {
 	integrationName1 := acctest.RandomIntegrationName()
 	integrationName2 := acctest.RandomIntegrationName()
 	roleArn := getTestRoleArn(t)
-	externalId := acctest.RandomString(32)
 
 	// Register cleanup for both integrations (name update creates a new resource)
 	registerAwsIntegrationCleanup(t, integrationName1)
@@ -157,13 +121,13 @@ func TestAccAwsIntegrationResource_nameImmutable(t *testing.T) {
 		CheckDestroy:             testAccCheckAwsIntegrationDestroy,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccAwsIntegrationResourceConfig_basic(integrationName1, roleArn, externalId),
+				Config: testAccAwsIntegrationResourceConfig_basic(integrationName1, roleArn),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("beyondtrust_workload_credentials_aws_integration.test", "name", integrationName1),
 				),
 			},
 			{
-				Config: testAccAwsIntegrationResourceConfig_basic(integrationName2, roleArn, externalId),
+				Config: testAccAwsIntegrationResourceConfig_basic(integrationName2, roleArn),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("beyondtrust_workload_credentials_aws_integration.test", "name", integrationName2),
 				),
@@ -223,12 +187,11 @@ func testAccCheckAwsIntegrationDestroy(s *terraform.State) error {
 }
 
 // testAccAwsIntegrationResourceConfig_basic returns a basic AWS integration resource configuration
-func testAccAwsIntegrationResourceConfig_basic(name, roleArn, externalId string) string {
+func testAccAwsIntegrationResourceConfig_basic(name, roleArn string) string {
 	return fmt.Sprintf(`
 resource "beyondtrust_workload_credentials_aws_integration" "test" {
-  name        = %[1]q
-  role_arn    = %[2]q
-  external_id = %[3]q
+  name     = %[1]q
+  role_arn = %[2]q
 }
-`, name, roleArn, externalId)
+`, name, roleArn)
 }

@@ -22,7 +22,7 @@ type Client struct {
 	BaseURL        string
 	AccessToken    string
 	SiteID         string
-	APIVersion     string // Header version (date-based, e.g., "2026-02-16")
+	APIVersion     string // Header version (date-based, YYYY-MM-DD)
 	APIPathVersion string // Optional path version (e.g., "v1" or empty string)
 	Role           string // X-BT-Role header value (when set, auth type is always CUSTOM-IDP)
 	HTTPClient     *http.Client
@@ -336,8 +336,8 @@ func (c *Client) Post(ctx context.Context, path string, query url.Values, body i
 }
 
 // Put performs a PUT request and either creates a resource or replaces an existing one with what is provided
-func (c *Client) Put(ctx context.Context, path string, query url.Values, body interface{}) error {
-	return c.DoRequest(ctx, "PUT", path, query, body, nil)
+func (c *Client) Put(ctx context.Context, path string, query url.Values, body interface{}, result interface{}) error {
+	return c.DoRequest(ctx, "PUT", path, query, body, result)
 }
 
 // Patch performs a PATCH request with merge-patch+json semantics

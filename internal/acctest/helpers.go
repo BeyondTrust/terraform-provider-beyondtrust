@@ -79,6 +79,20 @@ func GetAWSRoleARN2(t *testing.T) string {
 	return "arn:aws:iam::123456789012:role/tf-acc-test-role-2"
 }
 
+// GetAWSTargetRoleARN returns the AWS target role ARN for dynamic secret testing.
+// This is the role that the integration will assume when generating credentials,
+// and may be in a different AWS account than the integration role.
+func GetAWSTargetRoleARN(t *testing.T) string {
+	t.Helper()
+
+	if v := os.Getenv(EnvTestAWSTargetRoleARN); v != "" {
+		return v
+	}
+
+	// Fall back to the primary integration role ARN
+	return GetAWSRoleARN(t)
+}
+
 // RandomString generates a random string of the specified length using lowercase letters and numbers.
 func RandomString(length int) string {
 	const charset = "abcdefghijklmnopqrstuvwxyz0123456789"
