@@ -178,6 +178,8 @@ func (e *StaticSecretEphemeral) Open(ctx context.Context, req ephemeral.OpenRequ
 			tagsMap[k] = types.StringValue(v)
 		}
 		data.Tags = types.MapValueMust(types.StringType, tagsMap)
+	} else {
+		data.Tags = types.MapNull(types.StringType)
 	}
 
 	resp.Diagnostics.Append(resp.Result.Set(ctx, &data)...)
