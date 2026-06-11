@@ -10,11 +10,11 @@ import (
 
 // Environment variable names for AWS-specific acceptance tests
 const (
-	EnvTestAWSRoleARN         = "BEYONDTRUST_TEST_AWS_ROLE_ARN"
-	EnvTestAWSRoleARN2        = "BEYONDTRUST_TEST_AWS_ROLE_ARN_2"
-	EnvTestAWSTargetRoleARN   = "BEYONDTRUST_TEST_AWS_TARGET_ROLE_ARN"
-	EnvTestAWSExternalID      = "BEYONDTRUST_TEST_AWS_EXTERNAL_ID"
-	EnvAWSAccountID           = "BEYONDTRUST_AWS_ACCOUNT_ID"
+	EnvTestAWSRoleARN       = "BEYONDTRUST_TEST_AWS_ROLE_ARN"
+	EnvTestAWSRoleARN2      = "BEYONDTRUST_TEST_AWS_ROLE_ARN_2"
+	EnvTestAWSTargetRoleARN = "BEYONDTRUST_TEST_AWS_TARGET_ROLE_ARN"
+	EnvTestAWSExternalID    = "BEYONDTRUST_TEST_AWS_EXTERNAL_ID"
+	EnvAWSAccountID         = "BEYONDTRUST_AWS_ACCOUNT_ID"
 )
 
 // TestConfig holds configuration for acceptance tests

@@ -38,8 +38,8 @@ type AwsIntegrationDataSourceModel struct {
 
 // AwsIntegrationDataSourceResponse represents the API response
 type AwsIntegrationDataSourceResponse struct {
-	Name     string              `json:"name"`
-	Type     string              `json:"type"`
+	Name     string               `json:"name"`
+	Type     string               `json:"type"`
 	Config   AwsIntegrationConfig `json:"config"`
 	Metadata struct {
 		ID        string `json:"id"`
