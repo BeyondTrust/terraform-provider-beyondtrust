@@ -23,7 +23,6 @@ func TestAccAwsDynamicSecretResource_basic(t *testing.T) {
 	dynamicSecretName := acctest.RandomDynamicSecretName()
 	roleArn := getTestRoleArn(t)
 	targetRoleArn := getTestTargetRoleArn(t)
-	externalId := acctest.RandomString(32)
 
 	// Register cleanup as safety net (LIFO order: secret cleaned up before integration)
 	registerAwsIntegrationCleanup(t, integrationName)
@@ -36,7 +35,7 @@ func TestAccAwsDynamicSecretResource_basic(t *testing.T) {
 		Steps: []resource.TestStep{
 			// Create and Read testing
 			{
-				Config: testAccAwsDynamicSecretResourceConfig_basic(integrationName, dynamicSecretName, roleArn, targetRoleArn, externalId),
+				Config: testAccAwsDynamicSecretResourceConfig_basic(integrationName, dynamicSecretName, roleArn, targetRoleArn),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("beyondtrust_workload_credentials_aws_dynamic_secret.test", "name", dynamicSecretName),
 					resource.TestCheckResourceAttr("beyondtrust_workload_credentials_aws_dynamic_secret.test", "integration_name", integrationName),
@@ -65,9 +64,8 @@ func TestAccAwsDynamicSecretResource_basic(t *testing.T) {
 					}
 					return p, nil
 				},
-				// external_id is sensitive and not returned by the API
-				// created_at precision differs between create and read responses (API inconsistency)
-				ImportStateVerifyIgnore: []string{"external_id", "created_at"},
+				// integration_name is not returned by GET; created_at precision differs between create and read
+				ImportStateVerifyIgnore: []string{"integration_name", "created_at"},
 			},
 		},
 	})
@@ -79,7 +77,6 @@ func TestAccAwsDynamicSecretResource_inFolder(t *testing.T) {
 	dynamicSecretName := acctest.RandomDynamicSecretName()
 	roleArn := getTestRoleArn(t)
 	targetRoleArn := getTestTargetRoleArn(t)
-	externalId := acctest.RandomString(32)
 
 	// Register cleanup as safety net (LIFO: secret → folder → integration)
 	registerAwsIntegrationCleanup(t, integrationName)
@@ -92,7 +89,7 @@ func TestAccAwsDynamicSecretResource_inFolder(t *testing.T) {
 		CheckDestroy:             testAccCheckAwsDynamicSecretDestroy,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccAwsDynamicSecretResourceConfig_inFolder(folderName, integrationName, dynamicSecretName, roleArn, targetRoleArn, externalId),
+				Config: testAccAwsDynamicSecretResourceConfig_inFolder(folderName, integrationName, dynamicSecretName, roleArn, targetRoleArn),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("beyondtrust_workload_credentials_aws_dynamic_secret.test", "name", dynamicSecretName),
 					resource.TestCheckResourceAttr("beyondtrust_workload_credentials_aws_dynamic_secret.test", "folder", folderName),
@@ -109,7 +106,6 @@ func TestAccAwsDynamicSecretResource_withPolicyArns(t *testing.T) {
 	dynamicSecretName := acctest.RandomDynamicSecretName()
 	roleArn := getTestRoleArn(t)
 	targetRoleArn := getTestTargetRoleArn(t)
-	externalId := acctest.RandomString(32)
 
 	// Register cleanup as safety net (LIFO order: secret cleaned up before integration)
 	registerAwsIntegrationCleanup(t, integrationName)
@@ -121,7 +117,7 @@ func TestAccAwsDynamicSecretResource_withPolicyArns(t *testing.T) {
 		CheckDestroy:             testAccCheckAwsDynamicSecretDestroy,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccAwsDynamicSecretResourceConfig_withPolicyArns(integrationName, dynamicSecretName, roleArn, targetRoleArn, externalId),
+				Config: testAccAwsDynamicSecretResourceConfig_withPolicyArns(integrationName, dynamicSecretName, roleArn, targetRoleArn),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("beyondtrust_workload_credentials_aws_dynamic_secret.test", "policy_arns.#", "2"),
 					resource.TestCheckResourceAttr("beyondtrust_workload_credentials_aws_dynamic_secret.test", "policy_arns.0", "arn:aws:iam::aws:policy/ReadOnlyAccess"),
@@ -137,7 +133,6 @@ func TestAccAwsDynamicSecretResource_withInlinePolicy(t *testing.T) {
 	dynamicSecretName := acctest.RandomDynamicSecretName()
 	roleArn := getTestRoleArn(t)
 	targetRoleArn := getTestTargetRoleArn(t)
-	externalId := acctest.RandomString(32)
 
 	inlinePolicy := `{
   "Version": "2012-10-17",
@@ -160,7 +155,7 @@ func TestAccAwsDynamicSecretResource_withInlinePolicy(t *testing.T) {
 		CheckDestroy:             testAccCheckAwsDynamicSecretDestroy,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccAwsDynamicSecretResourceConfig_withInlinePolicy(integrationName, dynamicSecretName, roleArn, targetRoleArn, externalId, inlinePolicy),
+				Config: testAccAwsDynamicSecretResourceConfig_withInlinePolicy(integrationName, dynamicSecretName, roleArn, targetRoleArn, inlinePolicy),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttrSet("beyondtrust_workload_credentials_aws_dynamic_secret.test", "policy"),
 				),
@@ -174,7 +169,6 @@ func TestAccAwsDynamicSecretResource_updateTTL(t *testing.T) {
 	dynamicSecretName := acctest.RandomDynamicSecretName()
 	roleArn := getTestRoleArn(t)
 	targetRoleArn := getTestTargetRoleArn(t)
-	externalId := acctest.RandomString(32)
 
 	// Register cleanup as safety net (LIFO order: secret cleaned up before integration)
 	registerAwsIntegrationCleanup(t, integrationName)
@@ -187,14 +181,14 @@ func TestAccAwsDynamicSecretResource_updateTTL(t *testing.T) {
 		Steps: []resource.TestStep{
 			// Create with 1 hour TTL
 			{
-				Config: testAccAwsDynamicSecretResourceConfig_withTTL(integrationName, dynamicSecretName, roleArn, targetRoleArn, externalId, 3600),
+				Config: testAccAwsDynamicSecretResourceConfig_withTTL(integrationName, dynamicSecretName, roleArn, targetRoleArn, 3600),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("beyondtrust_workload_credentials_aws_dynamic_secret.test", "ttl", "3600"),
 				),
 			},
 			// Update to 2 hour TTL
 			{
-				Config: testAccAwsDynamicSecretResourceConfig_withTTL(integrationName, dynamicSecretName, roleArn, targetRoleArn, externalId, 7200),
+				Config: testAccAwsDynamicSecretResourceConfig_withTTL(integrationName, dynamicSecretName, roleArn, targetRoleArn, 7200),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("beyondtrust_workload_credentials_aws_dynamic_secret.test", "ttl", "7200"),
 				),
@@ -261,12 +255,11 @@ func testAccCheckAwsDynamicSecretDestroy(s *terraform.State) error {
 }
 
 // testAccAwsDynamicSecretResourceConfig_basic returns a basic AWS dynamic secret resource configuration
-func testAccAwsDynamicSecretResourceConfig_basic(integrationName, dynamicSecretName, roleArn, targetRoleArn, externalId string) string {
+func testAccAwsDynamicSecretResourceConfig_basic(integrationName, dynamicSecretName, roleArn, targetRoleArn string) string {
 	return fmt.Sprintf(`
 resource "beyondtrust_workload_credentials_aws_integration" "test" {
-  name        = %[1]q
-  role_arn    = %[3]q
-  external_id = %[5]q
+  name     = %[1]q
+  role_arn = %[3]q
 }
 
 resource "beyondtrust_workload_credentials_aws_dynamic_secret" "test" {
@@ -276,20 +269,19 @@ resource "beyondtrust_workload_credentials_aws_dynamic_secret" "test" {
   role_arn         = %[4]q
   ttl              = 3600
 }
-`, integrationName, dynamicSecretName, roleArn, targetRoleArn, externalId)
+`, integrationName, dynamicSecretName, roleArn, targetRoleArn)
 }
 
 // testAccAwsDynamicSecretResourceConfig_inFolder returns a configuration with dynamic secret in a folder
-func testAccAwsDynamicSecretResourceConfig_inFolder(folderName, integrationName, dynamicSecretName, roleArn, targetRoleArn, externalId string) string {
+func testAccAwsDynamicSecretResourceConfig_inFolder(folderName, integrationName, dynamicSecretName, roleArn, targetRoleArn string) string {
 	return fmt.Sprintf(`
 resource "beyondtrust_workload_credentials_folder" "test" {
   name = %[1]q
 }
 
 resource "beyondtrust_workload_credentials_aws_integration" "test" {
-  name        = %[2]q
-  role_arn    = %[4]q
-  external_id = %[6]q
+  name     = %[2]q
+  role_arn = %[4]q
 }
 
 resource "beyondtrust_workload_credentials_aws_dynamic_secret" "test" {
@@ -300,16 +292,15 @@ resource "beyondtrust_workload_credentials_aws_dynamic_secret" "test" {
   role_arn         = %[5]q
   ttl              = 3600
 }
-`, folderName, integrationName, dynamicSecretName, roleArn, targetRoleArn, externalId)
+`, folderName, integrationName, dynamicSecretName, roleArn, targetRoleArn)
 }
 
 // testAccAwsDynamicSecretResourceConfig_withPolicyArns returns a configuration with policy ARNs
-func testAccAwsDynamicSecretResourceConfig_withPolicyArns(integrationName, dynamicSecretName, roleArn, targetRoleArn, externalId string) string {
+func testAccAwsDynamicSecretResourceConfig_withPolicyArns(integrationName, dynamicSecretName, roleArn, targetRoleArn string) string {
 	return fmt.Sprintf(`
 resource "beyondtrust_workload_credentials_aws_integration" "test" {
-  name        = %[1]q
-  role_arn    = %[3]q
-  external_id = %[5]q
+  name     = %[1]q
+  role_arn = %[3]q
 }
 
 resource "beyondtrust_workload_credentials_aws_dynamic_secret" "test" {
@@ -323,16 +314,15 @@ resource "beyondtrust_workload_credentials_aws_dynamic_secret" "test" {
     "arn:aws:iam::aws:policy/SecurityAudit"
   ]
 }
-`, integrationName, dynamicSecretName, roleArn, targetRoleArn, externalId)
+`, integrationName, dynamicSecretName, roleArn, targetRoleArn)
 }
 
 // testAccAwsDynamicSecretResourceConfig_withInlinePolicy returns a configuration with inline policy
-func testAccAwsDynamicSecretResourceConfig_withInlinePolicy(integrationName, dynamicSecretName, roleArn, targetRoleArn, externalId, policy string) string {
+func testAccAwsDynamicSecretResourceConfig_withInlinePolicy(integrationName, dynamicSecretName, roleArn, targetRoleArn, policy string) string {
 	return fmt.Sprintf(`
 resource "beyondtrust_workload_credentials_aws_integration" "test" {
-  name        = %[1]q
-  role_arn    = %[3]q
-  external_id = %[5]q
+  name     = %[1]q
+  role_arn = %[3]q
 }
 
 resource "beyondtrust_workload_credentials_aws_dynamic_secret" "test" {
@@ -341,18 +331,17 @@ resource "beyondtrust_workload_credentials_aws_dynamic_secret" "test" {
   credential_type  = "assumed_role"
   role_arn         = %[4]q
   ttl              = 3600
-  policy           = %[6]q
+  policy           = %[5]q
 }
-`, integrationName, dynamicSecretName, roleArn, targetRoleArn, externalId, policy)
+`, integrationName, dynamicSecretName, roleArn, targetRoleArn, policy)
 }
 
 // testAccAwsDynamicSecretResourceConfig_withTTL returns a configuration with custom TTL
-func testAccAwsDynamicSecretResourceConfig_withTTL(integrationName, dynamicSecretName, roleArn, targetRoleArn, externalId string, ttl int) string {
+func testAccAwsDynamicSecretResourceConfig_withTTL(integrationName, dynamicSecretName, roleArn, targetRoleArn string, ttl int) string {
 	return fmt.Sprintf(`
 resource "beyondtrust_workload_credentials_aws_integration" "test" {
-  name        = %[1]q
-  role_arn    = %[3]q
-  external_id = %[5]q
+  name     = %[1]q
+  role_arn = %[3]q
 }
 
 resource "beyondtrust_workload_credentials_aws_dynamic_secret" "test" {
@@ -360,7 +349,7 @@ resource "beyondtrust_workload_credentials_aws_dynamic_secret" "test" {
   integration_name = beyondtrust_workload_credentials_aws_integration.test.name
   credential_type  = "assumed_role"
   role_arn         = %[4]q
-  ttl              = %[6]d
+  ttl              = %[5]d
 }
-`, integrationName, dynamicSecretName, roleArn, targetRoleArn, externalId, ttl)
+`, integrationName, dynamicSecretName, roleArn, targetRoleArn, ttl)
 }

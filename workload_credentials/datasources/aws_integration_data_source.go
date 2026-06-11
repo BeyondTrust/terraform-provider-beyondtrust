@@ -27,25 +27,29 @@ type AwsIntegrationDataSource struct {
 
 // AwsIntegrationDataSourceModel describes the data source data model.
 type AwsIntegrationDataSourceModel struct {
-	Name      types.String `tfsdk:"name"`
-	RoleArn   types.String `tfsdk:"role_arn"`
-	ID        types.String `tfsdk:"id"`
-	CreatedAt types.String `tfsdk:"created_at"`
+	Name       types.String `tfsdk:"name"`
+	RoleArn    types.String `tfsdk:"role_arn"`
+	ExternalId types.String `tfsdk:"external_id"`
+	ID         types.String `tfsdk:"id"`
+	CreatedAt  types.String `tfsdk:"created_at"`
+	Version    types.Int64  `tfsdk:"version"`
+	CreatedBy  types.String `tfsdk:"created_by"`
 }
 
 // AwsIntegrationDataSourceResponse represents the API response
 type AwsIntegrationDataSourceResponse struct {
-	Name     string `json:"name"`
-	Type     string `json:"type"`
-	Config   Config `json:"config"`
+	Name     string               `json:"name"`
+	Type     string               `json:"type"`
+	Config   AwsIntegrationConfig `json:"config"`
 	Metadata struct {
 		ID        string `json:"id"`
 		Version   int    `json:"version"`
 		CreatedAt string `json:"createdAt"`
+		CreatedBy string `json:"createdBy,omitempty"`
 	} `json:"metadata"`
 }
 
-type Config struct {
+type AwsIntegrationConfig struct {
 	RoleArn    *string `json:"roleArn,omitempty"`
 	ExternalId *string `json:"externalId,omitempty"`
 }
@@ -70,12 +74,25 @@ func (d *AwsIntegrationDataSource) Schema(ctx context.Context, req datasource.Sc
 				Description: "The ARN of the IAM role in the customer AWS account.",
 				Computed:    true,
 			},
+			"external_id": schema.StringAttribute{
+				Description: "The server-generated external ID for the role trust relationship. Use in IAM role trust policy conditions.",
+				Computed:    true,
+				Sensitive:   true,
+			},
 			"id": schema.StringAttribute{
 				Description: "The unique identifier (UUID) of the integration.",
 				Computed:    true,
 			},
 			"created_at": schema.StringAttribute{
 				Description: "The timestamp when the integration was created.",
+				Computed:    true,
+			},
+			"version": schema.Int64Attribute{
+				Description: "The current version of the integration.",
+				Computed:    true,
+			},
+			"created_by": schema.StringAttribute{
+				Description: "The ID of the user who created the integration.",
 				Computed:    true,
 			},
 		},
@@ -136,12 +153,20 @@ func (d *AwsIntegrationDataSource) Read(ctx context.Context, req datasource.Read
 	// Update data model with response
 	data.ID = types.StringValue(integrationResp.Metadata.ID)
 	data.CreatedAt = types.StringValue(integrationResp.Metadata.CreatedAt)
+	data.Version = types.Int64Value(int64(integrationResp.Metadata.Version))
+	if integrationResp.Metadata.CreatedBy != "" {
+		data.CreatedBy = types.StringValue(integrationResp.Metadata.CreatedBy)
+	} else {
+		data.CreatedBy = types.StringNull()
+	}
 
 	if integrationResp.Config.RoleArn != nil {
 		data.RoleArn = types.StringValue(*integrationResp.Config.RoleArn)
 	}
 
-	// Note: External ID is not returned in GET response for security reasons
+	if integrationResp.Config.ExternalId != nil {
+		data.ExternalId = types.StringValue(*integrationResp.Config.ExternalId)
+	}
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }

@@ -151,7 +151,7 @@ func updateResourceTags(ctx context.Context, client *client.Client, resourcePath
 	tagsMap := convertTerraformTagsToMap(tags)
 
 	// Use PUT to update tags
-	return client.Put(ctx, apiPath, query, tagsMap)
+	return client.Put(ctx, apiPath, query, tagsMap, nil)
 }
 
 // convertTerraformListToStrings converts a Terraform types.List to a Go []string.
