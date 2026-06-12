@@ -208,7 +208,6 @@ func (c *Client) newRequest(ctx context.Context, method, path string, query url.
 	// Set standard headers
 	req.Header.Set("Authorization", "Bearer "+c.AccessToken)
 	req.Header.Set("bt-secrets-api-version", c.APIVersion)
-	req.Header.Set("X-BT-Site-ID", c.SiteID)
 	req.Header.Set("Accept", "application/json")
 
 	// Set optional headers if provided
