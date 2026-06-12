@@ -9,11 +9,14 @@
 # enabled in the gate — Dependabot, secret-scanning and dependency/licensing are disabled
 # there (they require a GitHub App/PAT to read).
 #
-# SLA (max age in days): critical 10 | high 15 | medium 20 | low 90
+# No explicit `level`: policy-as-code injects the CLI `--severity` default
+# (error) into `general`, and a section with both `level` and `remediate`
+# blocks on either. Net effect: critical/high/error alerts block a release
+# immediately; the remediate windows below gate the remaining severities
+# purely on age.
+#
+# SLA (max age in days): medium 20 | low 90 (critical/high block immediately)
 general:
-  # `low` scopes the gate to the four security severities below; the remediate windows
-  # decide what blocks, so nothing fails for existing — only for being past SLA.
-  level: low
   remediate:
     critical: 10
     high: 15
