@@ -27,7 +27,7 @@ Set credentials via environment variables to keep them out of your Terraform con
 ```shell
 export BEYONDTRUST_API_URL="https://app.beyondtrust.io"
 export BEYONDTRUST_ACCESS_TOKEN="your-token"
-export BEYONDTRUST_SITE_ID="550e8400-e29b-41d4-a716-446655440000"
+export BEYONDTRUST_SITE_ID="a1b2c3d4-e5f6-7890-abcd-ef1234567890"
 ```
 
 With environment variables configured, the provider block needs no explicit credentials:

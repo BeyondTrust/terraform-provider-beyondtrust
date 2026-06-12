@@ -1,6 +1,6 @@
 # BeyondTrust Workload Credentials + AWS Integration Example
 
-This directory contains a complete example of setting up BeyondTrust BeyondTrust Workload Credentials with AWS dynamic secrets.
+This directory contains a complete example of setting up BeyondTrust Workload Credentials with AWS dynamic secrets.
 
 ## Overview
 

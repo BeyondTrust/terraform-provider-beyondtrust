@@ -213,7 +213,6 @@ type APIError struct {
 - Required headers on all requests:
   - `Authorization: Bearer <token>`
   - `bt-secrets-api-version: 2026-04-28` (configurable)
-  - `X-BT-Site-ID: <uuid>`
 - Optional headers:
   - `X-BT-Role: <role>` (when role is set, also sets `X-BT-Auth-Type: CUSTOM-IDP`)
 
@@ -708,7 +707,7 @@ terraform import beyondtrust_workload_credentials_folder.prod production/aws
 
 ### 5. Multi-Tenancy via Site ID
 
-**Decision**: Require Site ID in all requests via `X-BT-Site-ID` header
+**Decision**: Embed Site ID in the request path (`/site/{site-id}/secrets/...`)
 
 **Rationale:**
 - API enforces tenant isolation at the infrastructure level

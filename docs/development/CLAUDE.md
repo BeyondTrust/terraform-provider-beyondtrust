@@ -192,7 +192,6 @@ client.BuildPath("/folders")              // → /secrets/v1/folders
 All requests include:
 - `Authorization: Bearer <token>` - Authentication
 - `bt-secrets-api-version: 2026-04-28` - API version (date-based)
-- `X-BT-Site-ID: <uuid>` - Tenant/site ID for multi-tenancy
 - `X-BT-Role: <role>` - Optional role (sets `X-BT-Auth-Type: CUSTOM-IDP`)
 
 ### Merge-Patch Semantics (RFC 7396)
@@ -634,14 +633,14 @@ resource "beyondtrust_example" "test" {
 
 ## Multi-Tenancy
 
-All API calls require `X-BT-Site-ID` header for tenant isolation:
+The site ID is embedded in the request path for tenant isolation:
 
 ```go
 // Provider configuration
 provider "beyondtrust" {
-  api_url      = "https://api.workload-credentials.example.com"
+  api_url      = "https://app.beyondtrust.io"
   access_token = var.access_token
-  site_id      = "550e8400-e29b-41d4-a716-446655440000"  // Required
+  site_id      = "a1b2c3d4-e5f6-7890-abcd-ef1234567890"  // Required
 }
 ```
 
