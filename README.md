@@ -43,7 +43,7 @@ Support for additional BeyondTrust products will be added in future releases.
 ## Requirements
 
 - [Terraform](https://www.terraform.io/downloads.html) 1.0 or later (basic functionality) or 1.10 or later (for ephemeral resources)
-- [Go](https://golang.org/doc/install) 1.25.8 or later (development only)
+- [Go](https://golang.org/doc/install) 1.26 or later (development only)
 - Access to one or more BeyondTrust products with API access
 
 > **Note**: Some resources use **ephemeral resources** for secure secret handling, which require Terraform 1.10 or later.
