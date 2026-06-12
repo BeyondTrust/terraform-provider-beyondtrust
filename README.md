@@ -2,7 +2,12 @@
 <!-- markdownlint-enable MD041 -->
 
 [![Tests](https://github.com/beyondtrust/terraform-provider-beyondtrust/actions/workflows/tests.yml/badge.svg)](https://github.com/beyondtrust/terraform-provider-beyondtrust/actions/workflows/tests.yml)
-[![Release](https://github.com/beyondtrust/terraform-provider-beyondtrust/actions/workflows/promote.yml/badge.svg)](https://github.com/beyondtrust/terraform-provider-beyondtrust/actions/workflows/promote.yml)
+[![Coverage](https://codecov.io/gh/BeyondTrust/terraform-provider-beyondtrust/branch/main/graph/badge.svg)](https://codecov.io/gh/BeyondTrust/terraform-provider-beyondtrust)
+[![Go Report Card](https://goreportcard.com/badge/github.com/BeyondTrust/terraform-provider-beyondtrust)](https://goreportcard.com/report/github.com/BeyondTrust/terraform-provider-beyondtrust)
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/BeyondTrust/terraform-provider-beyondtrust/badge)](https://scorecard.dev/viewer/?uri=github.com/BeyondTrust/terraform-provider-beyondtrust)
+[![Release](https://github.com/beyondtrust/terraform-provider-beyondtrust/actions/workflows/release.yml/badge.svg)](https://github.com/beyondtrust/terraform-provider-beyondtrust/actions/workflows/release.yml)
+[![Registry](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fregistry.terraform.io%2Fv1%2Fproviders%2Fbeyondtrust%2Fbeyondtrust&query=%24.version&label=registry&color=7B42BC&logo=terraform)](https://registry.terraform.io/providers/beyondtrust/beyondtrust/latest)
+[![License](https://img.shields.io/github/license/BeyondTrust/terraform-provider-beyondtrust)](LICENSE)
 
 The [BeyondTrust Terraform Provider](https://registry.terraform.io/providers/beyondtrust/beyondtrust/latest/docs) allows [Terraform](https://terraform.io) to manage resources across multiple BeyondTrust products using infrastructure-as-code.
 
