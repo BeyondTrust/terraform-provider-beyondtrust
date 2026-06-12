@@ -2,12 +2,12 @@
 page_title: "Resource beyondtrust_workload_credentials_static_secret - beyondtrust"
 subcategory: ""
 description: |-
-  Manages a static secret in BeyondTrust Workload Credentials. The secret value is write-only and not stored in Terraform state. Use the ephemeral data source to read secret values.
+  Manages a static secret in BeyondTrust Workload Credentials. The secret value is write-only and not stored in Terraform state. Use the ephemeral resource to read secret values.
 ---
 
 # beyondtrust_workload_credentials_static_secret (Resource)
 
-Manages a static secret in BeyondTrust Workload Credentials. The secret value is write-only and not stored in Terraform state. Use the ephemeral data source to read secret values.
+Manages a static secret in BeyondTrust Workload Credentials. The secret value is write-only and not stored in Terraform state. Use the ephemeral resource to read secret values.
 
 ## Example Usage
 

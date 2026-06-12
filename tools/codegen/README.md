@@ -33,7 +33,7 @@ The generator handles Workload Credentials-specific patterns:
 - Path-based resources (name + folder query parameter)
 - Merge patch semantics (RFC 7396)
 - Soft deletes
-- CSRF token requirements
+- Write-only attribute support for secrets
 
 ## Testing Generated Code
 

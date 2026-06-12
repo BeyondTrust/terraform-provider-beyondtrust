@@ -4,8 +4,8 @@ This guide explains how to develop and test the BeyondTrust Terraform provider l
 
 ## Prerequisites
 
-- Go 1.21 or later
-- Terraform 1.0 or later
+- Go 1.26 or later
+- Terraform 1.11 or later
 - Access to a BeyondTrust Workload Credentials instance (for acceptance tests)
 
 ## Quick Start
