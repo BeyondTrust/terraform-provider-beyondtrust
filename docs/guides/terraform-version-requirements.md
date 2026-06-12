@@ -17,16 +17,6 @@ The provider uses two features that require recent Terraform versions:
 - **Ephemeral resources** (Terraform 1.10+) — read secret values without storing them in state or plan files
 - **Write-only attributes** (Terraform 1.11+) — the `secret_wo` attribute uses `WriteOnly: true` to prevent secret values from ever being persisted
 
-### Features Available on Earlier Versions
-
-The following resources work on Terraform 1.0+:
-- `beyondtrust_workload_credentials_folder`
-- `beyondtrust_workload_credentials_aws_integration`
-- `beyondtrust_workload_credentials_aws_dynamic_secret`
-- Data sources
-
-The `beyondtrust_workload_credentials_static_secret` resource and its ephemeral variant require Terraform 1.11+.
-
 ## Recommended Configuration
 
 ```hcl
@@ -46,13 +36,9 @@ terraform {
 
 | Feature                                                | Minimum Terraform Version |
 |--------------------------------------------------------|---------------------------|
-| Folder management                                      | 1.0+                      |
-| AWS Integration resources                              | 1.0+                      |
-| AWS Dynamic Secret resources                           | 1.0+                      |
-| Data sources                                           | 1.0+                      |
-| Ephemeral resources (read secrets without state)       | 1.10+                     |
+| All resources and data sources                         | 1.11+                     |
+| Ephemeral resources (read secrets without state)       | 1.11+                     |
 | Write-only secret attributes                           | 1.11+                     |
-| All features                                           | 1.11+ (recommended)       |
 
 ## References
 

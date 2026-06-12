@@ -21,8 +21,7 @@ You need access to a BeyondTrust BeyondTrust Workload Credentials instance.
 
 ### 2. Terraform Installed
 
-- **Terraform 1.11+** (for ephemeral resources and write-only attributes — recommended)
-- **Terraform 1.0+** (for basic functionality without ephemeral resources)
+- **Terraform 1.11+** (required)
 
 Check your version:
 ```bash
@@ -157,7 +156,7 @@ resource "beyondtrust_workload_credentials_static_secret" "my_api_key" {
   }
 }
 
-# Read the secret using ephemeral resource (requires Terraform 1.10+)
+# Read the secret using ephemeral resource (requires Terraform 1.11+)
 ephemeral "beyondtrust_workload_credentials_static_secret" "read_api_key" {
   name   = beyondtrust_workload_credentials_static_secret.my_api_key.name
   folder = beyondtrust_workload_credentials_static_secret.my_api_key.folder
@@ -238,7 +237,7 @@ curl -H "Authorization: Bearer ${BEYONDTRUST_ACCESS_TOKEN}" \
 
 ### Terraform Version Error
 
-**Error**: `Ephemeral resources require Terraform 1.10 or later`
+**Error**: `Ephemeral resources require Terraform 1.11 or later`
 
 **Solutions**:
 - Upgrade to Terraform 1.11+: <https://www.terraform.io/downloads>

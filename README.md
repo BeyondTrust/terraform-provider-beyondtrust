@@ -42,12 +42,12 @@ Support for additional BeyondTrust products will be added in future releases.
 
 ## Requirements
 
-- [Terraform](https://www.terraform.io/downloads.html) 1.0 or later (basic functionality) or 1.10 or later (for ephemeral resources)
-- [Go](https://golang.org/doc/install) 1.25.8 or later (development only)
+- [Terraform](https://www.terraform.io/downloads.html) 1.11 or later
+- [Go](https://golang.org/doc/install) 1.26 or later (development only)
 - Access to one or more BeyondTrust products with API access
 
-> **Note**: Some resources use **ephemeral resources** for secure secret handling, which require Terraform 1.10 or later.
-> Ephemeral resources ensure sensitive values are never persisted in state or plan files.
+> **Note**: Some resources use **ephemeral resources** and **write-only attributes** for secure secret handling, which require Terraform 1.11 or later.
+> These features ensure sensitive values are never persisted in state or plan files.
 > See [Terraform Version Requirements](docs/guides/terraform-version-requirements.md) for details.
 
 ## Quick Start

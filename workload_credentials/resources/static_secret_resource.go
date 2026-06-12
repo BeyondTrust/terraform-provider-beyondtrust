@@ -86,7 +86,7 @@ func (r *StaticSecretResource) Metadata(ctx context.Context, req resource.Metada
 
 func (r *StaticSecretResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "Manages a static secret in BeyondTrust Workload Credentials. The secret value is write-only and not stored in Terraform state. Use the ephemeral data source to read secret values.",
+		Description: "Manages a static secret in BeyondTrust Workload Credentials. The secret value is write-only and not stored in Terraform state. Use the ephemeral resource to read secret values.",
 
 		Attributes: map[string]schema.Attribute{
 			"name": schema.StringAttribute{

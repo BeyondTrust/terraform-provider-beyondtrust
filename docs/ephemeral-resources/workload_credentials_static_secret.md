@@ -9,7 +9,7 @@ description: |-
 
 Ephemeral resource for reading static secrets from BeyondTrust Workload Credentials. Secret values are never stored in Terraform state or plan files.
 
-~> **Important:** Ephemeral resources are available in Terraform 1.10+. Secret values are never stored in Terraform state or plan files.
+~> **Important:** Ephemeral resources require Terraform 1.11+. Secret values are never stored in Terraform state or plan files.
 
 ## Example Usage
 
@@ -63,4 +63,4 @@ output "secret_version" {
 
 ### Read-Only
 
-- `value` (Map of String, Sensitive) The secret key-value pairs. Never stored in state.
+- `secret` (Map of String, Sensitive) The secret key-value pairs. Never stored in state.
