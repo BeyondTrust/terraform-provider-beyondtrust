@@ -12,7 +12,7 @@ Get started with the BeyondTrust Terraform Provider in 5 minutes.
 
 ### 1. BeyondTrust Workload Credentials Access
 
-You need access to a BeyondTrust BeyondTrust Workload Credentials instance.
+You need access to a BeyondTrust Workload Credentials instance.
 
 **If you don't have access yet:**
 - **Existing BeyondTrust Customer**: Contact your BeyondTrust account manager or support team
@@ -216,7 +216,7 @@ Type `yes` to confirm deletion.
 **Best Approach**: Contact your BeyondTrust Workload Credentials platform administrator to obtain your site ID. This is the most reliable method.
 
 **If you already have access:**
-- **Browser DevTools**: The UUID is sent with every API request as `X-BT-Site-ID` header
+- **Browser DevTools**: The UUID appears in every API request path as `/site/{uuid}/secrets/...`
 - **Multiple Sites**: If your organization has multiple sites, ensure you're using the correct site ID for your environment
 
 ### Authentication Fails
@@ -232,7 +232,7 @@ Type `yes` to confirm deletion.
 # Test your credentials
 curl -H "Authorization: Bearer ${BEYONDTRUST_ACCESS_TOKEN}" \
      -H "bt-secrets-api-version: 2026-04-28" \
-     "${BEYONDTRUST_API_URL}/secrets/session"
+     "${BEYONDTRUST_API_URL}/site/${BEYONDTRUST_SITE_ID}/secrets/session"
 ```
 
 ### Terraform Version Error

@@ -70,9 +70,9 @@ runs:
 
         # Build URL with folder query parameter
         if [ -n "$FOLDER" ]; then
-          URL="https://api.bt-platform.net/secrets/dynamic/${SECRET_NAME}/generate?folder=${FOLDER}"
+          URL="https://api.bt-platform.net/site/${SITE_ID}/secrets/dynamic/${SECRET_NAME}/generate?folder=${FOLDER}"
         else
-          URL="https://api.bt-platform.net/secrets/dynamic/${SECRET_NAME}/generate"
+          URL="https://api.bt-platform.net/site/${SITE_ID}/secrets/dynamic/${SECRET_NAME}/generate"
         fi
 
         echo "::notice::Generating AWS credentials from dynamic secret: $DYNAMIC_SECRET_PATH"
@@ -80,7 +80,6 @@ runs:
         # Call BeyondTrust API to generate dynamic AWS credentials
         RESPONSE=$(curl -s -w "\n%{http_code}" -X POST \
           -H "Authorization: Bearer $OIDC_TOKEN" \
-          -H "X-BT-Site-ID: $SITE_ID" \
           -H "X-BT-Role: $ROLE" \
           -H "X-BT-Auth-Type: CUSTOM-IDP" \
           -H "bt-secrets-api-version: 2026-04-28" \
