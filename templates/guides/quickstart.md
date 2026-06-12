@@ -12,7 +12,7 @@ Get started with the BeyondTrust Terraform Provider in 5 minutes.
 
 ### 1. BeyondTrust Workload Credentials Access
 
-You need access to a BeyondTrust BeyondTrust Workload Credentials instance.
+You need access to a BeyondTrust Workload Credentials instance.
 
 **If you don't have access yet:**
 - **Existing BeyondTrust Customer**: Contact your BeyondTrust account manager or support team
