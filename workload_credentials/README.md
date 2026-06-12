@@ -7,10 +7,10 @@ For general provider configuration and usage, see the [main README](../README.md
 ## Requirements
 
 - BeyondTrust Workload Credentials instance with API access
-- [Terraform](https://www.terraform.io/downloads.html) >= 1.10 (for ephemeral resources) or >= 1.0 (for basic functionality)
+- [Terraform](https://www.terraform.io/downloads.html) >= 1.11
 
-> **Note**: Workload Credentials resources use **ephemeral resources** for secure secret handling, which require Terraform 1.10 or later.
-> Ephemeral resources ensure sensitive values are never persisted in state or plan files.
+> **Note**: Workload Credentials resources use **ephemeral resources** and **write-only attributes** for secure secret handling, which require Terraform 1.11 or later.
+> These features ensure sensitive values are never persisted in state or plan files.
 > See [Terraform Version Requirements](../docs/guides/terraform-version-requirements.md) for details.
 
 ## Use Cases
@@ -107,7 +107,7 @@ resource "beyondtrust_workload_credentials_static_secret" "db_password" {
   }
 }
 
-# Read secret value (ephemeral - requires Terraform 1.10+)
+# Read secret value (ephemeral - requires Terraform 1.11+)
 ephemeral "beyondtrust_workload_credentials_static_secret" "db_password" {
   name   = "database-password"
   folder = "production"

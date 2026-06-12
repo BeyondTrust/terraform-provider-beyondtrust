@@ -18,7 +18,7 @@ The BeyondTrust Terraform Provider enables infrastructure-as-code management of 
 **Key Characteristics:**
 - Built on Terraform Plugin Framework (v1.19.0+)
 - Multi-tenant architecture via Site ID isolation
-- Ephemeral resource support for secrets (Terraform 1.10+)
+- Ephemeral resource support for secrets (Terraform 1.11+)
 - HTTP-based REST API integration
 - Merge-patch semantics for updates (RFC 7396)
 
@@ -99,7 +99,7 @@ terraform-provider-beyondtrust/
 │   ├── datasources/                 # Data sources (read-only)
 │   │   └── aws_integration_data_source.go
 │   │
-│   └── ephemeral/                   # Ephemeral resources (Terraform 1.10+)
+│   └── ephemeral/                   # Ephemeral resources (Terraform 1.11+)
 │       └── static_secret_ephemeral.go
 │
 ├── tools/
@@ -239,7 +239,7 @@ func (e *APIError) IsAWSCredentialValidationError() bool  // AWS-specific valida
 **Resource Interface Implementations:**
 - **Managed Resources**: Implement `resource.Resource` + `resource.ResourceWithImportState`
 - **Data Sources**: Implement `datasource.DataSource`
-- **Ephemeral Resources**: Implement `ephemeral.EphemeralResource` (Terraform 1.10+)
+- **Ephemeral Resources**: Implement `ephemeral.EphemeralResource` (Terraform 1.11+)
 
 **Example Resource Structure:**
 ```go
@@ -361,7 +361,7 @@ Terraform updates state file
 
 **No state persistence** - secrets never written to state files or plan files.
 
-**Lifecycle**: Open → Read → Close (Terraform 1.10+)
+**Lifecycle**: Open → Read → Close (Terraform 1.11+)
 
 **Current Ephemeral Resources:**
 - `beyondtrust_workload_credentials_static_secret` - Retrieve secret value at apply time
@@ -658,7 +658,7 @@ func TestAccFolderResource_basic(t *testing.T) {
 
 **Trade-offs:**
 - Less mature ecosystem compared to SDK v2
-- Requires Terraform 1.0+
+- Requires Terraform 1.11+
 
 ### 2. Ephemeral Resources for Secrets
 
@@ -670,7 +670,7 @@ func TestAccFolderResource_basic(t *testing.T) {
 - Values only exist in memory during apply
 
 **Trade-offs:**
-- Requires Terraform 1.10+ for ephemeral resource support
+- Requires Terraform 1.11+ for ephemeral resource and write-only attribute support
 - More complex lifecycle (Open → Read → Close)
 
 **See**: [Terraform Version Requirements](../guides/terraform-version-requirements.md)
@@ -795,7 +795,7 @@ Similar to resources, but implement `datasource.DataSource` interface:
 
 ### Adding an Ephemeral Resource
 
-Implement `ephemeral.EphemeralResource` interface (Terraform 1.10+):
+Implement `ephemeral.EphemeralResource` interface (Terraform 1.11+):
 - Metadata, Schema, Configure, Open, Read, Close
 
 ## Dependencies

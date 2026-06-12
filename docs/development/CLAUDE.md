@@ -9,14 +9,14 @@ A Terraform provider for BeyondTrust Workload Credentials. Built using the Terra
 **Current Implementation:**
 - 4 managed resources (folder, static secret, AWS integration, AWS dynamic secret)
 - 1 data source (AWS integration)
-- 1 ephemeral resource (static secret - Terraform 1.10+)
+- 1 ephemeral resource (static secret - Terraform 1.11+)
 - Full import support for all resources
 - Auto-generated documentation
 - Unit test coverage: 68.1% overall (client: 86.4%, provider: 89.5%)
 
 **Key Technical Decisions:**
 - Terraform Plugin Framework (not SDK v2)
-- Ephemeral resources for secrets (requires Terraform 1.10+)
+- Ephemeral resources and write-only attributes for secrets (requires Terraform 1.11+)
 - Path-based resource identification
 - Merge-patch semantics for updates
 - Separate metadata endpoints for tags
@@ -51,7 +51,7 @@ terraform-provider-beyondtrust/
 │   │   └── aws_dynamic_secret_resource.go
 │   ├── datasources/                 # Data source implementations
 │   │   └── aws_integration_data_source.go
-│   └── ephemeral/                   # Ephemeral resources (Terraform 1.10+)
+│   └── ephemeral/                   # Ephemeral resources (Terraform 1.11+)
 │       └── static_secret_ephemeral.go
 ├── examples/                        # Example Terraform configurations
 │   ├── provider/
@@ -646,7 +646,7 @@ provider "beyondtrust" {
 
 ## Ephemeral Resources
 
-Secrets support ephemeral resources (Terraform 1.10+):
+Secrets support ephemeral resources (Terraform 1.11+):
 
 ```hcl
 # Never persisted to state or plan files
