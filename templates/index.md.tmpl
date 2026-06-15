@@ -25,7 +25,7 @@ The provider also requires your **Site ID** (a UUID identifying your tenant) and
 Set credentials via environment variables to keep them out of your Terraform configuration files:
 
 ```shell
-export BEYONDTRUST_API_URL="https://app.beyondtrust.io"
+export BEYONDTRUST_API_URL="https://api.beyondtrust.io"
 export BEYONDTRUST_ACCESS_TOKEN="your-token"
 export BEYONDTRUST_SITE_ID="550e8400-e29b-41d4-a716-446655440000"
 ```
@@ -42,7 +42,7 @@ For non-sensitive values you may set them directly. Always use Terraform variabl
 
 ```hcl
 provider "beyondtrust" {
-  api_url      = "https://app.beyondtrust.io"
+  api_url      = "https://api.beyondtrust.io"
   access_token = var.beyondtrust_access_token
   site_id      = var.beyondtrust_site_id
 }

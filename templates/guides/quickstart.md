@@ -80,7 +80,7 @@ provider "beyondtrust" {
 
 ```hcl
 provider "beyondtrust" {
-  api_url      = "https://app.beyondtrust.io"
+  api_url      = "https://api.beyondtrust.io"
   access_token = var.beyondtrust_access_token  # Use variables for sensitive data
   site_id      = var.beyondtrust_site_id
 }

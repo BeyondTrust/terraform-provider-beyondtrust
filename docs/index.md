@@ -25,7 +25,7 @@ The provider also requires your **Site ID** (a UUID identifying your tenant) and
 Set credentials via environment variables to keep them out of your Terraform configuration files:
 
 ```shell
-export BEYONDTRUST_API_URL="https://app.beyondtrust.io"
+export BEYONDTRUST_API_URL="https://api.beyondtrust.io"
 export BEYONDTRUST_ACCESS_TOKEN="your-token"
 export BEYONDTRUST_SITE_ID="a1b2c3d4-e5f6-7890-abcd-ef1234567890"
 ```
@@ -42,7 +42,7 @@ For non-sensitive values you may set them directly. Always use Terraform variabl
 
 ```hcl
 provider "beyondtrust" {
-  api_url      = "https://app.beyondtrust.io"
+  api_url      = "https://api.beyondtrust.io"
   access_token = var.beyondtrust_access_token
   site_id      = var.beyondtrust_site_id
 }
@@ -87,7 +87,7 @@ resource "beyondtrust_workload_credentials_folder" "example" {
 
 - `access_token` (String, Sensitive) The API access token for authentication. Can also be set via BEYONDTRUST_ACCESS_TOKEN environment variable.
 - `api_path_version` (String) Optional API path version (e.g., 'v1'). Defaults to empty string (no path version). Can also be set via BEYONDTRUST_API_PATH_VERSION environment variable.
-- `api_url` (String) The base URL for the BeyondTrust API (e.g., <https://app.beyondtrust.io>). Can also be set via BEYONDTRUST_API_URL environment variable.
+- `api_url` (String) The base URL for the BeyondTrust API (e.g., <https://api.beyondtrust.io>). Can also be set via BEYONDTRUST_API_URL environment variable.
 - `api_version` (String) The API header version (date-based, e.g., '2026-04-28'). Defaults to '2026-04-28'. Can also be set via BEYONDTRUST_API_VERSION environment variable.
 - `insecure` (Boolean) Skip TLS certificate verification. Only use for development. Defaults to false. Can also be set via BEYONDTRUST_INSECURE environment variable.
 - `role` (String) Role for X-BT-Role header (when set, X-BT-Auth-Type is automatically set to 'CUSTOM-IDP'). Can also be set via BEYONDTRUST_ROLE environment variable.

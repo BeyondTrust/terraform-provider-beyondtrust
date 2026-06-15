@@ -638,7 +638,7 @@ The site ID is embedded in the request path for tenant isolation:
 ```go
 // Provider configuration
 provider "beyondtrust" {
-  api_url      = "https://app.beyondtrust.io"
+  api_url      = "https://api.beyondtrust.io"
   access_token = var.access_token
   site_id      = "a1b2c3d4-e5f6-7890-abcd-ef1234567890"  // Required
 }
