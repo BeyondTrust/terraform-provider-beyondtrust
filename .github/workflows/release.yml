@@ -144,7 +144,10 @@ jobs:
           TAG_NAME: ${{ needs.release-please.outputs.tag_name }}
 
       - name: Attach SBOM to draft release
-        run: gh release upload --clobber "$TAG_NAME" "${{ steps.sbom.outputs.file }}"
+        # This job intentionally has no checkout, so gh cannot infer the repo from a
+        # local git remote — pass --repo explicitly (as the publish job does) or the
+        # upload fails with "fatal: not a git repository".
+        run: gh release upload "$TAG_NAME" "${{ steps.sbom.outputs.file }}" --repo "$GITHUB_REPOSITORY" --clobber
         env:
           GITHUB_TOKEN: ${{ github.token }}
           TAG_NAME: ${{ needs.release-please.outputs.tag_name }}
