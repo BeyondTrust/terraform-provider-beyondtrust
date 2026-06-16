@@ -69,6 +69,11 @@ release:
   # draft once every artifact (and the SBOM) is attached, so the Terraform Registry
   # webhook only fires for a complete release.
   draft: true
+  # release-please creates the draft release first; upload artifacts INTO that draft
+  # instead of creating a second one. Without this, GoReleaser looks the release up via
+  # GitHub's get-release-by-tag API, which does not return drafts, so it 404s and creates
+  # a duplicate draft — stranding all signed artifacts away from the release-please one.
+  use_existing_draft: true
   # release-please owns the release notes (CHANGELOG); keep its body untouched.
   mode: keep-existing
   extra_files:
