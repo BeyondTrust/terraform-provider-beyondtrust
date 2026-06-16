@@ -128,7 +128,7 @@ jobs:
     needs: [release-please, goreleaser]
     if: needs.release-please.outputs.release_created == 'true'
     permissions:
-      contents: write  # read the dependency graph and attach the SBOM to the release
+      contents: read  # read the dependency graph to generate the SBOM
     steps:
       - name: Generate SBOM
         id: sbom
@@ -143,14 +143,19 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
           TAG_NAME: ${{ needs.release-please.outputs.tag_name }}
 
-      - name: Attach SBOM to draft release
-        # This job intentionally has no checkout, so gh cannot infer the repo from a
-        # local git remote — pass --repo explicitly (as the publish job does) or the
-        # upload fails with "fatal: not a git repository".
-        run: gh release upload "$TAG_NAME" "${{ steps.sbom.outputs.file }}" --repo "$GITHUB_REPOSITORY" --clobber
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-          TAG_NAME: ${{ needs.release-please.outputs.tag_name }}
+      - name: Upload SBOM as workflow artifact
+        # Deliberately NOT attached to the GitHub release. The Terraform Registry scans
+        # every release asset on the "release: published" event and rejects any file whose
+        # extension it does not expect — the only .json it accepts is *_manifest.json — so
+        # an SBOM *.spdx.json on the release fails ingestion with "invalid file extension
+        # found (.json)". Keeping it as a workflow artifact preserves the SBOM (retained
+        # and downloadable from the run) while keeping it invisible to the registry.
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: sbom
+          path: ${{ steps.sbom.outputs.file }}
+          retention-days: 90
+          if-no-files-found: error
 
   publish:
     name: Publish Release
@@ -167,10 +172,10 @@ jobs:
       contents: write  # flip the release out of draft
     steps:
       - name: Publish GitHub release
-        # Signed artifacts and checksums (and the SBOM, when it succeeded) are now
-        # attached. Flipping the release out of draft fires the "release: published"
-        # event that the Terraform Registry webhook listens for, so the registry
-        # ingests a complete release in a single pass.
+        # Signed artifacts and checksums are now attached (the SBOM is kept as a workflow
+        # artifact, not a release asset — see the sbom job). Flipping the release out of
+        # draft fires the "release: published" event that the Terraform Registry webhook
+        # listens for, so the registry ingests a complete release in a single pass.
         run: gh release edit "$TAG_NAME" --repo "$GITHUB_REPOSITORY" --draft=false --latest
         env:
           GITHUB_TOKEN: ${{ github.token }}
