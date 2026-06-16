@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.1.1](https://github.com/BeyondTrust/terraform-provider-beyondtrust/compare/v1.1.0...v1.1.1) (2026-06-16)
+
+
+### Bug Fixes
+
+* exclude changelog.md from megalinter ([e0464ab](https://github.com/BeyondTrust/terraform-provider-beyondtrust/commit/e0464abb8451b9dc6ff667c15c3963a5b616a8b2))
+* update goreleaser options ([486b390](https://github.com/BeyondTrust/terraform-provider-beyondtrust/commit/486b3907249b9a0fb7418145893295be61325b2e))
+
 ## [1.1.0](https://github.com/BeyondTrust/terraform-provider-beyondtrust/compare/v1.0.0...v1.1.0) (2026-06-16)
 
 
