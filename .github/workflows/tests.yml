@@ -37,11 +37,11 @@ jobs:
     name: Acceptance Tests
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    environment: acceptance-tests
     permissions:
       contents: read
       id-token: write  # Required for GitHub OIDC
-    # OIDC and the test-environment secrets are unavailable to fork and Dependabot
-    # PRs; push-to-main runs always have them.
+    # Skip on fork/Dependabot PRs, which can't access environment secrets or OIDC.
     if: >-
       github.event_name != 'pull_request' ||
       (github.actor != 'dependabot[bot]' &&
@@ -69,10 +69,50 @@ jobs:
       - name: Run acceptance tests
         run: make test-acc
         env:
-          BEYONDTRUST_API_URL: ${{ secrets.BEYONDTRUST_API_URL }}
           BEYONDTRUST_ACCESS_TOKEN: ${{ steps.oidc.outputs.token }}
           BEYONDTRUST_SITE_ID: ${{ secrets.BEYONDTRUST_SITE_ID }}
           BEYONDTRUST_SERVICE_NAME: ${{ secrets.BEYONDTRUST_SERVICE_NAME }}
           BEYONDTRUST_TEST_AWS_ROLE_ARN: ${{ secrets.BEYONDTRUST_TEST_AWS_ROLE_ARN }}
           BEYONDTRUST_TEST_AWS_ROLE_ARN_2: ${{ secrets.BEYONDTRUST_TEST_AWS_ROLE_ARN_2 }}
+          TF_ACC: "1"
+
+  acceptance-tests-admin:
+    name: Acceptance Tests (admin site)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: acceptance-tests-admin
+    permissions:
+      contents: read
+      id-token: write  # Required for GitHub OIDC
+    # Skip on fork/Dependabot PRs, which can't access environment secrets or OIDC.
+    if: >-
+      github.event_name != 'pull_request' ||
+      (github.actor != 'dependabot[bot]' &&
+       github.event.pull_request.head.repo.full_name == github.repository)
+    steps:
+      - name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          persist-credentials: false
+
+      - name: Setup Go
+        uses: ./.github/actions/setup-go
+
+      - name: Setup Terraform
+        uses: ./.github/actions/setup-terraform
+
+      - name: Get OIDC token
+        id: oidc
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const token = await core.getIDToken('${{ secrets.BEYONDTRUST_ADMIN_SITE_ID }}')
+            core.setOutput('token', token)
+
+      - name: Run workload-identity acceptance tests
+        run: go test -tags acceptance -v -timeout 30m -run TestAccWorkloadIdentity ./auth/...
+        env:
+          BEYONDTRUST_ADMIN_SITE_ID: ${{ secrets.BEYONDTRUST_ADMIN_SITE_ID }}
+          BEYONDTRUST_ADMIN_ACCESS_TOKEN: ${{ steps.oidc.outputs.token }}
+          BEYONDTRUST_SERVICE_NAME: ${{ secrets.BEYONDTRUST_SERVICE_NAME }}
           TF_ACC: "1"
