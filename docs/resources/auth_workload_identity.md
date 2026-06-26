@@ -63,6 +63,5 @@ resource "beyondtrust_auth_workload_identity" "aws_broker" {
 
 ### Read-Only
 
-- `expected_aud` (String) The expected audience claim for token exchange.
 - `id` (String) The stable identity id (UUID) assigned by the auth service.
 - `organization_id` (String) The organization (UUID) that owns this workload identity.

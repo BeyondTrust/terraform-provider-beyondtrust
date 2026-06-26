@@ -38,7 +38,6 @@ func TestAccWorkloadIdentityResource_basicAndUpdate(t *testing.T) {
 					resource.TestCheckResourceAttr(wiResourceName, "description", "initial description"),
 					resource.TestCheckResourceAttrSet(wiResourceName, "id"),
 					resource.TestCheckResourceAttrSet(wiResourceName, "organization_id"),
-					resource.TestCheckResourceAttrSet(wiResourceName, "expected_aud"),
 				),
 			},
 			// Update a mutable field (description) in place

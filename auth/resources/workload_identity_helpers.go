@@ -22,7 +22,6 @@ import (
 func applyComputed(data *WorkloadIdentityResourceModel, iss issuer) diag.Diagnostics {
 	data.ID = types.StringValue(iss.IdentityID)
 	data.OrganizationID = types.StringValue(iss.OrganizationID)
-	data.ExpectedAud = types.StringValue(iss.ExpectedAud)
 	data.SiteID = types.StringValue(iss.SiteID)
 	data.ScopeLevel = types.StringValue(iss.ScopeLevel)
 	data.Description = types.StringValue(iss.Description)
@@ -38,7 +37,6 @@ func applyRead(ctx context.Context, data *WorkloadIdentityResourceModel, iss iss
 
 	data.ID = types.StringValue(iss.IdentityID)
 	data.OrganizationID = types.StringValue(iss.OrganizationID)
-	data.ExpectedAud = types.StringValue(iss.ExpectedAud)
 	data.SiteID = types.StringValue(iss.SiteID)
 	data.ScopeLevel = types.StringValue(iss.ScopeLevel)
 	data.Description = types.StringValue(iss.Description)

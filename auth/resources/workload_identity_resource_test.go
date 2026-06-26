@@ -130,7 +130,7 @@ func TestIssuerEnvelopeUnmarshal(t *testing.T) {
 	if err := json.Unmarshal([]byte(payload), &env); err != nil {
 		t.Fatal(err)
 	}
-	if env.Issuer.IdentityID != "id-1" || env.Issuer.OrganizationID != "org-1" || env.Issuer.ExpectedAud != "aud-1" {
+	if env.Issuer.IdentityID != "id-1" || env.Issuer.OrganizationID != "org-1" {
 		t.Fatalf("unexpected envelope decode: %+v", env.Issuer)
 	}
 	if got := env.Issuer.Conditions["sub"]; len(got) != 1 || got[0] != "x" {
@@ -147,12 +147,11 @@ func TestApplyComputed_SetsComputedKeepsRequired(t *testing.T) {
 	applyComputed(data, issuer{
 		IdentityID:     "id-1",
 		OrganizationID: "org-1",
-		ExpectedAud:    "aud-1",
 		SiteID:         "site-1",
 		ScopeLevel:     "site",
 		Description:    "from-api",
 	})
-	if data.ID.ValueString() != "id-1" || data.OrganizationID.ValueString() != "org-1" || data.ExpectedAud.ValueString() != "aud-1" {
+	if data.ID.ValueString() != "id-1" || data.OrganizationID.ValueString() != "org-1" {
 		t.Fatalf("computed fields not set: %+v", data)
 	}
 	if data.SiteID.ValueString() != "site-1" || data.ScopeLevel.ValueString() != "site" || data.Description.ValueString() != "from-api" {

@@ -62,7 +62,6 @@ type WorkloadIdentityResourceModel struct {
 	RegisteredScopes types.List   `tfsdk:"registered_scopes"`
 	ID               types.String `tfsdk:"id"`
 	OrganizationID   types.String `tfsdk:"organization_id"`
-	ExpectedAud      types.String `tfsdk:"expected_aud"`
 }
 
 // issuerRequest is the create/update request body. Field casing matches the auth API.
@@ -85,7 +84,6 @@ type issuer struct {
 	IdpCategory      string              `json:"idpCategory"`
 	SiteID           string              `json:"siteId"`
 	OrganizationID   string              `json:"organizationId"`
-	ExpectedAud      string              `json:"expectedAud"`
 	ScopeLevel       string              `json:"scopeLevel"`
 	RegisteredScopes []string            `json:"registeredScopes"`
 	Conditions       map[string][]string `json:"conditions"`
@@ -166,13 +164,6 @@ func (r *WorkloadIdentityResource) Schema(ctx context.Context, req resource.Sche
 			},
 			"organization_id": schema.StringAttribute{
 				Description: "The organization (UUID) that owns this workload identity.",
-				Computed:    true,
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.UseStateForUnknown(),
-				},
-			},
-			"expected_aud": schema.StringAttribute{
-				Description: "The expected audience claim for token exchange.",
 				Computed:    true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),

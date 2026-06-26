@@ -38,8 +38,3 @@ output "identity_id" {
   description = "The id assigned to the workload identity."
   value       = beyondtrust_auth_workload_identity.github_ci.id
 }
-
-output "expected_aud" {
-  description = "The expected audience for token exchange."
-  value       = beyondtrust_auth_workload_identity.github_ci.expected_aud
-}
