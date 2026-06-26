@@ -4,7 +4,7 @@
 # Variables and Configuration
 # ==========================================
 
-.PHONY: help build install test test-unit test-acc testacc test-coverage test-coverage-html clean fmt lint generate docs docs-validate tf-local tf-local-shell default
+.PHONY: help build install test test-unit test-acc test-acc-admin testacc test-coverage test-coverage-html clean fmt lint generate docs docs-validate tf-local tf-local-shell default
 .PHONY: pre-commit pre-commit-quick ci-local check-tools install-tools gofumpt-fix tf-fmt-check tf-fmt-fix spell-check go-mod-tidy check-uncommitted install-git-hooks
 
 BINARY_NAME := terraform-provider-beyondtrust
@@ -53,6 +53,7 @@ help:
 	@echo "  test              - Run all tests (unit + acceptance)"
 	@echo "  test-unit         - Run unit tests only"
 	@echo "  test-acc          - Run acceptance tests (requires Workload Credentials instance)"
+	@echo "  test-acc-admin    - Run only the workload-identity acceptance tests (admin site)"
 	@echo "  test-coverage     - Generate coverage report"
 	@echo "  test-coverage-html - Generate HTML coverage report"
 	@echo ""
@@ -175,6 +176,11 @@ test-acc:
 	@echo "Running acceptance tests..."
 	@echo "Note: Set the required environment variables"
 	@TF_ACC=1 TFENV_TERRAFORM_VERSION=$(TERRAFORM_VERSION) go test -v -cover -timeout=120m -parallel=4 -tags acceptance -coverprofile=coverage-acc.out -covermode=atomic ./...
+
+## test-acc-admin: Run only the workload-identity acceptance tests (admin site; needs admin-site creds)
+test-acc-admin:
+	@echo "Running admin-site (workload identity) acceptance tests..."
+	@TF_ACC=1 TFENV_TERRAFORM_VERSION=$(TERRAFORM_VERSION) go test -v -timeout=30m -tags acceptance -run TestAccWorkloadIdentity ./auth/...
 
 ## testacc: Alias for test-acc
 testacc: test-acc

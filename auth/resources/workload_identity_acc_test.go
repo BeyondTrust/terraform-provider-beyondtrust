@@ -15,6 +15,10 @@ import (
 const wiResourceName = "beyondtrust_auth_workload_identity.test"
 
 func TestAccWorkloadIdentityResource_basicAndUpdate(t *testing.T) {
+	// Skip unless admin-site creds are configured (e.g. a local `make test-acc` run, or the
+	// regular-site CI job). Must run before LoadAdminTestConfig, which otherwise hard-fails.
+	acctest.PreCheckAdmin(t)
+
 	// Workload identities are managed against the org admin site, which has its own
 	// dedicated credentials (separate from the normal-site secrets tests).
 	adminCfg, err := acctest.LoadAdminTestConfig()

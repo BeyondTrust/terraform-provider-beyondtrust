@@ -110,7 +110,7 @@ jobs:
             core.setOutput('token', token)
 
       - name: Run workload-identity acceptance tests
-        run: go test -tags acceptance -v -timeout 30m -run TestAccWorkloadIdentity ./auth/...
+        run: make test-acc-admin
         env:
           BEYONDTRUST_ADMIN_SITE_ID: ${{ secrets.BEYONDTRUST_ADMIN_SITE_ID }}
           BEYONDTRUST_ADMIN_ACCESS_TOKEN: ${{ steps.oidc.outputs.token }}
