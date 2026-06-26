@@ -160,6 +160,14 @@ func (c *Client) BuildPath(endpoint string) string {
 	return fmt.Sprintf("/site/%s/secrets/%s%s", c.SiteID, c.APIPathVersion, endpoint)
 }
 
+// BuildAuthPath constructs a path for the BeyondTrust auth service (workload identities).
+// Format: /site/{site-id}/platform/auth/endpoint
+// SiteID here is the operator's admin site — the site CRUD is performed against. The
+// site a workload identity grants access to is carried separately in the request body.
+func (c *Client) BuildAuthPath(endpoint string) string {
+	return fmt.Sprintf("/site/%s/platform/auth%s", c.SiteID, endpoint)
+}
+
 // ValidateSession validates the access token by calling GET /session.
 // A 200 response indicates the credentials are valid.
 func (c *Client) ValidateSession(ctx context.Context) error {

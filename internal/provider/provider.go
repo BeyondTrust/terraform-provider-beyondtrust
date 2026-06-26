@@ -12,6 +12,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
+	authresources "github.com/beyondtrust/terraform-provider-beyondtrust/auth/resources"
 	"github.com/beyondtrust/terraform-provider-beyondtrust/internal/client"
 	"github.com/beyondtrust/terraform-provider-beyondtrust/internal/constants"
 	"github.com/beyondtrust/terraform-provider-beyondtrust/workload_credentials/datasources"
@@ -246,6 +247,7 @@ func (p *BeyondTrustProvider) Resources(ctx context.Context) []func() resource.R
 		resources.NewStaticSecretResource,
 		resources.NewAwsIntegrationResource,
 		resources.NewAwsDynamicSecretResource,
+		authresources.NewWorkloadIdentityResource,
 	}
 }
 
