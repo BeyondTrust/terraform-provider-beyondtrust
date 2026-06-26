@@ -65,3 +65,15 @@ resource "beyondtrust_auth_workload_identity" "aws_broker" {
 
 - `id` (String) The stable identity id (UUID) assigned by the auth service.
 - `organization_id` (String) The organization (UUID) that owns this workload identity.
+
+## Import
+
+Import is supported using the following syntax:
+
+The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/commands/import) can be used, for example:
+
+```shell
+#!/bin/bash
+# Import a workload identity by its identity id (the UUID assigned at creation).
+terraform import beyondtrust_auth_workload_identity.github_ci 00000000-0000-0000-0000-000000000000
+```
