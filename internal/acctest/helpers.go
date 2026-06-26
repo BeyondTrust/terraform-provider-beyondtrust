@@ -61,10 +61,9 @@ func PreCheckAWS(t *testing.T) {
 // the admin site id and admin token are required in addition to the base env.
 func PreCheckAdmin(t *testing.T) {
 	t.Helper()
-	PreCheck(t)
 
-	if os.Getenv(EnvAdminSiteID) == "" || os.Getenv(EnvAdminAccessToken) == "" {
-		t.Skipf("%s and %s must be set for workload-identity (admin-site) acceptance tests", EnvAdminSiteID, EnvAdminAccessToken)
+	if _, err := LoadAdminTestConfig(); err != nil {
+		t.Skipf("workload-identity (admin-site) acceptance tests skipped: %v\n\nSet: %s, %s, %s", err, constants.EnvAPIURL, EnvAdminSiteID, EnvAdminAccessToken)
 	}
 }
 

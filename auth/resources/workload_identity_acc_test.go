@@ -15,17 +15,15 @@ import (
 const wiResourceName = "beyondtrust_auth_workload_identity.test"
 
 func TestAccWorkloadIdentityResource_basicAndUpdate(t *testing.T) {
-	cfg, err := acctest.LoadTestConfig()
+	// Workload identities are managed against the org admin site, which has its own
+	// dedicated credentials (separate from the normal-site secrets tests).
+	adminCfg, err := acctest.LoadAdminTestConfig()
 	if err != nil {
-		t.Fatalf("Failed to load test config: %v", err)
+		t.Fatalf("Failed to load admin test config: %v", err)
 	}
 
 	serviceName := acctest.RandomFolderName()
 	issuerURL := "https://token.actions.githubusercontent.com"
-
-	// Workload identities are managed against the org admin site (its own credentials),
-	// which is a different site than the secrets tests use.
-	adminCfg := cfg.WithAdminSite()
 
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck:                 func() { acctest.PreCheckAdmin(t) },

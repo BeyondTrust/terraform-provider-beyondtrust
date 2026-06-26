@@ -106,7 +106,7 @@ func TestValidateConditions(t *testing.T) {
 func TestIssuerRequestMarshalsExpectedKeys(t *testing.T) {
 	b, err := json.Marshal(issuerRequest{
 		SiteID:           "site-1",
-		ServiceName:      "happyhappypath",
+		ServiceName:      "ci-pipeline",
 		IssuerURL:        "https://token.actions.githubusercontent.com",
 		IdpCategory:      idpGitHubActions,
 		ScopeLevel:       "site",
@@ -125,7 +125,7 @@ func TestIssuerRequestMarshalsExpectedKeys(t *testing.T) {
 }
 
 func TestIssuerEnvelopeUnmarshal(t *testing.T) {
-	const payload = `{"issuer":{"identityId":"id-1","siteId":"site-1","organizationId":"org-1","expectedAud":"aud-1","serviceName":"happyhappypath","issuerUrl":"https://x","idpCategory":"Custom","scopeLevel":"site","registeredScopes":["admin"],"conditions":{"sub":["x"]},"description":"d"}}`
+	const payload = `{"issuer":{"identityId":"id-1","siteId":"site-1","organizationId":"org-1","expectedAud":"aud-1","serviceName":"ci-pipeline","issuerUrl":"https://x","idpCategory":"Custom","scopeLevel":"site","registeredScopes":["admin"],"conditions":{"sub":["x"]},"description":"d"}}`
 	var env issuerEnvelope
 	if err := json.Unmarshal([]byte(payload), &env); err != nil {
 		t.Fatal(err)
@@ -140,7 +140,7 @@ func TestIssuerEnvelopeUnmarshal(t *testing.T) {
 
 func TestApplyComputed_SetsComputedKeepsRequired(t *testing.T) {
 	data := &WorkloadIdentityResourceModel{
-		ServiceName: types.StringValue("happyhappypath"),
+		ServiceName: types.StringValue("ci-pipeline"),
 		IssuerURL:   types.StringValue("https://x"),
 		IdpCategory: types.StringValue(idpCustom),
 	}
@@ -159,7 +159,7 @@ func TestApplyComputed_SetsComputedKeepsRequired(t *testing.T) {
 		t.Fatalf("optional+computed fields not set: %+v", data)
 	}
 	// Required identity fields must be left as planned.
-	if data.ServiceName.ValueString() != "happyhappypath" || data.IssuerURL.ValueString() != "https://x" {
+	if data.ServiceName.ValueString() != "ci-pipeline" || data.IssuerURL.ValueString() != "https://x" {
 		t.Fatalf("required fields should be unchanged: %+v", data)
 	}
 }
@@ -172,7 +172,7 @@ func TestApplyRead_KeepsImmutableFieldsRefreshesMutable(t *testing.T) {
 	}
 	diags := applyRead(context.Background(), data, issuer{
 		IdentityID:       "id-1",
-		ServiceName:      "happyhappypath",
+		ServiceName:      "ci-pipeline",
 		IssuerURL:        "https://x",
 		SiteID:           "site-1",
 		ScopeLevel:       "org",

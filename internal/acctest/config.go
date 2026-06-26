@@ -86,16 +86,31 @@ provider "beyondtrust" {
 	return config
 }
 
-// WithAdminSite returns a copy of the config targeting the organization's admin site,
-// used by workload-identity tests. The admin site has its own dedicated credentials —
-// a token is scoped to a single site, so both the admin site id and admin token are
-// required (there is no fallback to the base/normal-site token). API URL and version are
-// shared with the base config.
-func (c *TestConfig) WithAdminSite() *TestConfig {
-	admin := *c
-	admin.SiteID = os.Getenv(EnvAdminSiteID)
-	admin.AccessToken = os.Getenv(EnvAdminAccessToken)
-	return &admin
+// LoadAdminTestConfig loads configuration for admin-site acceptance tests (workload
+// identities). Those run against the org's admin site, which has its own dedicated
+// credentials, so they require BEYONDTRUST_ADMIN_SITE_ID and BEYONDTRUST_ADMIN_ACCESS_TOKEN.
+// The base/normal-site site id and token are not used (only the shared API URL/version are).
+func LoadAdminTestConfig() (*TestConfig, error) {
+	cfg := &TestConfig{
+		APIURL:      os.Getenv(constants.EnvAPIURL),
+		SiteID:      os.Getenv(EnvAdminSiteID),
+		AccessToken: os.Getenv(EnvAdminAccessToken),
+		APIVersion:  os.Getenv(constants.EnvAPIVersion),
+	}
+	if cfg.APIVersion == "" {
+		cfg.APIVersion = client.DefaultAPIVersion
+	}
+
+	if cfg.APIURL == "" {
+		return nil, fmt.Errorf("%s is required", constants.EnvAPIURL)
+	}
+	if cfg.SiteID == "" {
+		return nil, fmt.Errorf("%s is required", EnvAdminSiteID)
+	}
+	if cfg.AccessToken == "" {
+		return nil, fmt.Errorf("%s is required", EnvAdminAccessToken)
+	}
+	return cfg, nil
 }
 
 // NewTestClient creates a new API client for acceptance testing.

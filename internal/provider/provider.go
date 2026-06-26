@@ -224,17 +224,6 @@ func (p *BeyondTrustProvider) Configure(ctx context.Context, req provider.Config
 		return
 	}
 
-	// Validate the client by checking the session
-	if err := apiClient.ValidateSession(ctx); err != nil {
-		resp.Diagnostics.AddError(
-			"Unable to Authenticate with BeyondTrust API",
-			"The provider could not authenticate with the BeyondTrust API. "+
-				"Please check your access token and API URL. "+
-				"Error: "+err.Error(),
-		)
-		return
-	}
-
 	// Make the client available to resources, data sources, and ephemeral resources
 	resp.DataSourceData = apiClient
 	resp.ResourceData = apiClient
