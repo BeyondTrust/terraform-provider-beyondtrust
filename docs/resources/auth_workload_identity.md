@@ -36,7 +36,7 @@ resource "beyondtrust_auth_workload_identity" "aws_broker" {
   idp_category = "Custom"
   site_id      = "00000000-0000-0000-0000-000000000000" # any site in the organization
 
-  registered_scopes = ["admin"]
+  registered_scopes = ["secrets"]
 
   conditions = {
     sub = ["system:serviceaccount:default:my-app"]
