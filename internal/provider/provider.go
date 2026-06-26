@@ -66,7 +66,7 @@ func (p *BeyondTrustProvider) Schema(ctx context.Context, req provider.SchemaReq
 		Description: "The BeyondTrust provider allows you to manage BeyondTrust resources (Workload Credentials and other BeyondTrust services) using infrastructure as code.",
 		Attributes: map[string]schema.Attribute{
 			"api_url": schema.StringAttribute{
-				Description: "The base URL for the BeyondTrust API (e.g., <https://api.beyondtrust.io>). Can also be set via " + constants.EnvAPIURL + " environment variable.",
+				Description: "The base URL for the BeyondTrust API. Defaults to " + client.DefaultAPIURL + "; override for other deployments such as GovCloud. Can also be set via " + constants.EnvAPIURL + " environment variable.",
 				Optional:    true,
 			},
 			"access_token": schema.StringAttribute{
@@ -168,17 +168,14 @@ func (p *BeyondTrustProvider) Configure(ctx context.Context, req provider.Config
 		apiVersion = client.DefaultAPIVersion
 	}
 
-	if timeout == "" {
-		timeout = "30s"
+	// api_url defaults to the public commercial endpoint; GovCloud and other
+	// deployments override it via the attribute or the environment variable.
+	if apiUrl == "" {
+		apiUrl = client.DefaultAPIURL
 	}
 
-	// Validate required configuration
-	if apiUrl == "" {
-		resp.Diagnostics.AddAttributeError(
-			path.Root("api_url"),
-			"Missing API URL",
-			"The provider requires an API URL. Set the api_url attribute or "+constants.EnvAPIURL+" environment variable.",
-		)
+	if timeout == "" {
+		timeout = "30s"
 	}
 
 	if accessToken == "" {

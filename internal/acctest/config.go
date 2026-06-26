@@ -47,6 +47,11 @@ func LoadTestConfig() (*TestConfig, error) {
 		cfg.APIVersion = client.DefaultAPIVersion
 	}
 
+	// api_url defaults to the public endpoint; override via env for GovCloud/other.
+	if cfg.APIURL == "" {
+		cfg.APIURL = client.DefaultAPIURL
+	}
+
 	// Validate required fields
 	if err := cfg.Validate(); err != nil {
 		return nil, fmt.Errorf("missing required environment variables: %w", err)
@@ -102,7 +107,7 @@ func LoadAdminTestConfig() (*TestConfig, error) {
 	}
 
 	if cfg.APIURL == "" {
-		return nil, fmt.Errorf("%s is required", constants.EnvAPIURL)
+		cfg.APIURL = client.DefaultAPIURL
 	}
 	if cfg.SiteID == "" {
 		return nil, fmt.Errorf("%s is required", EnvAdminSiteID)

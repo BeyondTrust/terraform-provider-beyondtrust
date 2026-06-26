@@ -17,6 +17,9 @@ import (
 // DefaultAPIVersion is the default API version header value
 const DefaultAPIVersion = "2026-04-28"
 
+// DefaultAPIURL is the public BeyondTrust API base URL, used when api_url is not set.
+const DefaultAPIURL = "https://api.beyondtrust.io"
+
 // Client is the BeyondTrust API client
 type Client struct {
 	BaseURL        string
