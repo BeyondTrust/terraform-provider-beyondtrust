@@ -23,13 +23,17 @@ func TestAccWorkloadIdentityResource_basicAndUpdate(t *testing.T) {
 	serviceName := acctest.RandomFolderName()
 	issuerURL := "https://token.actions.githubusercontent.com"
 
+	// Workload identities are managed against the org admin site (its own credentials),
+	// which is a different site than the secrets tests use.
+	adminCfg := cfg.WithAdminSite()
+
 	resource.ParallelTest(t, resource.TestCase{
-		PreCheck:                 func() { acctest.PreCheck(t) },
+		PreCheck:                 func() { acctest.PreCheckAdmin(t) },
 		ProtoV6ProviderFactories: acctest.ProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			// Create
 			{
-				Config: testAccWorkloadIdentityConfig(cfg, serviceName, issuerURL, "initial description"),
+				Config: testAccWorkloadIdentityConfig(adminCfg, serviceName, issuerURL, "initial description"),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr(wiResourceName, "service_name", serviceName),
 					resource.TestCheckResourceAttr(wiResourceName, "idp_category", "GitHubActions"),
@@ -41,7 +45,7 @@ func TestAccWorkloadIdentityResource_basicAndUpdate(t *testing.T) {
 			},
 			// Update a mutable field (description) in place
 			{
-				Config: testAccWorkloadIdentityConfig(cfg, serviceName, issuerURL, "updated description"),
+				Config: testAccWorkloadIdentityConfig(adminCfg, serviceName, issuerURL, "updated description"),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr(wiResourceName, "description", "updated description"),
 				),

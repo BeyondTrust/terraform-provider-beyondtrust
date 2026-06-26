@@ -17,6 +17,14 @@ const (
 	EnvAWSAccountID         = "BEYONDTRUST_AWS_ACCOUNT_ID"
 )
 
+// Environment variable names for admin-site acceptance tests (workload identities).
+// Those endpoints require an org-admin caller operating against the org's admin site,
+// which is a different site than the normal (secrets) tests use.
+const (
+	EnvAdminSiteID      = "BEYONDTRUST_ADMIN_SITE_ID"
+	EnvAdminAccessToken = "BEYONDTRUST_ADMIN_ACCESS_TOKEN"
+)
+
 // TestConfig holds configuration for acceptance tests
 type TestConfig struct {
 	APIURL      string `json:"api_url"`
@@ -76,6 +84,18 @@ provider "beyondtrust" {
 
 	config += "}\n"
 	return config
+}
+
+// WithAdminSite returns a copy of the config targeting the organization's admin site,
+// used by workload-identity tests. The admin site has its own dedicated credentials —
+// a token is scoped to a single site, so both the admin site id and admin token are
+// required (there is no fallback to the base/normal-site token). API URL and version are
+// shared with the base config.
+func (c *TestConfig) WithAdminSite() *TestConfig {
+	admin := *c
+	admin.SiteID = os.Getenv(EnvAdminSiteID)
+	admin.AccessToken = os.Getenv(EnvAdminAccessToken)
+	return &admin
 }
 
 // NewTestClient creates a new API client for acceptance testing.

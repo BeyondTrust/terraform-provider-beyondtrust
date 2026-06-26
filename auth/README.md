@@ -36,3 +36,10 @@ token for a BeyondTrust token.
   the registered scopes and the access site, so there is nothing to manage here.
 
 See `examples/resources/beyondtrust_auth_workload_identity/` for usage.
+
+### Acceptance tests
+
+Workload-identity endpoints require an org-admin caller operating against the org's **admin
+site**, which has its own dedicated credentials (separate from the normal-site credentials the
+secrets tests use). Set `BEYONDTRUST_ADMIN_SITE_ID` and `BEYONDTRUST_ADMIN_ACCESS_TOKEN` (in
+addition to the base `BEYONDTRUST_*` vars) to run them; they are skipped when those are unset.
