@@ -137,7 +137,7 @@ func hasValidGitHubSub(value string) bool {
 type idpCategoryValidator struct{}
 
 func (v idpCategoryValidator) Description(_ context.Context) string {
-	return fmt.Sprintf("idp_category must be one of: %s", strings.Join(validIdpCategories, ", "))
+	return "idp_category must be one of: " + strings.Join(validIdpCategories, ", ")
 }
 
 func (v idpCategoryValidator) MarkdownDescription(ctx context.Context) string {
