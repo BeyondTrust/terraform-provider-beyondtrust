@@ -169,7 +169,7 @@ test:
 ## test-unit: Run unit tests only (excludes acceptance tests)
 test-unit:
 	@echo "Running unit tests..."
-	@go test -v -cover -timeout=120s -parallel=10 -coverprofile=coverage-unit.out -covermode=atomic ./internal/...
+	@go test -v -cover -timeout=120s -parallel=10 -coverprofile=coverage-unit.out -covermode=atomic ./internal/... ./auth/...
 
 ## test-acc: Run acceptance tests (requires Workload Credentials instance)
 test-acc:

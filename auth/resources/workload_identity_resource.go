@@ -143,6 +143,9 @@ func (r *WorkloadIdentityResource) Schema(ctx context.Context, req resource.Sche
 				Description: "Free-form description. Updatable in place.",
 				Optional:    true,
 				Computed:    true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
 			},
 			"scope_level": schema.StringAttribute{
 				Description: "Scope level for the identity: 'site' or 'org'. Defaults to 'site'. Updatable in place.",
