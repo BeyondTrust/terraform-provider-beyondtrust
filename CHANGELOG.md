@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.2.0](https://github.com/BeyondTrust/terraform-provider-beyondtrust/compare/v1.1.1...v1.2.0) (2026-06-29)
+
+
+### Features
+
+* add beyondtrust_auth_workload_identity resource ([#81](https://github.com/BeyondTrust/terraform-provider-beyondtrust/issues/81)) ([8496b50](https://github.com/BeyondTrust/terraform-provider-beyondtrust/commit/8496b50fe5b1030c81cf05721797893a1856db67))
+
+
+### Bug Fixes
+
+* **deps:** bump golang.org/x/crypto ([#77](https://github.com/BeyondTrust/terraform-provider-beyondtrust/issues/77)) ([dfaf28b](https://github.com/BeyondTrust/terraform-provider-beyondtrust/commit/dfaf28ba0e3a2b6b62b2a9a327afb2f9a53c9c5c))
+* **deps:** bump golang.org/x/crypto in tools ([#79](https://github.com/BeyondTrust/terraform-provider-beyondtrust/issues/79)) ([03c7b85](https://github.com/BeyondTrust/terraform-provider-beyondtrust/commit/03c7b85021a5c0ec8e83a92c05237c7a7a4fb9e1))
+
 ## [1.1.1](https://github.com/BeyondTrust/terraform-provider-beyondtrust/compare/v1.1.0...v1.1.1) (2026-06-16)
 
 
