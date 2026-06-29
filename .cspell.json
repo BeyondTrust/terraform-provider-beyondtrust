@@ -78,6 +78,9 @@
         "policyArns",
         "awsTags",
         "AwsIntegrationConfig",
-        "buildVersionsList"
+        "buildVersionsList",
+        "myorg",
+        "myrepo",
+        "serviceaccount"
     ]
 }

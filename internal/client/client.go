@@ -17,6 +17,9 @@ import (
 // DefaultAPIVersion is the default API version header value
 const DefaultAPIVersion = "2026-04-28"
 
+// DefaultAPIURL is the public BeyondTrust API base URL, used when api_url is not set.
+const DefaultAPIURL = "https://api.beyondtrust.io"
+
 // Client is the BeyondTrust API client
 type Client struct {
 	BaseURL        string
@@ -158,6 +161,14 @@ func (c *Client) BuildPath(endpoint string) string {
 		return fmt.Sprintf("/site/%s/secrets%s", c.SiteID, endpoint)
 	}
 	return fmt.Sprintf("/site/%s/secrets/%s%s", c.SiteID, c.APIPathVersion, endpoint)
+}
+
+// BuildAuthPath constructs a path for the BeyondTrust auth service (workload identities).
+// Format: /site/{site-id}/platform/auth/endpoint
+// SiteID here is the operator's admin site — the site CRUD is performed against. The
+// site a workload identity grants access to is carried separately in the request body.
+func (c *Client) BuildAuthPath(endpoint string) string {
+	return fmt.Sprintf("/site/%s/platform/auth%s", c.SiteID, endpoint)
 }
 
 // ValidateSession validates the access token by calling GET /session.

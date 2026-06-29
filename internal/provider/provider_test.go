@@ -118,12 +118,12 @@ func TestProviderConfigure_EnvVarPrecedence(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "missing api_url",
+			name: "missing api_url defaults to public endpoint",
 			envVars: map[string]string{
 				"BEYONDTRUST_ACCESS_TOKEN": "env-token",
 				"BEYONDTRUST_SITE_ID":      "env-site-123",
 			},
-			wantErr: true,
+			wantErr: false,
 		},
 		{
 			name: "missing access_token",

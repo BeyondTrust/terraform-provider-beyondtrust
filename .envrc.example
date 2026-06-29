@@ -16,6 +16,12 @@ export BEYONDTRUST_API_URL="https://api.beyondtrust.io"
 export BEYONDTRUST_ACCESS_TOKEN="your-access-token-here"
 export BEYONDTRUST_SITE_ID="your-site-uuid"
 
+# Required for Workload Identity (auth) acceptance tests — these manage resources
+# against the org's ADMIN site, which has its own dedicated credentials (a token is
+# scoped to a single site). When unset, the workload-identity acceptance tests are skipped.
+export BEYONDTRUST_ADMIN_SITE_ID="your-admin-site-uuid"
+export BEYONDTRUST_ADMIN_ACCESS_TOKEN="your-admin-site-access-token"
+
 # Required for AWS Integration Tests
 export BEYONDTRUST_TEST_AWS_ROLE_ARN="arn:aws:iam::123456789012:role/staging-test-role"
 export BEYONDTRUST_TEST_AWS_ROLE_ARN_2="arn:aws:iam::123456789012:role/second-staging-test-role"
