@@ -1,15 +1,17 @@
 package acctest
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
 	"testing"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/iam"
-	"github.com/aws/aws-sdk-go/service/sts"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/iam"
+	iamtypes "github.com/aws/aws-sdk-go-v2/service/iam/types"
+	"github.com/aws/aws-sdk-go-v2/service/sts"
 )
 
 // AWSTestRole represents a test IAM role for BeyondTrust acceptance tests
@@ -17,35 +19,33 @@ type AWSTestRole struct {
 	RoleARN    string
 	ExternalID string
 	RoleName   string
-	iamClient  *iam.IAM
+	iamClient  *iam.Client
 }
 
-// GetAWSSession creates an AWS session using default credential chain
+// GetAWSConfig loads AWS config using the default credential chain.
 // This respects AWS_PROFILE, ~/.aws/credentials, instance profiles, etc.
-func GetAWSSession(t *testing.T) *session.Session {
+func GetAWSConfig(t *testing.T) aws.Config {
 	t.Helper()
 
-	sess, err := session.NewSessionWithOptions(session.Options{
-		SharedConfigState: session.SharedConfigEnable,
-	})
+	cfg, err := config.LoadDefaultConfig(context.TODO())
 	if err != nil {
-		t.Fatalf("Failed to create AWS session: %v", err)
+		t.Fatalf("Failed to load AWS config: %v", err)
 	}
 
-	return sess
+	return cfg
 }
 
 // GetAWSAccountID gets the current AWS account ID using STS GetCallerIdentity
-func GetAWSAccountID(t *testing.T, sess *session.Session) string {
+func GetAWSAccountID(t *testing.T, cfg aws.Config) string {
 	t.Helper()
 
-	stsClient := sts.New(sess)
-	result, err := stsClient.GetCallerIdentity(&sts.GetCallerIdentityInput{})
+	stsClient := sts.NewFromConfig(cfg)
+	result, err := stsClient.GetCallerIdentity(context.TODO(), &sts.GetCallerIdentityInput{})
 	if err != nil {
 		t.Fatalf("Failed to get AWS account ID: %v", err)
 	}
 
-	return aws.StringValue(result.Account)
+	return aws.ToString(result.Account)
 }
 
 // GetOrGenerateExternalID gets external ID from env or generates a new one
@@ -83,8 +83,8 @@ func GetBeyondTrustAWSAccountID(t *testing.T) string {
 func CreateTestIAMRole(t *testing.T, roleName string) *AWSTestRole {
 	t.Helper()
 
-	sess := GetAWSSession(t)
-	iamClient := iam.New(sess)
+	cfg := GetAWSConfig(t)
+	iamClient := iam.NewFromConfig(cfg)
 
 	// Get BeyondTrust's AWS account ID for trust policy
 	beyondTrustAccountID := GetBeyondTrustAWSAccountID(t)
@@ -118,11 +118,11 @@ func CreateTestIAMRole(t *testing.T, roleName string) *AWSTestRole {
 
 	// Create the IAM role
 	t.Logf("Creating IAM role: %s", roleName)
-	createRoleOutput, err := iamClient.CreateRole(&iam.CreateRoleInput{
+	createRoleOutput, err := iamClient.CreateRole(context.TODO(), &iam.CreateRoleInput{
 		RoleName:                 aws.String(roleName),
 		AssumeRolePolicyDocument: aws.String(string(trustPolicyJSON)),
 		Description:              aws.String("Test role for BeyondTrust Terraform provider acceptance tests"),
-		Tags: []*iam.Tag{
+		Tags: []iamtypes.Tag{
 			{Key: aws.String("Purpose"), Value: aws.String("TerraformProviderTesting")},
 			{Key: aws.String("ManagedBy"), Value: aws.String("GoTest")},
 		},
@@ -131,7 +131,7 @@ func CreateTestIAMRole(t *testing.T, roleName string) *AWSTestRole {
 		t.Fatalf("Failed to create IAM role: %v", err)
 	}
 
-	roleARN := aws.StringValue(createRoleOutput.Role.Arn)
+	roleARN := aws.ToString(createRoleOutput.Role.Arn)
 	t.Logf("Created IAM role: %s", roleARN)
 
 	// Attach minimal test policy
@@ -156,14 +156,14 @@ func CreateTestIAMRole(t *testing.T, roleName string) *AWSTestRole {
 		t.Fatalf("Failed to marshal test policy: %v", err)
 	}
 
-	_, err = iamClient.PutRolePolicy(&iam.PutRolePolicyInput{
+	_, err = iamClient.PutRolePolicy(context.TODO(), &iam.PutRolePolicyInput{
 		RoleName:       aws.String(roleName),
 		PolicyName:     aws.String("tf-acc-test-policy"),
 		PolicyDocument: aws.String(string(testPolicyJSON)),
 	})
 	if err != nil {
 		// Clean up role if policy attachment fails
-		_, _ = iamClient.DeleteRole(&iam.DeleteRoleInput{
+		_, _ = iamClient.DeleteRole(context.TODO(), &iam.DeleteRoleInput{
 			RoleName: aws.String(roleName),
 		})
 		t.Fatalf("Failed to attach policy to role: %v", err)
@@ -184,7 +184,7 @@ func (r *AWSTestRole) Cleanup(t *testing.T) {
 	t.Logf("Cleaning up IAM role: %s", r.RoleName)
 
 	// Delete inline policies first
-	_, err := r.iamClient.DeleteRolePolicy(&iam.DeleteRolePolicyInput{
+	_, err := r.iamClient.DeleteRolePolicy(context.TODO(), &iam.DeleteRolePolicyInput{
 		RoleName:   aws.String(r.RoleName),
 		PolicyName: aws.String("tf-acc-test-policy"),
 	})
@@ -193,7 +193,7 @@ func (r *AWSTestRole) Cleanup(t *testing.T) {
 	}
 
 	// Delete the role
-	_, err = r.iamClient.DeleteRole(&iam.DeleteRoleInput{
+	_, err = r.iamClient.DeleteRole(context.TODO(), &iam.DeleteRoleInput{
 		RoleName: aws.String(r.RoleName),
 	})
 	if err != nil {
