@@ -40,8 +40,9 @@ jobs:
     environment: acceptance-tests
     permissions:
       contents: read
-      id-token: write  # Required for GitHub OIDC
-    # Skip on fork/Dependabot PRs, which can't access environment secrets or OIDC.
+      id-token: write # Required for GitHub OIDC
+    # OIDC and the test-environment secrets are unavailable to fork and Dependabot
+    # PRs; push-to-main runs always have them.
     if: >-
       github.event_name != 'pull_request' ||
       (github.actor != 'dependabot[bot]' &&
@@ -74,6 +75,7 @@ jobs:
           BEYONDTRUST_SERVICE_NAME: ${{ secrets.BEYONDTRUST_SERVICE_NAME }}
           BEYONDTRUST_TEST_AWS_ROLE_ARN: ${{ secrets.BEYONDTRUST_TEST_AWS_ROLE_ARN }}
           BEYONDTRUST_TEST_AWS_ROLE_ARN_2: ${{ secrets.BEYONDTRUST_TEST_AWS_ROLE_ARN_2 }}
+          BEYONDTRUST_TEST_AWS_TARGET_ROLE_ARN: ${{ secrets.BEYONDTRUST_TEST_AWS_TARGET_ROLE_ARN }}
           TF_ACC: "1"
 
   acceptance-tests-admin:
