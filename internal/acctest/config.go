@@ -17,6 +17,14 @@ const (
 	EnvAWSAccountID         = "BEYONDTRUST_AWS_ACCOUNT_ID"
 )
 
+// Environment variable names for admin-site acceptance tests (workload identities).
+// Those endpoints require an org-admin caller operating against the org's admin site,
+// which is a different site than the normal (secrets) tests use.
+const (
+	EnvAdminSiteID      = "BEYONDTRUST_ADMIN_SITE_ID"
+	EnvAdminAccessToken = "BEYONDTRUST_ADMIN_ACCESS_TOKEN"
+)
+
 // TestConfig holds configuration for acceptance tests
 type TestConfig struct {
 	APIURL      string `json:"api_url"`
@@ -37,6 +45,11 @@ func LoadTestConfig() (*TestConfig, error) {
 	// Set default API version if not specified
 	if cfg.APIVersion == "" {
 		cfg.APIVersion = client.DefaultAPIVersion
+	}
+
+	// api_url defaults to the public endpoint; override via env for GovCloud/other.
+	if cfg.APIURL == "" {
+		cfg.APIURL = client.DefaultAPIURL
 	}
 
 	// Validate required fields
@@ -76,6 +89,33 @@ provider "beyondtrust" {
 
 	config += "}\n"
 	return config
+}
+
+// LoadAdminTestConfig loads configuration for admin-site acceptance tests (workload
+// identities). Those run against the org's admin site, which has its own dedicated
+// credentials, so they require BEYONDTRUST_ADMIN_SITE_ID and BEYONDTRUST_ADMIN_ACCESS_TOKEN.
+// The base/normal-site site id and token are not used (only the shared API URL/version are).
+func LoadAdminTestConfig() (*TestConfig, error) {
+	cfg := &TestConfig{
+		APIURL:      os.Getenv(constants.EnvAPIURL),
+		SiteID:      os.Getenv(EnvAdminSiteID),
+		AccessToken: os.Getenv(EnvAdminAccessToken),
+		APIVersion:  os.Getenv(constants.EnvAPIVersion),
+	}
+	if cfg.APIVersion == "" {
+		cfg.APIVersion = client.DefaultAPIVersion
+	}
+
+	if cfg.APIURL == "" {
+		cfg.APIURL = client.DefaultAPIURL
+	}
+	if cfg.SiteID == "" {
+		return nil, fmt.Errorf("%s is required", EnvAdminSiteID)
+	}
+	if cfg.AccessToken == "" {
+		return nil, fmt.Errorf("%s is required", EnvAdminAccessToken)
+	}
+	return cfg, nil
 }
 
 // NewTestClient creates a new API client for acceptance testing.

@@ -55,6 +55,18 @@ func PreCheckAWS(t *testing.T) {
 	}
 }
 
+// PreCheckAdmin validates that admin-site credentials are available, skipping otherwise.
+// Workload-identity endpoints require an org-admin caller operating against the org's admin
+// site, which has its own dedicated credentials (a token is scoped to a single site), so both
+// the admin site id and admin token are required in addition to the base env.
+func PreCheckAdmin(t *testing.T) {
+	t.Helper()
+
+	if _, err := LoadAdminTestConfig(); err != nil {
+		t.Skipf("workload-identity (admin-site) acceptance tests skipped: %v\n\nSet: %s, %s, %s", err, constants.EnvAPIURL, EnvAdminSiteID, EnvAdminAccessToken)
+	}
+}
+
 // GetAWSRoleARN returns the AWS role ARN for testing
 func GetAWSRoleARN(t *testing.T) string {
 	t.Helper()
