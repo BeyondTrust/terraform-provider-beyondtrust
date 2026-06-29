@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.1](https://github.com/BeyondTrust/terraform-provider-beyondtrust/compare/v1.2.0...v1.2.1) (2026-06-29)
+
+
+### Bug Fixes
+
+* pass BEYONDTRUST_TEST_AWS_TARGET_ROLE_ARN secret to acceptance tests ([#82](https://github.com/BeyondTrust/terraform-provider-beyondtrust/issues/82)) ([f17e724](https://github.com/BeyondTrust/terraform-provider-beyondtrust/commit/f17e724e6b02579985ba394515e0501f8180ab0e))
+
 ## [1.2.0](https://github.com/BeyondTrust/terraform-provider-beyondtrust/compare/v1.1.1...v1.2.0) (2026-06-29)
 
 
