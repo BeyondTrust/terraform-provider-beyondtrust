@@ -56,8 +56,8 @@ type AzureIntegrationCreateRequest struct {
 
 // AzureIntegrationResponse represents the API response for an integration
 type AzureIntegrationResponse struct {
-	Name     string                `json:"name"`
-	Type     string                `json:"type"`
+	Name     string                 `json:"name"`
+	Type     string                 `json:"type"`
 	Config   AzureIntegrationConfig `json:"config"`
 	Metadata struct {
 		ID        string `json:"id"`

@@ -39,8 +39,8 @@ type AzureIntegrationDataSourceModel struct {
 // AzureIntegrationDataSourceResponse represents the API response.
 // clientSecret is intentionally absent — the API never returns it.
 type AzureIntegrationDataSourceResponse struct {
-	Name     string                        `json:"name"`
-	Type     string                        `json:"type"`
+	Name     string                           `json:"name"`
+	Type     string                           `json:"type"`
 	Config   AzureIntegrationDataSourceConfig `json:"config"`
 	Metadata struct {
 		ID        string `json:"id"`

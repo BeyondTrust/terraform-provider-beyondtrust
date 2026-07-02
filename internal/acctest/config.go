@@ -19,10 +19,10 @@ const (
 
 // Environment variable names for Azure-specific acceptance tests
 const (
-	EnvTestAzureTenantID    = "BEYONDTRUST_TEST_AZURE_TENANT_ID"
-	EnvTestAzureClientID    = "BEYONDTRUST_TEST_AZURE_CLIENT_ID"
+	EnvTestAzureTenantID     = "BEYONDTRUST_TEST_AZURE_TENANT_ID"
+	EnvTestAzureClientID     = "BEYONDTRUST_TEST_AZURE_CLIENT_ID"
 	EnvTestAzureClientSecret = "BEYONDTRUST_TEST_AZURE_CLIENT_SECRET"
-	EnvTestAzureAppObjectID = "BEYONDTRUST_TEST_AZURE_APPLICATION_OBJECT_ID"
+	EnvTestAzureAppObjectID  = "BEYONDTRUST_TEST_AZURE_APPLICATION_OBJECT_ID"
 )
 
 // Environment variable names for admin-site acceptance tests (workload identities).
