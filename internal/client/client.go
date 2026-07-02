@@ -102,6 +102,11 @@ func (e *APIError) IsAWSCredentialValidationError() bool {
 		strings.Contains(strings.ToLower(e.Message), "failed to validate aws integration credentials")
 }
 
+// IsAzureCredentialValidationError returns true if the error is an Azure credential validation failure
+func (e *APIError) IsAzureCredentialValidationError() bool {
+	return e.Code == "azure_integration_test_failed"
+}
+
 // NewClient creates a new BeyondTrust API client
 func NewClient(cfg *Config) (*Client, error) {
 	timeout, err := time.ParseDuration(cfg.Timeout)

@@ -17,6 +17,14 @@ const (
 	EnvAWSAccountID         = "BEYONDTRUST_AWS_ACCOUNT_ID"
 )
 
+// Environment variable names for Azure-specific acceptance tests
+const (
+	EnvTestAzureTenantID    = "BEYONDTRUST_TEST_AZURE_TENANT_ID"
+	EnvTestAzureClientID    = "BEYONDTRUST_TEST_AZURE_CLIENT_ID"
+	EnvTestAzureClientSecret = "BEYONDTRUST_TEST_AZURE_CLIENT_SECRET"
+	EnvTestAzureAppObjectID = "BEYONDTRUST_TEST_AZURE_APPLICATION_OBJECT_ID"
+)
+
 // Environment variable names for admin-site acceptance tests (workload identities).
 // Those endpoints require an org-admin caller operating against the org's admin site,
 // which is a different site than the normal (secrets) tests use.

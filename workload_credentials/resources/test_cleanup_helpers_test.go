@@ -145,6 +145,87 @@ func registerFolderCleanup(t *testing.T, name, folder string) {
 	})
 }
 
+// registerAzureIntegrationCleanup registers a cleanup function that attempts to delete
+// an Azure integration via API if Terraform's destroy somehow failed.
+func registerAzureIntegrationCleanup(t *testing.T, name string) {
+	t.Cleanup(func() {
+		if t.Skipped() {
+			return
+		}
+
+		client, err := acctest.NewTestClient()
+		if err != nil {
+			t.Logf("Cleanup: failed to create client: %v", err)
+			return
+		}
+
+		apiPath := client.BuildPath(fmt.Sprintf("/integrations/azure/%s", name))
+		err = client.Delete(context.Background(), apiPath, nil)
+
+		if err == nil {
+			t.Logf("WARNING: Cleanup deleted Azure integration %s (Terraform destroy didn't work)", name)
+			return
+		}
+
+		var apiErr *btclient.APIError
+		if errors.As(err, &apiErr) {
+			if apiErr.IsGone() {
+				return
+			}
+			if apiErr.IsPermissionError() {
+				t.Logf("Cleanup: skipping Azure integration %s due to permission error (already deleted or no access)", name)
+				return
+			}
+		}
+
+		t.Logf("Cleanup: unexpected error deleting Azure integration %s: %v", name, err)
+	})
+}
+
+// registerAzureDynamicSecretCleanup registers a cleanup function that attempts to delete
+// an Azure dynamic secret via API if Terraform's destroy somehow failed.
+func registerAzureDynamicSecretCleanup(t *testing.T, path string) {
+	t.Cleanup(func() {
+		if t.Skipped() {
+			return
+		}
+
+		client, err := acctest.NewTestClient()
+		if err != nil {
+			t.Logf("Cleanup: failed to create client: %v", err)
+			return
+		}
+
+		name := path
+		query := url.Values{}
+		if i := strings.LastIndex(path, "/"); i >= 0 {
+			query.Set("folder", path[:i])
+			name = path[i+1:]
+		}
+		query.Set("permanent", "true")
+		apiPath := client.BuildPath(fmt.Sprintf("/dynamic/%s", name))
+		err = client.Delete(context.Background(), apiPath, query)
+
+		if err == nil {
+			t.Logf("WARNING: Cleanup deleted Azure dynamic secret %s (Terraform destroy didn't work)", path)
+			return
+		}
+
+		var apiErr *btclient.APIError
+		if errors.As(err, &apiErr) {
+			if apiErr.IsGone() {
+				return
+			}
+			if apiErr.IsPermissionError() {
+				t.Logf("Cleanup: skipping Azure dynamic secret %s due to permission error (already deleted or no access)", path)
+				return
+			}
+		}
+
+		t.Logf("Cleanup: unexpected error deleting Azure dynamic secret %s: %v", path, err)
+	})
+}
+
 // registerStaticSecretCleanup registers a cleanup function that attempts to delete
 // a static secret via API if Terraform's destroy somehow failed.
 func registerStaticSecretCleanup(t *testing.T, name, folder string) {
