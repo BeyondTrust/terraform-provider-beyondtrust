@@ -9,7 +9,7 @@ Unlike the AWS tests (which auto-create and clean up IAM roles), Azure tests req
 The Azure integration requires two separate Azure AD objects with different roles:
 
 | Object | Purpose | Env var used |
-|---|---|---|
+| --- | --- | --- |
 | **Integration service principal** | What BeyondTrust authenticates as when connecting to Azure | `TENANT_ID`, `CLIENT_ID`, `CLIENT_SECRET` |
 | **Target app registration** | The app whose passwords BeyondTrust generates | `APPLICATION_OBJECT_ID` |
 
@@ -243,7 +243,7 @@ az ad app delete --id "$TARGET_OBJECT_ID"
 ## Environment Variables Reference
 
 | Variable | Required | Description |
-|---|---|---|
+| --- | --- | --- |
 | `BEYONDTRUST_TEST_AZURE_TENANT_ID` | Yes | Azure AD directory (tenant) UUID |
 | `BEYONDTRUST_TEST_AZURE_CLIENT_ID` | Yes | Application (client) ID of the integration service principal |
 | `BEYONDTRUST_TEST_AZURE_CLIENT_SECRET` | Yes | Client secret for the integration service principal |
