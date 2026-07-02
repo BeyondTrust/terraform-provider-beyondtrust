@@ -204,6 +204,11 @@ Type `yes` to confirm deletion.
 - [AWS Integration Resource](https://registry.terraform.io/providers/beyondtrust/beyondtrust/latest/docs/resources/workload_credentials_aws_integration) - Reference documentation
 - [AWS Dynamic Secrets](https://registry.terraform.io/providers/beyondtrust/beyondtrust/latest/docs/resources/workload_credentials_aws_dynamic_secret) - Generate temporary AWS credentials
 
+### Azure Integration
+
+- [Azure Integration Resource](https://registry.terraform.io/providers/beyondtrust/beyondtrust/latest/docs/resources/workload_credentials_azure_integration) - Reference documentation
+- [Azure Dynamic Secrets](https://registry.terraform.io/providers/beyondtrust/beyondtrust/latest/docs/resources/workload_credentials_azure_dynamic_secret) - Generate temporary Azure service principal credentials
+
 ### Advanced Topics
 
 - **Import Existing Resources**: See import examples in each resource documentation
