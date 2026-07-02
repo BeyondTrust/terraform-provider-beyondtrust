@@ -107,8 +107,8 @@ type DynamicSecretConfig struct {
 // field from Terraform config actually clears it on the server.
 type AwsDynamicSecretUpdateRequest struct {
 	Type       string              `json:"type"`
-	RoleArn    *string             `json:"roleArn"`
-	TTL        *int64              `json:"ttl"`
+	RoleArn    *string             `json:"roleArn,omitempty"` // required; omitempty so nil omits, not nulls, the field
+	TTL        *int64              `json:"ttl,omitempty"`     // required; same rationale
 	ExternalId *string             `json:"externalId"`
 	PolicyArns *[]string           `json:"policyArns"`
 	Policy     *string             `json:"policy"`
