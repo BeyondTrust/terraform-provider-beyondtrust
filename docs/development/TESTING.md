@@ -53,7 +53,6 @@ Workload Credentials is part of the BeyondTrust Pathfinder platform:
 #### Required Environment Variables
 
 ```bash
-export BEYONDTRUST_API_URL="https://api.beyondtrust.io"
 export BEYONDTRUST_ACCESS_TOKEN="your-access-token"
 export BEYONDTRUST_SITE_ID="your-site-uuid"
 ```
@@ -61,6 +60,7 @@ export BEYONDTRUST_SITE_ID="your-site-uuid"
 #### Optional Environment Variables
 
 ```bash
+export BEYONDTRUST_API_URL="https://api.beyondtrust.io"  # defaults to this; override for GovCloud or other deployments
 export BEYONDTRUST_API_VERSION="2026-04-28"
 export BEYONDTRUST_TEST_AWS_ROLE_ARN="arn:aws:iam::123456789012:role/test-role"
 export BEYONDTRUST_TEST_AWS_ROLE_ARN_2="arn:aws:iam::123456789012:role/test-role-2"

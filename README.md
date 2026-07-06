@@ -69,7 +69,6 @@ terraform {
 Configure authentication using environment variables:
 
 ```bash
-export BEYONDTRUST_API_URL="https://api.beyondtrust.io"
 export BEYONDTRUST_ACCESS_TOKEN="your-access-token"
 export BEYONDTRUST_SITE_ID="your-site-id"
 ```
@@ -81,7 +80,6 @@ Use the provider in your Terraform configuration:
 ```terraform
 provider "beyondtrust" {
   # Configuration will be read from environment variables:
-  # - BEYONDTRUST_API_URL
   # - BEYONDTRUST_ACCESS_TOKEN
   # - BEYONDTRUST_SITE_ID
 }
