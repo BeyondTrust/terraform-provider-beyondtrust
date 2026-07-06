@@ -112,7 +112,6 @@ az rest --method POST \
 Add all four Azure env vars alongside the base BeyondTrust credentials:
 
 ```bash
-export BEYONDTRUST_API_URL="https://api.beyondtrust.io"
 export BEYONDTRUST_ACCESS_TOKEN="your-access-token"
 export BEYONDTRUST_SITE_ID="your-site-uuid"
 
