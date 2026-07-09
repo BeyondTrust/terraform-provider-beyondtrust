@@ -12,6 +12,15 @@ Manages an Azure dynamic secret configuration in BeyondTrust Workload Credential
 ## Example Usage
 
 ```terraform
+# Azure integration (required prerequisite for dynamic secrets)
+resource "beyondtrust_workload_credentials_azure_integration" "production" {
+  name                  = "production-azure"
+  tenant_id             = "11111111-1111-1111-1111-111111111111"
+  client_id             = "22222222-2222-2222-2222-222222222222"
+  client_secret         = var.azure_client_secret  # Write-only; use client_secret_version to trigger rotation
+  client_secret_version = 1
+}
+
 # Azure dynamic secret — generates temporary service principal passwords
 resource "beyondtrust_workload_credentials_azure_dynamic_secret" "app_creds" {
   name             = "my-app-credentials"
@@ -19,7 +28,7 @@ resource "beyondtrust_workload_credentials_azure_dynamic_secret" "app_creds" {
   integration_name = beyondtrust_workload_credentials_azure_integration.production.name
 
   credential_type       = "service_principal_password"
-  application_object_id = "22222222-2222-2222-2222-222222222222"  # Object ID of the target app registration
+  application_object_id = "33333333-3333-3333-3333-333333333333"  # Object ID of the target app registration
   ttl                   = 3600  # 1 hour (valid range: 3600–86400)
 }
 
@@ -29,7 +38,7 @@ resource "beyondtrust_workload_credentials_azure_dynamic_secret" "admin_creds" {
   integration_name = beyondtrust_workload_credentials_azure_integration.production.name
 
   credential_type       = "service_principal_password"
-  application_object_id = "33333333-3333-3333-3333-333333333333"
+  application_object_id = "44444444-4444-4444-4444-444444444444"
   ttl                   = 86400  # 24 hours (maximum)
 }
 ```
@@ -63,11 +72,13 @@ resource "beyondtrust_workload_credentials_azure_dynamic_secret" "admin_creds" {
 
 Import is supported using the following syntax:
 
+Import requires the integration name because the API does not return it on read. Use the format `integration-name:[folder/]secret-name`:
+
 ```shell
 #!/bin/bash
 # Import a root-level dynamic secret
-terraform import beyondtrust_workload_credentials_azure_dynamic_secret.app_creds my-app-credentials
+terraform import beyondtrust_workload_credentials_azure_dynamic_secret.app_creds production-azure:my-app-credentials
 
-# Import a dynamic secret in a folder (use full path)
-terraform import beyondtrust_workload_credentials_azure_dynamic_secret.app_creds production/azure/my-app-credentials
+# Import a dynamic secret in a folder (use full path after the colon)
+terraform import beyondtrust_workload_credentials_azure_dynamic_secret.app_creds production-azure:production/azure/my-app-credentials
 ```
