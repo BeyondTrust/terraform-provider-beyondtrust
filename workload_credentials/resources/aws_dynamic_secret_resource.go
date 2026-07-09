@@ -655,10 +655,18 @@ func (r *AwsDynamicSecretResource) Delete(ctx context.Context, req resource.Dele
 }
 
 func (r *AwsDynamicSecretResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
-	// Import format: "path/to/dynamic-secret" or "secret-name"
-	fullPath := req.ID
+	colonIdx := strings.Index(req.ID, ":")
+	if colonIdx < 0 {
+		resp.Diagnostics.AddError(
+			"Invalid Import ID",
+			fmt.Sprintf("Import ID %q must be in the format \"integration-name:[folder/]secret-name\". The integration name is required because the API does not return it on read.", req.ID),
+		)
+		return
+	}
 
-	// Split the path into name and parent folder
+	integrationName := req.ID[:colonIdx]
+	fullPath := req.ID[colonIdx+1:]
+
 	parts := strings.Split(fullPath, "/")
 	name := parts[len(parts)-1]
 	var parentFolder string
@@ -667,10 +675,17 @@ func (r *AwsDynamicSecretResource) ImportState(ctx context.Context, req resource
 		parentFolder = strings.Join(parts[:len(parts)-1], "/")
 	}
 
+	if !validators.IsValidResourceName(integrationName) {
+		resp.Diagnostics.AddError(
+			"Invalid Import ID",
+			fmt.Sprintf("Integration name %q parsed from import ID is invalid. Must match: ^[a-zA-Z0-9\\-_@~\\*\\^]{1,130}$", integrationName),
+		)
+		return
+	}
 	if !validators.IsValidResourceName(name) {
 		resp.Diagnostics.AddError(
 			"Invalid Import ID",
-			fmt.Sprintf("Name %q parsed from import ID is invalid. Must match: ^[a-zA-Z0-9\\-_@~\\*\\^]{1,130}$", name),
+			fmt.Sprintf("Secret name %q parsed from import ID is invalid. Must match: ^[a-zA-Z0-9\\-_@~\\*\\^]{1,130}$", name),
 		)
 		return
 	}
@@ -682,6 +697,7 @@ func (r *AwsDynamicSecretResource) ImportState(ctx context.Context, req resource
 		return
 	}
 
+	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("integration_name"), integrationName)...)
 	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("name"), name)...)
 	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("path"), fullPath)...)
 

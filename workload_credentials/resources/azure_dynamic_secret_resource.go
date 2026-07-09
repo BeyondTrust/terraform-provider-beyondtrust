@@ -308,6 +308,14 @@ func (r *AzureDynamicSecretResource) Read(ctx context.Context, req resource.Read
 		return
 	}
 
+	if secretResp.Config.Type != "azure" {
+		resp.Diagnostics.AddError(
+			"Unexpected Dynamic Secret Type",
+			fmt.Sprintf("Dynamic secret '%s' has type %q, expected \"azure\". This resource only manages Azure dynamic secrets.", name, secretResp.Config.Type),
+		)
+		return
+	}
+
 	data.ID = types.StringValue(secretResp.Metadata.ID)
 	data.Path = types.StringValue(secretResp.Path)
 	data.CreatedAt = types.StringValue(secretResp.Metadata.CreatedAt)
@@ -441,8 +449,24 @@ func (r *AzureDynamicSecretResource) Delete(ctx context.Context, req resource.De
 	}
 }
 
+// validateAzureTTL validates TTL for Azure dynamic secrets.
+// Valid range: 3600-86400 seconds (1 hour - 24 hours)
+func validateAzureTTL(ttl int64) bool {
+	return ttl >= 3600 && ttl <= 86400
+}
+
 func (r *AzureDynamicSecretResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
-	fullPath := req.ID
+	colonIdx := strings.Index(req.ID, ":")
+	if colonIdx < 0 {
+		resp.Diagnostics.AddError(
+			"Invalid Import ID",
+			fmt.Sprintf("Import ID %q must be in the format \"integration-name:[folder/]secret-name\". The integration name is required because the API does not return it on read.", req.ID),
+		)
+		return
+	}
+
+	integrationName := req.ID[:colonIdx]
+	fullPath := req.ID[colonIdx+1:]
 
 	parts := strings.Split(fullPath, "/")
 	name := parts[len(parts)-1]
@@ -452,10 +476,17 @@ func (r *AzureDynamicSecretResource) ImportState(ctx context.Context, req resour
 		parentFolder = strings.Join(parts[:len(parts)-1], "/")
 	}
 
+	if !validators.IsValidResourceName(integrationName) {
+		resp.Diagnostics.AddError(
+			"Invalid Import ID",
+			fmt.Sprintf("Integration name %q parsed from import ID is invalid. Must match: ^[a-zA-Z0-9\\-_@~\\*\\^]{1,130}$", integrationName),
+		)
+		return
+	}
 	if !validators.IsValidResourceName(name) {
 		resp.Diagnostics.AddError(
 			"Invalid Import ID",
-			fmt.Sprintf("Name %q parsed from import ID is invalid. Must match: ^[a-zA-Z0-9\\-_@~\\*\\^]{1,130}$", name),
+			fmt.Sprintf("Secret name %q parsed from import ID is invalid. Must match: ^[a-zA-Z0-9\\-_@~\\*\\^]{1,130}$", name),
 		)
 		return
 	}
@@ -467,6 +498,7 @@ func (r *AzureDynamicSecretResource) ImportState(ctx context.Context, req resour
 		return
 	}
 
+	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("integration_name"), integrationName)...)
 	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("name"), name)...)
 	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("path"), fullPath)...)
 
