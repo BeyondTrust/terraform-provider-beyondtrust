@@ -119,6 +119,7 @@ func (r *AzureIntegrationResource) Schema(ctx context.Context, req resource.Sche
 			"client_secret": schema.StringAttribute{
 				Description: "The Azure Active Directory application client secret. Write-only — not stored in Terraform state and never returned by the API. Increment client_secret_version to trigger rotation.",
 				Required:    true,
+				Sensitive:   true,
 				WriteOnly:   true,
 			},
 			"client_secret_version": schema.Int64Attribute{
