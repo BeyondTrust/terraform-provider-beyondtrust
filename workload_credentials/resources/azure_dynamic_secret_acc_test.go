@@ -49,7 +49,7 @@ func TestAccAzureDynamicSecretResource_basic(t *testing.T) {
 					resource.TestCheckResourceAttrSet("beyondtrust_workload_credentials_azure_dynamic_secret.test", "created_at"),
 				),
 			},
-			// ImportState testing — import by path
+			// ImportState testing — import by "integration-name:path"
 			{
 				ResourceName:      "beyondtrust_workload_credentials_azure_dynamic_secret.test",
 				ImportState:       true,
@@ -59,14 +59,14 @@ func TestAccAzureDynamicSecretResource_basic(t *testing.T) {
 					if !ok {
 						return "", fmt.Errorf("resource not found in state")
 					}
-					p, ok := rs.Primary.Attributes["path"]
-					if !ok || p == "" {
-						return "", fmt.Errorf("resource has no path attribute in state")
+					intName := rs.Primary.Attributes["integration_name"]
+					p := rs.Primary.Attributes["path"]
+					if intName == "" || p == "" {
+						return "", fmt.Errorf("resource missing integration_name or path in state")
 					}
-					return p, nil
+					return intName + ":" + p, nil
 				},
-				// integration_name is not returned by GET; created_at precision differs
-				ImportStateVerifyIgnore: []string{"integration_name", "created_at"},
+				ImportStateVerifyIgnore: []string{"created_at"},
 			},
 		},
 	})
