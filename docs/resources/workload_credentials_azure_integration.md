@@ -11,27 +11,22 @@ Manages an Azure integration in BeyondTrust Workload Credentials. This integrati
 
 ## Example Usage
 
-```terraform
-# Azure Integration for dynamic credential generation
-resource "beyondtrust_workload_credentials_azure_integration" "production" {
-  name      = "production-azure"
-  tenant_id = "00000000-0000-0000-0000-000000000000"  # Your Azure AD tenant ID
-  client_id = "11111111-1111-1111-1111-111111111111"  # Service principal application (client) ID
+> For instructions on creating the Azure service principal and obtaining `tenant_id`, `client_id`, and `client_secret`, see [docs/TESTING_AZURE.md](../TESTING_AZURE.md).
 
-  # client_secret is write-only: store the value securely (e.g., in a secret manager or CI variable)
-  client_secret         = var.azure_client_secret
-  client_secret_version = 1  # Increment this when rotating the secret
+```terraform
+# client_secret is write-only — pass it via TF_VAR_azure_client_secret or a secrets manager
+variable "azure_client_secret" {
+  type      = string
+  sensitive = true
 }
 
-# Azure Dynamic Secret backed by the integration above
-resource "beyondtrust_workload_credentials_azure_dynamic_secret" "app_creds" {
-  name             = "my-app-credentials"
-  folder           = "production/azure"
-  integration_name = beyondtrust_workload_credentials_azure_integration.production.name
+resource "beyondtrust_workload_credentials_azure_integration" "production" {
+  name      = "production-azure"
+  tenant_id = "00000000-0000-0000-0000-000000000000"
+  client_id = "11111111-1111-1111-1111-111111111111"
 
-  credential_type      = "service_principal_password"
-  application_object_id = "22222222-2222-2222-2222-222222222222"  # Object ID of the target app registration
-  ttl                  = 3600  # 1 hour
+  client_secret         = var.azure_client_secret
+  client_secret_version = 1  # increment to rotate the secret
 }
 ```
 
