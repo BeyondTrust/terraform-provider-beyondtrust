@@ -394,6 +394,14 @@ func (r *AwsDynamicSecretResource) Read(ctx context.Context, req resource.ReadRe
 		return
 	}
 
+	if secretResp.Config.Type != "aws" {
+		resp.Diagnostics.AddError(
+			"Unexpected Dynamic Secret Type",
+			fmt.Sprintf("Dynamic secret '%s' has type %q, expected \"aws\". This resource only manages AWS dynamic secrets.", name, secretResp.Config.Type),
+		)
+		return
+	}
+
 	// Update state with response data
 	data.ID = types.StringValue(secretResp.Metadata.ID)
 	data.Path = types.StringValue(secretResp.Path)
