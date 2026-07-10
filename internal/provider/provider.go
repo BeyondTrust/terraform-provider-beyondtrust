@@ -233,6 +233,8 @@ func (p *BeyondTrustProvider) Resources(ctx context.Context) []func() resource.R
 		resources.NewStaticSecretResource,
 		resources.NewAwsIntegrationResource,
 		resources.NewAwsDynamicSecretResource,
+		resources.NewAzureIntegrationResource,
+		resources.NewAzureDynamicSecretResource,
 		authresources.NewWorkloadIdentityResource,
 	}
 }
@@ -240,6 +242,7 @@ func (p *BeyondTrustProvider) Resources(ctx context.Context) []func() resource.R
 func (p *BeyondTrustProvider) DataSources(ctx context.Context) []func() datasource.DataSource {
 	return []func() datasource.DataSource{
 		datasources.NewAwsIntegrationDataSource,
+		datasources.NewAzureIntegrationDataSource,
 		// NewAwsDynamicSecretDataSource,
 		// NewLeaseDataSource,
 	}

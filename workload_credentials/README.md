@@ -19,7 +19,8 @@ Workload Credentials enables:
 * **Secret Management** - Create and manage static secrets with ephemeral access (never stored in state)
 * **Folder Organization** - Organize secrets into a hierarchical folder structure
 * **AWS Integration** - Configure AWS integrations for dynamic credential generation
-* **Dynamic Secrets** - Provision short-lived AWS credentials on-demand for specific roles
+* **Azure Integration** - Configure Azure integrations for dynamic service principal credential generation
+* **Dynamic Secrets** - Provision short-lived AWS or Azure credentials on-demand
 * **Credential Rotation** - Leverage automatic credential rotation and lifecycle management
 * **Access Control** - Manage tags and metadata for access policies
 
@@ -73,6 +74,8 @@ provider "beyondtrust" {
 - `beyondtrust_workload_credentials_static_secret` - Manage static secrets (write-only, use ephemeral to read)
 - `beyondtrust_workload_credentials_aws_integration` - Manage AWS integrations for dynamic credentials
 - `beyondtrust_workload_credentials_aws_dynamic_secret` - Configure AWS dynamic secret templates
+- `beyondtrust_workload_credentials_azure_integration` - Manage Azure integrations for dynamic credentials
+- `beyondtrust_workload_credentials_azure_dynamic_secret` - Configure Azure dynamic secret templates
 
 ### Ephemeral Resources
 
@@ -81,6 +84,7 @@ provider "beyondtrust" {
 ### Data Sources
 
 - `beyondtrust_workload_credentials_aws_integration` - Read AWS integration details
+- `beyondtrust_workload_credentials_azure_integration` - Read Azure integration details
 
 ## Example Usage
 
@@ -144,6 +148,29 @@ resource "beyondtrust_workload_credentials_aws_dynamic_secret" "readonly" {
 }
 ```
 
+### Azure Dynamic Credentials
+
+```terraform
+# Create Azure integration
+resource "beyondtrust_workload_credentials_azure_integration" "main" {
+  name                  = "production-azure"
+  tenant_id             = "00000000-0000-0000-0000-000000000000"
+  client_id             = "11111111-1111-1111-1111-111111111111"
+  client_secret         = var.azure_client_secret
+  client_secret_version = 1
+}
+
+# Configure dynamic secret targeting an app registration
+resource "beyondtrust_workload_credentials_azure_dynamic_secret" "app_creds" {
+  name                  = "app-service-creds"
+  folder                = beyondtrust_workload_credentials_folder.production.path
+  integration_name      = beyondtrust_workload_credentials_azure_integration.main.name
+  credential_type       = "service_principal_password"
+  application_object_id = "22222222-2222-2222-2222-222222222222"
+  ttl                   = 3600  # 1 hour (range: 3600–86400)
+}
+```
+
 ## Complete Examples
 
 For complete examples with AWS IAM configuration and more advanced scenarios:
@@ -158,7 +185,26 @@ Full documentation is available on the [Terraform Registry](https://registry.ter
 - [beyondtrust_workload_credentials_static_secret](https://registry.terraform.io/providers/beyondtrust/beyondtrust/latest/docs/resources/workload_credentials_static_secret)
 - [beyondtrust_workload_credentials_aws_integration](https://registry.terraform.io/providers/beyondtrust/beyondtrust/latest/docs/resources/workload_credentials_aws_integration)
 - [beyondtrust_workload_credentials_aws_dynamic_secret](https://registry.terraform.io/providers/beyondtrust/beyondtrust/latest/docs/resources/workload_credentials_aws_dynamic_secret)
+- [beyondtrust_workload_credentials_azure_integration](https://registry.terraform.io/providers/beyondtrust/beyondtrust/latest/docs/resources/workload_credentials_azure_integration)
+- [beyondtrust_workload_credentials_azure_dynamic_secret](https://registry.terraform.io/providers/beyondtrust/beyondtrust/latest/docs/resources/workload_credentials_azure_dynamic_secret)
 
 ## Testing
 
 For AWS integration testing, see [TESTING_AWS.md](../docs/TESTING_AWS.md) for detailed setup instructions.
+
+For Azure integration testing, set these additional environment variables (see [.envrc.example](../.envrc.example)):
+
+```bash
+export BEYONDTRUST_TEST_AZURE_TENANT_ID="your-azure-tenant-uuid"
+export BEYONDTRUST_TEST_AZURE_CLIENT_ID="service-principal-client-id-uuid"
+export BEYONDTRUST_TEST_AZURE_CLIENT_SECRET="service-principal-client-secret"
+export BEYONDTRUST_TEST_AZURE_APPLICATION_OBJECT_ID="target-app-object-id-uuid"
+```
+
+Then run:
+
+```bash
+TF_ACC=1 go test -tags=acceptance -v -timeout=30m -run TestAccAzure \
+  ./workload_credentials/resources/ \
+  ./workload_credentials/datasources/
+```

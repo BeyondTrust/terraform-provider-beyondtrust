@@ -4,11 +4,11 @@ This file provides development guidance for working with the BeyondTrust Terrafo
 
 ## Project Overview
 
-A Terraform provider for BeyondTrust Workload Credentials. Built using the Terraform Plugin Framework (not SDK v2), this provider enables infrastructure-as-code management of secrets, folders, AWS integrations, and dynamic credential templates.
+A Terraform provider for BeyondTrust Workload Credentials. Built using the Terraform Plugin Framework (not SDK v2), this provider enables infrastructure-as-code management of secrets, folders, AWS integrations, Azure integrations, and dynamic credential templates.
 
 **Current Implementation:**
-- 4 managed resources (folder, static secret, AWS integration, AWS dynamic secret)
-- 1 data source (AWS integration)
+- 6 managed resources (folder, static secret, AWS integration, AWS dynamic secret, Azure integration, Azure dynamic secret)
+- 2 data sources (AWS integration, Azure integration)
 - 1 ephemeral resource (static secret - Terraform 1.11+)
 - Full import support for all resources
 - Auto-generated documentation
@@ -39,18 +39,21 @@ terraform-provider-beyondtrust/
 │   │   ├── mock_client.go           # Mock client for testing
 │   │   └── mock_client_test.go      # Mock client tests
 │   └── acctest/
-│       ├── helpers.go               # Test helpers (random names, etc.)
+│       ├── helpers.go               # Test helpers (random names, pre-checks for AWS/Azure)
 │       ├── helpers_test.go          # Helper tests
-│       └── aws_helpers.go           # AWS-specific test utilities
+│       └── aws_helpers.go           # AWS SDK-specific test utilities
 ├── workload_credentials/
 │   ├── resources/                   # Managed resource implementations
 │   │   ├── folder_resource.go
 │   │   ├── folder_resource_test.go
 │   │   ├── static_secret_resource.go
 │   │   ├── aws_integration_resource.go
-│   │   └── aws_dynamic_secret_resource.go
+│   │   ├── aws_dynamic_secret_resource.go
+│   │   ├── azure_integration_resource.go
+│   │   └── azure_dynamic_secret_resource.go
 │   ├── datasources/                 # Data source implementations
-│   │   └── aws_integration_data_source.go
+│   │   ├── aws_integration_data_source.go
+│   │   └── azure_integration_data_source.go
 │   └── ephemeral/                   # Ephemeral resources (Terraform 1.11+)
 │       └── static_secret_ephemeral.go
 ├── examples/                        # Example Terraform configurations
@@ -564,13 +567,24 @@ Require a running Workload Credentials instance:
 export BEYONDTRUST_ACCESS_TOKEN="your-token"
 export BEYONDTRUST_SITE_ID="your-site-uuid"
 export BEYONDTRUST_API_VERSION="2026-04-28"  # Optional
-export BEYONDTRUST_TEST_AWS_ROLE_ARN="arn:aws:iam::123456789012:role/test"  # For AWS tests
+
+# For AWS integration tests
+export BEYONDTRUST_TEST_AWS_ROLE_ARN="arn:aws:iam::123456789012:role/test"
+
+# For Azure integration tests
+export BEYONDTRUST_TEST_AZURE_TENANT_ID="your-azure-tenant-uuid"
+export BEYONDTRUST_TEST_AZURE_CLIENT_ID="service-principal-client-id-uuid"
+export BEYONDTRUST_TEST_AZURE_CLIENT_SECRET="service-principal-client-secret"
+export BEYONDTRUST_TEST_AZURE_APPLICATION_OBJECT_ID="target-app-object-id-uuid"
 
 # Run all acceptance tests
 make test-acc
 
 # Run specific test
 TF_ACC=1 go test -v -timeout=30m -run TestAccFolderResource_basic ./workload_credentials/resources/
+
+# Run only Azure acceptance tests
+TF_ACC=1 go test -tags=acceptance -v -timeout=30m -run TestAccAzure ./workload_credentials/resources/ ./workload_credentials/datasources/
 ```
 
 ### Test Helpers

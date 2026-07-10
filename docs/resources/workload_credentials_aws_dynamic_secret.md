@@ -123,11 +123,13 @@ resource "beyondtrust_workload_credentials_aws_dynamic_secret" "admin" {
 
 Import is supported using the following syntax:
 
+Import requires the integration name because the API does not return it on read. Use the format `integration-name:[folder/]secret-name`:
+
 ```shell
 #!/bin/bash
 # Import a root-level dynamic secret
-terraform import beyondtrust_workload_credentials_aws_dynamic_secret.developer developer-readonly-creds
+terraform import beyondtrust_workload_credentials_aws_dynamic_secret.developer production-aws:developer-readonly-creds
 
-# Import a dynamic secret in a folder (use full path)
-terraform import beyondtrust_workload_credentials_aws_dynamic_secret.developer production/aws/developer-readonly-creds
+# Import a dynamic secret in a folder (use full path after the colon)
+terraform import beyondtrust_workload_credentials_aws_dynamic_secret.developer production-aws:production/aws/developer-readonly-creds
 ```
