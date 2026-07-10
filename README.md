@@ -16,7 +16,7 @@ This unified provider consolidates management of BeyondTrust services, enabling 
 
 ### Workload Credentials
 
-Manage secrets, dynamic credentials, and AWS integrations for [BeyondTrust Workload Credentials](https://docs.beyondtrust.com/bt-docs/docs/secrets-on-pathfinder).
+Manage secrets, dynamic credentials, AWS integrations, and Azure integrations for [BeyondTrust Workload Credentials](https://docs.beyondtrust.com/bt-docs/docs/secrets-on-pathfinder).
 
 #### Resources
 
@@ -24,6 +24,8 @@ Manage secrets, dynamic credentials, and AWS integrations for [BeyondTrust Workl
 - `beyondtrust_workload_credentials_static_secret` - Manage static secrets (write-only).
 - `beyondtrust_workload_credentials_aws_integration` - Configure AWS integrations.
 - `beyondtrust_workload_credentials_aws_dynamic_secret` - Provision dynamic AWS credentials.
+- `beyondtrust_workload_credentials_azure_integration` - Configure Azure integrations.
+- `beyondtrust_workload_credentials_azure_dynamic_secret` - Provision dynamic Azure credentials.
 
 #### Ephemeral resources
 
@@ -32,6 +34,7 @@ Manage secrets, dynamic credentials, and AWS integrations for [BeyondTrust Workl
 #### Data sources
 
 - `beyondtrust_workload_credentials_aws_integration` - Query AWS integration details.
+- `beyondtrust_workload_credentials_azure_integration` - Query Azure integration details.
 
 For detailed Workload Credentials documentation, examples, and setup instructions, see [workload_credentials/README.md](./workload_credentials/README.md).
 

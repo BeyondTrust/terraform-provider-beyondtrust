@@ -62,9 +62,19 @@ export BEYONDTRUST_SITE_ID="your-site-uuid"
 
 ```bash
 export BEYONDTRUST_API_VERSION="2026-04-28"
+
+# AWS integration tests
 export BEYONDTRUST_TEST_AWS_ROLE_ARN="arn:aws:iam::123456789012:role/test-role"
 export BEYONDTRUST_TEST_AWS_ROLE_ARN_2="arn:aws:iam::123456789012:role/test-role-2"
+
+# Azure integration tests
+export BEYONDTRUST_TEST_AZURE_TENANT_ID="your-azure-tenant-uuid"
+export BEYONDTRUST_TEST_AZURE_CLIENT_ID="service-principal-client-id-uuid"
+export BEYONDTRUST_TEST_AZURE_CLIENT_SECRET="service-principal-client-secret"
+export BEYONDTRUST_TEST_AZURE_APPLICATION_OBJECT_ID="target-app-object-id-uuid"
 ```
+
+When the Azure env vars are unset, Azure acceptance tests are automatically skipped via `acctest.PreCheckAzure(t)`. See [.envrc.example](../../.envrc.example) for descriptions of each variable.
 
 #### Run All Acceptance Tests
 
@@ -82,6 +92,22 @@ TF_ACC=1 go test -v -timeout=120m ./...
 
 ```bash
 TF_ACC=1 go test -v -timeout=30m -run TestAccFolderResource_basic ./workload_credentials/resources/
+```
+
+#### Run Azure Acceptance Tests
+
+```bash
+TF_ACC=1 go test -tags=acceptance -v -timeout=30m -run TestAccAzure \
+  ./workload_credentials/resources/ \
+  ./workload_credentials/datasources/
+```
+
+#### Run AWS Acceptance Tests
+
+```bash
+TF_ACC=1 go test -tags=acceptance -v -timeout=30m -run TestAccAws \
+  ./workload_credentials/resources/ \
+  ./workload_credentials/datasources/
 ```
 
 ### Run All Tests

@@ -55,6 +55,45 @@ func PreCheckAWS(t *testing.T) {
 	}
 }
 
+// PreCheckAzure checks that Azure-specific environment variables are set
+func PreCheckAzure(t *testing.T) {
+	t.Helper()
+
+	missing := []string{}
+	for _, env := range []string{EnvTestAzureTenantID, EnvTestAzureClientID, EnvTestAzureClientSecret, EnvTestAzureAppObjectID} {
+		if os.Getenv(env) == "" {
+			missing = append(missing, env)
+		}
+	}
+	if len(missing) > 0 {
+		t.Skipf("Azure acceptance tests skipped: missing environment variables: %v", missing)
+	}
+}
+
+// GetAzureTenantID returns the Azure tenant ID for testing
+func GetAzureTenantID(t *testing.T) string {
+	t.Helper()
+	return os.Getenv(EnvTestAzureTenantID)
+}
+
+// GetAzureClientID returns the Azure client ID for testing
+func GetAzureClientID(t *testing.T) string {
+	t.Helper()
+	return os.Getenv(EnvTestAzureClientID)
+}
+
+// GetAzureClientSecret returns the Azure client secret for testing
+func GetAzureClientSecret(t *testing.T) string {
+	t.Helper()
+	return os.Getenv(EnvTestAzureClientSecret)
+}
+
+// GetAzureAppObjectID returns the Azure application object ID for testing
+func GetAzureAppObjectID(t *testing.T) string {
+	t.Helper()
+	return os.Getenv(EnvTestAzureAppObjectID)
+}
+
 // PreCheckAdmin validates that admin-site credentials are available, skipping otherwise.
 // Workload-identity endpoints require an org-admin caller operating against the org's admin
 // site, which has its own dedicated credentials (a token is scoped to a single site), so both
