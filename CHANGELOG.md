@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.3.0](https://github.com/BeyondTrust/terraform-provider-beyondtrust/compare/v1.2.1...v1.3.0) (2026-07-10)
+
+
+### Features
+
+* azure integration and dynamic secret resources ([#89](https://github.com/BeyondTrust/terraform-provider-beyondtrust/issues/89)) ([83a99dc](https://github.com/BeyondTrust/terraform-provider-beyondtrust/commit/83a99dccd5cad09d4bd5b3b153780c85a5accb51))
+
 ## [1.2.1](https://github.com/BeyondTrust/terraform-provider-beyondtrust/compare/v1.2.0...v1.2.1) (2026-06-29)
 
 
