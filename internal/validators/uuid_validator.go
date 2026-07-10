@@ -3,14 +3,10 @@ package validators
 import (
 	"context"
 	"fmt"
-	"regexp"
 
+	"github.com/google/uuid"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 )
-
-var uuidPattern = regexp.MustCompile(`(?i)^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`)
-
-const uuidPatternStr = `^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`
 
 type uuidValidator struct{}
 
@@ -28,11 +24,11 @@ func (v uuidValidator) ValidateString(_ context.Context, req validator.StringReq
 	}
 
 	value := req.ConfigValue.ValueString()
-	if !uuidPattern.MatchString(value) {
+	if err := uuid.Validate(value); err != nil {
 		resp.Diagnostics.AddAttributeError(
 			req.Path,
 			"Invalid UUID",
-			fmt.Sprintf("Value %q is not a valid UUID. Expected format: %s", value, uuidPatternStr),
+			fmt.Sprintf("Value %q is not a valid UUID: %s", value, err),
 		)
 	}
 }
@@ -42,5 +38,5 @@ func UUIDValidator() validator.String {
 }
 
 func IsValidUUID(value string) bool {
-	return uuidPattern.MatchString(value)
+	return uuid.Validate(value) == nil
 }
