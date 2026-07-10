@@ -13,7 +13,7 @@ For user-facing documentation, see [README.md](../../README.md) and [Quick Start
 
 ## Overview
 
-The BeyondTrust Terraform Provider enables infrastructure-as-code management of BeyondTrust Workload Credentials resources including secrets, folders, AWS integrations, and dynamic credential templates.
+The BeyondTrust Terraform Provider enables infrastructure-as-code management of BeyondTrust Workload Credentials resources including secrets, folders, AWS integrations, Azure integrations, and dynamic credential templates.
 
 **Key Characteristics:**
 - Built on Terraform Plugin Framework (v1.19.0+)
@@ -85,19 +85,22 @@ terraform-provider-beyondtrust/
 │   │   └── constants.go             # Shared constants (env var names, defaults)
 │   │
 │   └── acctest/
-│       ├── helpers.go               # Test utilities (random names, assertions)
+│       ├── helpers.go               # Test utilities (random names, pre-checks for AWS/Azure)
 │       ├── helpers_test.go          # Helper tests
-│       └── aws_helpers.go           # AWS-specific test utilities
+│       └── aws_helpers.go           # AWS SDK-specific test utilities
 │
 ├── workload_credentials/            # Workload Credentials service resources
 │   ├── resources/                   # Managed resources (CRUD + state)
 │   │   ├── folder_resource.go
 │   │   ├── static_secret_resource.go
 │   │   ├── aws_integration_resource.go
-│   │   └── aws_dynamic_secret_resource.go
+│   │   ├── aws_dynamic_secret_resource.go
+│   │   ├── azure_integration_resource.go
+│   │   └── azure_dynamic_secret_resource.go
 │   │
 │   ├── datasources/                 # Data sources (read-only)
-│   │   └── aws_integration_data_source.go
+│   │   ├── aws_integration_data_source.go
+│   │   └── azure_integration_data_source.go
 │   │
 │   └── ephemeral/                   # Ephemeral resources (Terraform 1.11+)
 │       └── static_secret_ephemeral.go
@@ -222,7 +225,8 @@ func (e *APIError) IsNotFound() bool        // 404 Not Found
 func (e *APIError) IsConflict() bool        // 409 Conflict
 func (e *APIError) IsBadRequest() bool      // 400 Bad Request
 func (e *APIError) IsServerError() bool     // 5xx Server Error
-func (e *APIError) IsAWSCredentialValidationError() bool  // AWS-specific validation failure
+func (e *APIError) IsAWSCredentialValidationError() bool    // AWS-specific validation failure
+func (e *APIError) IsAzureCredentialValidationError() bool  // Azure-specific validation failure
 ```
 
 ### Resource Layer
@@ -335,6 +339,8 @@ Terraform updates state file
 - `beyondtrust_workload_credentials_static_secret` - Store static secrets (passwords, API keys)
 - `beyondtrust_workload_credentials_aws_integration` - Configure AWS IAM role assumption
 - `beyondtrust_workload_credentials_aws_dynamic_secret` - Template for dynamic AWS credentials
+- `beyondtrust_workload_credentials_azure_integration` - Configure Azure service principal credentials
+- `beyondtrust_workload_credentials_azure_dynamic_secret` - Template for dynamic Azure credentials
 
 **State Management:**
 - Terraform tracks resource IDs and attributes
@@ -351,6 +357,7 @@ Terraform updates state file
 
 **Current Data Sources:**
 - `beyondtrust_workload_credentials_aws_integration` - Look up AWS integration by name
+- `beyondtrust_workload_credentials_azure_integration` - Look up Azure integration by name
 
 **Use Cases:**
 - Reference existing resources created outside Terraform
@@ -500,15 +507,19 @@ if err != nil {
 }
 ```
 
-### AWS Credential Validation
+### Cloud Integration Credential Validation
 
-Special error detection for AWS integration validation failures:
+Special error detection for integration credential validation failures, with retry logic on Create (up to 3 attempts, 5s/10s backoff):
 
 ```go
 func (e *APIError) IsAWSCredentialValidationError() bool {
     return e.Code == "aws_integration_test_failed" ||
            e.Code == "aws_credential_validation_failed" ||
            strings.Contains(strings.ToLower(e.Message), "failed to validate aws integration credentials")
+}
+
+func (e *APIError) IsAzureCredentialValidationError() bool {
+    return e.Code == "azure_integration_test_failed"
 }
 ```
 

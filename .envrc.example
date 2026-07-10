@@ -27,5 +27,15 @@ export BEYONDTRUST_TEST_AWS_ROLE_ARN="arn:aws:iam::123456789012:role/staging-tes
 export BEYONDTRUST_TEST_AWS_ROLE_ARN_2="arn:aws:iam::123456789012:role/second-staging-test-role"
 export BEYONDTRUST_TEST_AWS_TARGET_ROLE_ARN="arn:aws:iam::123456789012:role/staging-target-role"
 
+# Required for Azure Integration Tests
+# tenant_id: Azure AD directory (tenant) UUID
+# client_id: Application (client) ID of the service principal used as the integration identity
+# client_secret: That service principal's client secret
+# application_object_id: Object ID (NOT client ID) of a target app registration whose passwords will be generated
+export BEYONDTRUST_TEST_AZURE_TENANT_ID="your-azure-tenant-uuid"
+export BEYONDTRUST_TEST_AZURE_CLIENT_ID="service-principal-client-id-uuid"
+export BEYONDTRUST_TEST_AZURE_CLIENT_SECRET="service-principal-client-secret"
+export BEYONDTRUST_TEST_AZURE_APPLICATION_OBJECT_ID="target-app-object-id-uuid"
+
 # Optional: Override API version (defaults to 2026-04-28)
 # export BEYONDTRUST_API_VERSION="2026-04-28"

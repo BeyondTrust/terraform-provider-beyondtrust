@@ -81,6 +81,14 @@
         "buildVersionsList",
         "myorg",
         "myrepo",
-        "serviceaccount"
+        "serviceaccount",
+        "tenantId",
+        "clientId",
+        "clientSecret",
+        "applicationObjectId",
+        "AzureIntegrationConfig",
+        "AzureDynamicSecret",
+        "PreCheckAzure",
+        "GetAzure"
     ]
 }
