@@ -8,7 +8,6 @@ terraform {
 
 provider "beyondtrust" {
   # Configuration loaded from environment variables:
-  # - BEYONDTRUST_API_URL
   # - BEYONDTRUST_ACCESS_TOKEN
   # - BEYONDTRUST_SITE_ID
 }

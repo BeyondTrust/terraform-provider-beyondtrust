@@ -70,7 +70,6 @@ terraform {
 
 provider "beyondtrust" {
   # Configuration will be read from environment variables:
-  # - BEYONDTRUST_API_URL
   # - BEYONDTRUST_ACCESS_TOKEN
   # - BEYONDTRUST_SITE_ID
 }
@@ -232,7 +231,7 @@ Type `yes` to confirm deletion.
 # Test your credentials
 curl -H "Authorization: Bearer ${BEYONDTRUST_ACCESS_TOKEN}" \
      -H "bt-secrets-api-version: 2026-04-28" \
-     "${BEYONDTRUST_API_URL}/site/${BEYONDTRUST_SITE_ID}/secrets/session"
+     "https://api.beyondtrust.io/site/${BEYONDTRUST_SITE_ID}/secrets/session"
 ```
 
 ### Terraform Version Error

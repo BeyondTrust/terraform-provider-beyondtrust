@@ -564,7 +564,6 @@ Require a running Workload Credentials instance:
 
 ```bash
 # Set environment variables
-export BEYONDTRUST_API_URL="https://api.workload-credentials.local"
 export BEYONDTRUST_ACCESS_TOKEN="your-token"
 export BEYONDTRUST_SITE_ID="your-site-uuid"
 export BEYONDTRUST_API_VERSION="2026-04-28"  # Optional

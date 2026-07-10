@@ -51,7 +51,6 @@ The tests will **automatically create and cleanup IAM roles** using your AWS cre
 
 ```bash
 # Set required environment variables
-export BEYONDTRUST_API_URL="https://your-workload-credentials-instance.com"
 export BEYONDTRUST_ACCESS_TOKEN="your-token"
 export BEYONDTRUST_AWS_ACCOUNT_ID="999999999999"
 
@@ -248,7 +247,6 @@ jobs:
       - name: Run Acceptance Tests
         env:
           TF_ACC: "1"
-          BEYONDTRUST_API_URL: ${{ secrets.BEYONDTRUST_API_URL }}
           BEYONDTRUST_ACCESS_TOKEN: ${{ secrets.BEYONDTRUST_ACCESS_TOKEN }}
           BEYONDTRUST_AWS_ACCOUNT_ID: ${{ secrets.BEYONDTRUST_AWS_ACCOUNT_ID }}
         run: go test -v -timeout=30m ./...
@@ -269,7 +267,6 @@ jobs:
         env:
           TF_ACC: "1"
           # AWS credentials come from instance profile automatically
-          BEYONDTRUST_API_URL: ${{ secrets.BEYONDTRUST_API_URL }}
           BEYONDTRUST_ACCESS_TOKEN: ${{ secrets.BEYONDTRUST_ACCESS_TOKEN }}
           BEYONDTRUST_AWS_ACCOUNT_ID: ${{ secrets.BEYONDTRUST_AWS_ACCOUNT_ID }}
         run: go test -v -timeout=30m ./...

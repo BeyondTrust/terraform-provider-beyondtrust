@@ -249,7 +249,6 @@ Acceptance tests run against a real BeyondTrust instance.
 Set the required environment variables:
 
 ```bash
-export BEYONDTRUST_API_URL="https://api.beyondtrust.io"
 export BEYONDTRUST_ACCESS_TOKEN="your-access-token"
 export BEYONDTRUST_SITE_ID="your-site-id"
 

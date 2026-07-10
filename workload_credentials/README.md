@@ -43,7 +43,6 @@ Your site ID is a UUID that identifies your tenant in the BeyondTrust platform. 
 Set these via environment variables:
 
 ```bash
-export BEYONDTRUST_API_URL="https://api.workload-credentials.example.com"
 export BEYONDTRUST_ACCESS_TOKEN="your-access-token"
 export BEYONDTRUST_SITE_ID="your-site-id"
 ```
@@ -62,7 +61,6 @@ terraform {
 
 provider "beyondtrust" {
   # Configuration will be read from environment variables:
-  # - BEYONDTRUST_API_URL
   # - BEYONDTRUST_ACCESS_TOKEN
   # - BEYONDTRUST_SITE_ID
 }

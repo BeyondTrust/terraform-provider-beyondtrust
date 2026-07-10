@@ -12,7 +12,6 @@ so an external workload — here, a GitHub Actions workflow — can federate int
 Credentials are read from environment variables:
 
 ```shell
-export BEYONDTRUST_API_URL="https://api.beyondtrust.io"
 export BEYONDTRUST_SITE_ID="<your-admin-site-uuid>"
 export BEYONDTRUST_ACCESS_TOKEN="<your-admin-site-access-token>"
 ```
