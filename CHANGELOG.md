@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.3.1](https://github.com/BeyondTrust/terraform-provider-beyondtrust/compare/v1.3.0...v1.3.1) (2026-07-10)
+
+
+### Bug Fixes
+
+* vulnerability fixes ([#92](https://github.com/BeyondTrust/terraform-provider-beyondtrust/issues/92)) ([0259dbd](https://github.com/BeyondTrust/terraform-provider-beyondtrust/commit/0259dbd6389ad84d0daa9cc87fe20878a9ad516e))
+
 ## [1.3.0](https://github.com/BeyondTrust/terraform-provider-beyondtrust/compare/v1.2.1...v1.3.0) (2026-07-10)
 
 
