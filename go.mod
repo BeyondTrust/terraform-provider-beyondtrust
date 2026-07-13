@@ -5,7 +5,7 @@ go 1.26.5
 require (
 	github.com/aws/aws-sdk-go-v2 v1.42.1
 	github.com/aws/aws-sdk-go-v2/config v1.32.29
-	github.com/aws/aws-sdk-go-v2/service/iam v1.54.5
+	github.com/aws/aws-sdk-go-v2/service/iam v1.55.0
 	github.com/aws/aws-sdk-go-v2/service/sts v1.44.0
 	github.com/google/uuid v1.6.0
 	github.com/hashicorp/terraform-plugin-framework v1.19.0
