@@ -405,7 +405,7 @@ func testAccCheckStaticSecretValueMatches(secretName, folder, key, expectedValue
 
 		// Verify the value matches
 		if actualValue != expectedValue {
-			return fmt.Errorf("secret '%s' key '%s' value mismatch (got %d bytes, expected %d bytes)", secretPath, key, len(actualValue), len(expectedValue))
+			return fmt.Errorf("secret '%s' key '%s' value does not match expected value", secretPath, key)
 		}
 
 		return nil
