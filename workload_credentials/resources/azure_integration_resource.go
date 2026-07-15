@@ -193,6 +193,15 @@ func (r *AzureIntegrationResource) Create(ctx context.Context, req resource.Crea
 	name := data.Name.ValueString()
 	apiPath := r.client.BuildPath("/integrations/azure/" + name)
 
+	// Guard against null/unknown client_secret
+	if configData.ClientSecret.IsNull() || configData.ClientSecret.IsUnknown() {
+		resp.Diagnostics.AddError(
+			"Missing Client Secret",
+			"client_secret is required but was null or unknown. This should not happen - please report this as a provider bug.",
+		)
+		return
+	}
+
 	createReq := AzureIntegrationCreateRequest{
 		TenantID:     data.TenantID.ValueString(),
 		ClientID:     data.ClientID.ValueString(),
@@ -338,6 +347,16 @@ func (r *AzureIntegrationResource) Update(ctx context.Context, req resource.Upda
 
 	// Only send client_secret when the version has been bumped by the user
 	if !data.ClientSecretVersion.Equal(state.ClientSecretVersion) {
+		// Guard against null/unknown client_secret when version changed
+		if configData.ClientSecret.IsNull() || configData.ClientSecret.IsUnknown() {
+			resp.Diagnostics.AddError(
+				"Missing Client Secret",
+				"client_secret_version was incremented but client_secret is null or unknown. "+
+					"When rotating secrets (incrementing client_secret_version), you must provide the new client_secret value.",
+			)
+			return
+		}
+
 		v := configData.ClientSecret.ValueString()
 		updateReq.ClientSecret = &v
 	}

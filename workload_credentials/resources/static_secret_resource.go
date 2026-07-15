@@ -213,6 +213,15 @@ func (r *StaticSecretResource) Create(ctx context.Context, req resource.CreateRe
 	}
 	query := buildFolderQueryParam(parentFolder)
 
+	// Guard against null/unknown secret_wo - would create an empty secret
+	if configData.SecretWo.IsNull() || configData.SecretWo.IsUnknown() {
+		resp.Diagnostics.AddError(
+			"Missing Secret Value",
+			"secret_wo is required but was null or unknown. This should not happen - please report this as a provider bug.",
+		)
+		return
+	}
+
 	// Convert Terraform secret map to API format using helper
 	// Use configData.SecretWo instead of data.SecretWo because write-only values are only in Config
 	secretMap := convertSecretMap(configData.SecretWo.Elements())
@@ -379,6 +388,19 @@ func (r *StaticSecretResource) Update(ctx context.Context, req resource.UpdateRe
 			resp.Diagnostics.AddError(
 				"Error Reading Current Secret",
 				"Could not read current secret for key comparison: "+err.Error(),
+			)
+			return
+		}
+
+		// Guard against null/unknown secret_wo when version changed
+		// If the version changed, the user is signaling they want to update the secret,
+		// so secret_wo must be present. If it's null/unknown, calling Elements() would
+		// yield an empty map and the merge-patch would delete all existing keys.
+		if configData.SecretWo.IsNull() || configData.SecretWo.IsUnknown() {
+			resp.Diagnostics.AddError(
+				"Missing Secret Value",
+				"secret_wo_version was incremented but secret_wo is null or unknown. "+
+					"When rotating secrets (incrementing secret_wo_version), you must provide the new secret_wo value.",
 			)
 			return
 		}
