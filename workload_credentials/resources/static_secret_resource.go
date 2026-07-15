@@ -586,14 +586,16 @@ func (r *StaticSecretResource) updateTags(ctx context.Context, name string, pare
 // Helper functions for static secret business logic
 
 // validateSecretMapValues checks that all values in a secret_wo map are known, non-null strings.
-// Returns an error listing any keys with null/unknown values.
+// Returns an error listing any keys with null/unknown/non-string values.
 func validateSecretMapValues(terraformMap map[string]attr.Value) error {
-	var nullKeys, unknownKeys []string
+	var nullKeys, unknownKeys, nonStringKeys []string
 
 	for key, value := range terraformMap {
 		strVal, ok := value.(types.String)
 		if !ok {
-			// Not a string type at all - should not happen with schema validation
+			// Not a string type - should not happen with schema validation, but fail fast
+			// rather than silently skipping (which would create a secret with missing keys)
+			nonStringKeys = append(nonStringKeys, key)
 			continue
 		}
 
@@ -604,8 +606,12 @@ func validateSecretMapValues(terraformMap map[string]attr.Value) error {
 		}
 	}
 
-	if len(nullKeys) > 0 || len(unknownKeys) > 0 {
+	if len(nonStringKeys) > 0 || len(nullKeys) > 0 || len(unknownKeys) > 0 {
 		var errMsg string
+		if len(nonStringKeys) > 0 {
+			sort.Strings(nonStringKeys)
+			errMsg += fmt.Sprintf("The following secret_wo keys have non-string values: %v (this indicates a provider bug or schema validation failure). ", nonStringKeys)
+		}
 		if len(nullKeys) > 0 {
 			sort.Strings(nullKeys)
 			errMsg += fmt.Sprintf("The following secret_wo keys have null values: %v. ", nullKeys)
