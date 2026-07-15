@@ -381,7 +381,7 @@ func testAccCheckStaticSecretValueMatches(secretName, folder, key, expectedValue
 		// Build query parameters
 		query := url.Values{}
 		if folder != "" {
-			query.Set("parent", folder)
+			query.Set("folder", folder)
 		}
 
 		// Fetch the secret value from the API
