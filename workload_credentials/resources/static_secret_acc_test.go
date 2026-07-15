@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"sort"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
@@ -404,18 +405,19 @@ func testAccCheckStaticSecretValueMatches(secretName, folder, key, expectedValue
 
 		// Verify the value matches
 		if actualValue != expectedValue {
-			return fmt.Errorf("secret '%s' key '%s' has value %q, expected %q", secretPath, key, actualValue, expectedValue)
+			return fmt.Errorf("secret '%s' key '%s' value mismatch (got %d bytes, expected %d bytes)", secretPath, key, len(actualValue), len(expectedValue))
 		}
 
 		return nil
 	}
 }
 
-// mapKeys returns the keys of a map as a slice (helper for error messages)
+// mapKeys returns the keys of a map as a sorted slice for stable error messages
 func mapKeys(m map[string]string) []string {
 	keys := make([]string, 0, len(m))
 	for k := range m {
 		keys = append(keys, k)
 	}
+	sort.Strings(keys)
 	return keys
 }
