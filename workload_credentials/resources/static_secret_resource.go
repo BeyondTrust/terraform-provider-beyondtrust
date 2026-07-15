@@ -2,7 +2,9 @@ package resources
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"sort"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/path"
@@ -222,6 +224,17 @@ func (r *StaticSecretResource) Create(ctx context.Context, req resource.CreateRe
 		return
 	}
 
+	// Validate that all map values are known, non-null strings
+	// Without this check, unknown/null values would be converted to empty strings,
+	// potentially creating secrets with blank values
+	if err := validateSecretMapValues(configData.SecretWo.Elements()); err != nil {
+		resp.Diagnostics.AddError(
+			"Invalid Secret Values",
+			err.Error(),
+		)
+		return
+	}
+
 	// Convert Terraform secret map to API format using helper
 	// Use configData.SecretWo instead of data.SecretWo because write-only values are only in Config
 	secretMap := convertSecretMap(configData.SecretWo.Elements())
@@ -405,6 +418,17 @@ func (r *StaticSecretResource) Update(ctx context.Context, req resource.UpdateRe
 			return
 		}
 
+		// Validate that all map values are known, non-null strings
+		// Critical for merge-patch: unknown/null values would convert to empty strings
+		// and unintentionally blank out keys or rotate to empty values
+		if err := validateSecretMapValues(configData.SecretWo.Elements()); err != nil {
+			resp.Diagnostics.AddError(
+				"Invalid Secret Values",
+				err.Error(),
+			)
+			return
+		}
+
 		// Build the merge-patch body: new/updated keys with values, removed keys with null.
 		// Use configData.SecretWo instead of data.SecretWo because write-only values are only in Config
 		newSecret := convertSecretMap(configData.SecretWo.Elements())
@@ -561,8 +585,45 @@ func (r *StaticSecretResource) updateTags(ctx context.Context, name string, pare
 
 // Helper functions for static secret business logic
 
+// validateSecretMapValues checks that all values in a secret_wo map are known, non-null strings.
+// Returns an error listing any keys with null/unknown values.
+func validateSecretMapValues(terraformMap map[string]attr.Value) error {
+	var nullKeys, unknownKeys []string
+
+	for key, value := range terraformMap {
+		strVal, ok := value.(types.String)
+		if !ok {
+			// Not a string type at all - should not happen with schema validation
+			continue
+		}
+
+		if strVal.IsNull() {
+			nullKeys = append(nullKeys, key)
+		} else if strVal.IsUnknown() {
+			unknownKeys = append(unknownKeys, key)
+		}
+	}
+
+	if len(nullKeys) > 0 || len(unknownKeys) > 0 {
+		var errMsg string
+		if len(nullKeys) > 0 {
+			sort.Strings(nullKeys)
+			errMsg += fmt.Sprintf("The following secret_wo keys have null values: %v. ", nullKeys)
+		}
+		if len(unknownKeys) > 0 {
+			sort.Strings(unknownKeys)
+			errMsg += fmt.Sprintf("The following secret_wo keys have unknown values: %v. ", unknownKeys)
+		}
+		errMsg += "All secret values must be known, non-null strings."
+		return errors.New(errMsg)
+	}
+
+	return nil
+}
+
 // convertSecretMap converts a Terraform types.Map to a Go map[string]string.
 // This is used when creating/updating secrets to convert from Terraform types.
+// Assumes all values have been validated via validateSecretMapValues.
 func convertSecretMap(terraformMap map[string]attr.Value) map[string]string {
 	result := make(map[string]string)
 

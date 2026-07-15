@@ -197,7 +197,7 @@ func (r *AzureIntegrationResource) Create(ctx context.Context, req resource.Crea
 	if configData.ClientSecret.IsNull() || configData.ClientSecret.IsUnknown() {
 		resp.Diagnostics.AddError(
 			"Missing Client Secret",
-			"client_secret is required but was null or unknown. This should not happen - please report this as a provider bug.",
+			"client_secret is required but was null or unknown. Ensure client_secret is set to a known value at apply time (not derived from unknown values)."
 		)
 		return
 	}
