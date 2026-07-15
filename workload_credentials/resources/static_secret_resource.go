@@ -219,7 +219,7 @@ func (r *StaticSecretResource) Create(ctx context.Context, req resource.CreateRe
 	if configData.SecretWo.IsNull() || configData.SecretWo.IsUnknown() {
 		resp.Diagnostics.AddError(
 			"Missing Secret Value",
-			"secret_wo is required but was null or unknown. This should not happen - please report this as a provider bug.",
+			"secret_wo is required but was null or unknown. Ensure secret_wo is set to a known value at apply time (not derived from unknown values).",
 		)
 		return
 	}
