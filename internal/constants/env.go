@@ -6,4 +6,5 @@ const (
 	EnvSiteID      = "BEYONDTRUST_SITE_ID"
 	EnvAccessToken = "BEYONDTRUST_ACCESS_TOKEN"
 	EnvAPIVersion  = "BEYONDTRUST_API_VERSION"
+	EnvServiceName = "BEYONDTRUST_SERVICE_NAME"
 )

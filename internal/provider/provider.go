@@ -30,7 +30,6 @@ var (
 const (
 	EnvAPIPathVersion = "BEYONDTRUST_API_PATH_VERSION"
 	EnvRole           = "BEYONDTRUST_ROLE"
-	EnvServiceName    = "BEYONDTRUST_SERVICE_NAME"
 	EnvInsecure       = "BEYONDTRUST_INSECURE"
 	EnvTimeout        = "BEYONDTRUST_TIMEOUT"
 )
@@ -91,7 +90,7 @@ func (p *BeyondTrustProvider) Schema(ctx context.Context, req provider.SchemaReq
 				Optional:    true,
 			},
 			"service_name": schema.StringAttribute{
-				Description: "Service name for GitHub OIDC authentication (X-BT-Service-Name header). Required when using GitHub OIDC tokens. Can also be set via " + EnvServiceName + " environment variable.",
+				Description: "Service name for GitHub OIDC authentication (X-BT-Service-Name header). Required when using GitHub OIDC tokens. Can also be set via " + constants.EnvServiceName + " environment variable.",
 				Optional:    true,
 			},
 			"insecure": schema.BoolAttribute{
@@ -122,7 +121,7 @@ func (p *BeyondTrustProvider) Configure(ctx context.Context, req provider.Config
 	apiVersion := os.Getenv(constants.EnvAPIVersion)
 	apiPathVersion := os.Getenv(EnvAPIPathVersion)
 	role := os.Getenv(EnvRole)
-	serviceName := os.Getenv(EnvServiceName)
+	serviceName := os.Getenv(constants.EnvServiceName)
 	insecure := os.Getenv(EnvInsecure) == "true"
 	timeout := os.Getenv(EnvTimeout)
 
