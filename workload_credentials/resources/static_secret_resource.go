@@ -194,6 +194,14 @@ func (r *StaticSecretResource) Create(ctx context.Context, req resource.CreateRe
 		return
 	}
 
+	// Write-only attributes are nullified in req.Plan by the framework (they can't be
+	// stored in state). Read secret_wo from req.Config where the actual value lives.
+	var configData StaticSecretResourceModel
+	resp.Diagnostics.Append(req.Config.Get(ctx, &configData)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
 	// Build the API path
 	name := data.Name.ValueString()
 	apiPath := r.client.BuildPath("/static/" + name)
@@ -206,7 +214,8 @@ func (r *StaticSecretResource) Create(ctx context.Context, req resource.CreateRe
 	query := buildFolderQueryParam(parentFolder)
 
 	// Convert Terraform secret map to API format using helper
-	secretMap := convertSecretMap(data.SecretWo.Elements())
+	// Use configData.SecretWo instead of data.SecretWo because write-only values are only in Config
+	secretMap := convertSecretMap(configData.SecretWo.Elements())
 
 	// Create the secret
 	requestBody := StaticSecretCreateRequest{
@@ -339,6 +348,14 @@ func (r *StaticSecretResource) Update(ctx context.Context, req resource.UpdateRe
 		return
 	}
 
+	// Write-only attributes are nullified in req.Plan by the framework.
+	// Read secret_wo from req.Config where the actual value lives.
+	var configData StaticSecretResourceModel
+	resp.Diagnostics.Append(req.Config.Get(ctx, &configData)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
 	name := data.Name.ValueString()
 	apiPath := r.client.BuildPath("/static/" + name)
 
@@ -367,7 +384,8 @@ func (r *StaticSecretResource) Update(ctx context.Context, req resource.UpdateRe
 		}
 
 		// Build the merge-patch body: new/updated keys with values, removed keys with null.
-		newSecret := convertSecretMap(data.SecretWo.Elements())
+		// Use configData.SecretWo instead of data.SecretWo because write-only values are only in Config
+		newSecret := convertSecretMap(configData.SecretWo.Elements())
 		requestBody := StaticSecretUpdateRequest{
 			Secret: buildSecretMergePatch(currentSecret.Secret, newSecret),
 		}
