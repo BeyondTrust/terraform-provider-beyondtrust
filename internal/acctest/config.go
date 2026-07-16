@@ -39,6 +39,7 @@ type TestConfig struct {
 	SiteID      string `json:"site_id"`
 	AccessToken string `json:"access_token"`
 	APIVersion  string `json:"api_version,omitempty"`
+	ServiceName string `json:"service_name,omitempty"`
 }
 
 // LoadTestConfig loads test configuration from environment variables
@@ -48,6 +49,7 @@ func LoadTestConfig() (*TestConfig, error) {
 		SiteID:      os.Getenv(constants.EnvSiteID),
 		AccessToken: os.Getenv(constants.EnvAccessToken),
 		APIVersion:  os.Getenv(constants.EnvAPIVersion),
+		ServiceName: os.Getenv(constants.EnvServiceName),
 	}
 
 	// Set default API version if not specified
@@ -139,6 +141,7 @@ func NewTestClient() (*client.Client, error) {
 		AccessToken: cfg.AccessToken,
 		SiteID:      cfg.SiteID,
 		APIVersion:  cfg.APIVersion,
+		ServiceName: cfg.ServiceName,
 		Timeout:     "30s",
 	}
 

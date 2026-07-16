@@ -2,7 +2,9 @@ package resources
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"sort"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/path"
@@ -194,6 +196,14 @@ func (r *StaticSecretResource) Create(ctx context.Context, req resource.CreateRe
 		return
 	}
 
+	// Write-only attributes are nullified in req.Plan by the framework (they can't be
+	// stored in state). Read secret_wo from req.Config where the actual value lives.
+	var configData StaticSecretResourceModel
+	resp.Diagnostics.Append(req.Config.Get(ctx, &configData)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
 	// Build the API path
 	name := data.Name.ValueString()
 	apiPath := r.client.BuildPath("/static/" + name)
@@ -205,8 +215,29 @@ func (r *StaticSecretResource) Create(ctx context.Context, req resource.CreateRe
 	}
 	query := buildFolderQueryParam(parentFolder)
 
+	// Guard against null/unknown secret_wo - would create an empty secret
+	if configData.SecretWo.IsNull() || configData.SecretWo.IsUnknown() {
+		resp.Diagnostics.AddError(
+			"Missing Secret Value",
+			"secret_wo is required but was null or unknown. Ensure secret_wo is set to a known value at apply time (not derived from unknown values).",
+		)
+		return
+	}
+
+	// Validate that all map values are known, non-null strings
+	// Without this check, unknown/null values would be converted to empty strings,
+	// potentially creating secrets with blank values
+	if err := validateSecretMapValues(configData.SecretWo.Elements()); err != nil {
+		resp.Diagnostics.AddError(
+			"Invalid Secret Values",
+			err.Error(),
+		)
+		return
+	}
+
 	// Convert Terraform secret map to API format using helper
-	secretMap := convertSecretMap(data.SecretWo.Elements())
+	// Use configData.SecretWo instead of data.SecretWo because write-only values are only in Config
+	secretMap := convertSecretMap(configData.SecretWo.Elements())
 
 	// Create the secret
 	requestBody := StaticSecretCreateRequest{
@@ -339,6 +370,14 @@ func (r *StaticSecretResource) Update(ctx context.Context, req resource.UpdateRe
 		return
 	}
 
+	// Write-only attributes are nullified in req.Plan by the framework.
+	// Read secret_wo from req.Config where the actual value lives.
+	var configData StaticSecretResourceModel
+	resp.Diagnostics.Append(req.Config.Get(ctx, &configData)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
 	name := data.Name.ValueString()
 	apiPath := r.client.BuildPath("/static/" + name)
 
@@ -366,8 +405,33 @@ func (r *StaticSecretResource) Update(ctx context.Context, req resource.UpdateRe
 			return
 		}
 
+		// Guard against null/unknown secret_wo when version changed
+		// If the version changed, the user is signaling they want to update the secret,
+		// so secret_wo must be present. If it's null/unknown, calling Elements() would
+		// yield an empty map and the merge-patch would delete all existing keys.
+		if configData.SecretWo.IsNull() || configData.SecretWo.IsUnknown() {
+			resp.Diagnostics.AddError(
+				"Missing Secret Value",
+				"secret_wo_version was incremented but secret_wo is null or unknown. "+
+					"When rotating secrets (incrementing secret_wo_version), you must provide the new secret_wo value.",
+			)
+			return
+		}
+
+		// Validate that all map values are known, non-null strings
+		// Critical for merge-patch: unknown/null values would convert to empty strings
+		// and unintentionally blank out keys or rotate to empty values
+		if err := validateSecretMapValues(configData.SecretWo.Elements()); err != nil {
+			resp.Diagnostics.AddError(
+				"Invalid Secret Values",
+				err.Error(),
+			)
+			return
+		}
+
 		// Build the merge-patch body: new/updated keys with values, removed keys with null.
-		newSecret := convertSecretMap(data.SecretWo.Elements())
+		// Use configData.SecretWo instead of data.SecretWo because write-only values are only in Config
+		newSecret := convertSecretMap(configData.SecretWo.Elements())
 		requestBody := StaticSecretUpdateRequest{
 			Secret: buildSecretMergePatch(currentSecret.Secret, newSecret),
 		}
@@ -521,8 +585,51 @@ func (r *StaticSecretResource) updateTags(ctx context.Context, name string, pare
 
 // Helper functions for static secret business logic
 
+// validateSecretMapValues checks that all values in a secret_wo map are known, non-null strings.
+// Returns an error listing any keys with null/unknown/non-string values.
+func validateSecretMapValues(terraformMap map[string]attr.Value) error {
+	var nullKeys, unknownKeys, nonStringKeys []string
+
+	for key, value := range terraformMap {
+		strVal, ok := value.(types.String)
+		if !ok {
+			// Not a string type - should not happen with schema validation, but fail fast
+			// rather than silently skipping (which would create a secret with missing keys)
+			nonStringKeys = append(nonStringKeys, key)
+			continue
+		}
+
+		if strVal.IsNull() {
+			nullKeys = append(nullKeys, key)
+		} else if strVal.IsUnknown() {
+			unknownKeys = append(unknownKeys, key)
+		}
+	}
+
+	if len(nonStringKeys) > 0 || len(nullKeys) > 0 || len(unknownKeys) > 0 {
+		var errMsg string
+		if len(nonStringKeys) > 0 {
+			sort.Strings(nonStringKeys)
+			errMsg += fmt.Sprintf("The following secret_wo keys have non-string values: %v (this indicates a provider bug or schema validation failure). ", nonStringKeys)
+		}
+		if len(nullKeys) > 0 {
+			sort.Strings(nullKeys)
+			errMsg += fmt.Sprintf("The following secret_wo keys have null values: %v. ", nullKeys)
+		}
+		if len(unknownKeys) > 0 {
+			sort.Strings(unknownKeys)
+			errMsg += fmt.Sprintf("The following secret_wo keys have unknown values: %v. ", unknownKeys)
+		}
+		errMsg += "All secret values must be known, non-null strings."
+		return errors.New(errMsg)
+	}
+
+	return nil
+}
+
 // convertSecretMap converts a Terraform types.Map to a Go map[string]string.
 // This is used when creating/updating secrets to convert from Terraform types.
+// Assumes all values have been validated via validateSecretMapValues.
 func convertSecretMap(terraformMap map[string]attr.Value) map[string]string {
 	result := make(map[string]string)
 

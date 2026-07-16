@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"sort"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
@@ -203,6 +204,36 @@ func TestAccStaticSecretResource_nameImmutable(t *testing.T) {
 	})
 }
 
+// TestAccStaticSecretResource_valueStoredCorrectly verifies that secret_wo values
+// are actually sent to the API and stored correctly. This is a regression test for
+// the bug where secret_wo was being read from req.Plan (where write-only attributes
+// are nullified) instead of req.Config (where the actual values live).
+func TestAccStaticSecretResource_valueStoredCorrectly(t *testing.T) {
+	secretName := acctest.RandomSecretName()
+	secretValue := acctest.RandomString(32)
+
+	// Register cleanup as safety net in case Terraform destroy fails
+	registerStaticSecretCleanup(t, secretName, "")
+
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck:                 func() { acctest.PreCheck(t) },
+		ProtoV6ProviderFactories: acctest.ProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckStaticSecretDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccStaticSecretResourceConfig_withReadback(secretName, secretValue),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					// Verify the resource was created
+					resource.TestCheckResourceAttr("beyondtrust_workload_credentials_static_secret.test", "name", secretName),
+					resource.TestCheckResourceAttrSet("beyondtrust_workload_credentials_static_secret.test", "id"),
+					// Verify we can read the value back using the API (via custom check function)
+					testAccCheckStaticSecretValueMatches(secretName, "", "value", secretValue),
+				),
+			},
+		},
+	})
+}
+
 func testAccCheckStaticSecretDestroy(s *terraform.State) error {
 	// Create a test client to verify resources are destroyed
 	client, err := acctest.NewTestClient()
@@ -314,4 +345,79 @@ resource "beyondtrust_workload_credentials_static_secret" "test" {
   tags = %[3]s
 }
 `, name, value, tagsStr)
+}
+
+// testAccStaticSecretResourceConfig_withReadback returns a configuration that creates
+// a secret with a known value for verification testing
+func testAccStaticSecretResourceConfig_withReadback(name, value string) string {
+	return fmt.Sprintf(`
+resource "beyondtrust_workload_credentials_static_secret" "test" {
+  name = %[1]q
+  secret_wo = {
+    value = %[2]q
+  }
+  secret_wo_version = 1
+}
+`, name, value)
+}
+
+// testAccCheckStaticSecretValueMatches returns a TestCheckFunc that verifies
+// the secret value stored in the API matches the expected value.
+// This is a regression test helper for ensuring secret_wo values are read from
+// req.Config (not req.Plan where they're nullified).
+func testAccCheckStaticSecretValueMatches(secretName, folder, key, expectedValue string) resource.TestCheckFunc {
+	return func(s *terraform.State) error {
+		client, err := acctest.NewTestClient()
+		if err != nil {
+			return fmt.Errorf("failed to create test client: %w", err)
+		}
+
+		// Build the API path
+		secretPath := secretName
+		if folder != "" {
+			secretPath = folder + "/" + secretName
+		}
+		apiPath := client.BuildPath("/static/" + secretName)
+
+		// Build query parameters
+		query := url.Values{}
+		if folder != "" {
+			query.Set("folder", folder)
+		}
+
+		// Fetch the secret value from the API
+		type SecretResponse struct {
+			Path   string            `json:"path"`
+			Secret map[string]string `json:"secret"`
+		}
+
+		var resp SecretResponse
+		err = client.Get(context.Background(), apiPath, query, &resp)
+		if err != nil {
+			return fmt.Errorf("failed to read secret '%s' from API: %w", secretPath, err)
+		}
+
+		// Verify the key exists
+		actualValue, exists := resp.Secret[key]
+		if !exists {
+			return fmt.Errorf("secret '%s' does not contain key '%s'. Available keys: %v", secretPath, key, mapKeys(resp.Secret))
+		}
+
+		// Verify the value matches
+		if actualValue != expectedValue {
+			return fmt.Errorf("secret '%s' key '%s' value does not match expected value", secretPath, key)
+		}
+
+		return nil
+	}
+}
+
+// mapKeys returns the keys of a map as a sorted slice for stable error messages
+func mapKeys(m map[string]string) []string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	return keys
 }
