@@ -30,6 +30,7 @@
         "ephemeralresources",
         "gofmt",
         "gofumpt",
+        "goimports",
         "golangci",
         "gpgsign",
         "keyid",
