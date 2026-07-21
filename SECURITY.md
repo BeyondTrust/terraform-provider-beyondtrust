@@ -10,7 +10,7 @@ Data and product security are extremely important to us here at BeyondTrust. If 
 
 Please report suspected vulnerabilities through one of the following private channels. **Do not** open a public issue or pull request for security vulnerabilities.
 
-- **GitHub private vulnerability reporting** (preferred): Use the [**Report a vulnerability**](https://github.com/BeyondTrust/terraform-provider-beyondtrust/security/advisories/new) button on this repository's Security tab. Reports submitted this way are visible only to the maintainers.
+- **GitHub private vulnerability reporting** (preferred): Use the [**Report a vulnerability**](https://github.com/BeyondTrust/terraform-provider-beyondtrust/security/advisories/new) button on this repository's Security tab. Reports submitted this way are private, visible only to you and the repository maintainers.
 - **BeyondTrust Responsible Disclosure**: Follow our [Responsible Disclosure](https://www.beyondtrust.com/disclosure) policy for submitting a report directly to BeyondTrust.
 
 We will acknowledge your report, keep the details confidential while we investigate, and coordinate disclosure with you.

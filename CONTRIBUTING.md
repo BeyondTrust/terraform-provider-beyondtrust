@@ -23,7 +23,7 @@ Bugs should be reported by [opening a GitHub issue](https://github.com/BeyondTru
 
 If your bug is specific to your BeyondTrust account or deployment and requires account-specific handling, you may also contact [BeyondTrust Support](https://www.beyondtrust.com/support) against _BeyondTrust Workload Credentials Support_.
 
-If the bug is a security vulnerability, **do not open a public issue** — instead please refer to our [Security Policy](SECURITY.md) or the [responsible disclosure section of our security policy](https://www.beyondtrust.com/disclosure).
+If the bug is a security vulnerability, **do not open a public issue** — instead please refer to our [Security Policy](SECURITY.md) or our [Responsible Disclosure policy](https://www.beyondtrust.com/disclosure).
 
 ### Feature Requests
 
@@ -49,7 +49,7 @@ Feature requests should be submitted by [opening a GitHub issue](https://github.
 
 Contributions must meet the following requirements to be accepted:
 
-- **Formatting**: Go code must be formatted with `gofmt`/`goimports` and Terraform code with `terraform fmt`. Run `make fmt` to apply both.
+- **Formatting**: Go code must be formatted with `gofmt` and `gofumpt` (run `make fmt` then `make gofumpt-fix`; `gofumpt` is also enforced by `make lint`). Terraform examples must be formatted with `terraform fmt` (run `make tf-fmt-fix`).
 - **Linting**: Code must pass [golangci-lint](https://golangci-lint.run/) as configured in [`.golangci.yml`](.golangci.yml). Run `make lint` locally; the same checks run in CI.
 - **Tests**: New functionality must include unit tests, and all unit tests (`make test-unit`) must pass. See [TESTING.md](./docs/development/TESTING.md) for details.
 - **Documentation**: If you change a resource, data source, or provider schema, regenerate the docs with `make generate` and commit the results.
@@ -61,7 +61,7 @@ Running `make pre-commit` validates all of the above in one step.
 ### Before Submitting a Pull Request
 
 1. **Run tests**: Ensure all unit tests pass with `make test-unit`
-2. **Format code**: Run `make fmt` to format Go and Terraform code
+2. **Format code**: Run `make fmt` and `make gofumpt-fix` for Go code, and `make tf-fmt-fix` for Terraform examples
 3. **Lint**: Run `make lint` to catch common issues
 4. **Generate docs**: Run `make generate` if you changed resource schemas
 5. **Pre-commit checks**: Run `make pre-commit` for a full validation
