@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.3.2](https://github.com/BeyondTrust/terraform-provider-beyondtrust/compare/v1.3.1...v1.3.2) (2026-07-23)
+
+
+### Bug Fixes
+
+* static secret resource reads secret_wo from req.Config instead of req.Plan ([#97](https://github.com/BeyondTrust/terraform-provider-beyondtrust/issues/97)) ([214395c](https://github.com/BeyondTrust/terraform-provider-beyondtrust/commit/214395c2c8b7b5edac2a1a7354cef8c7506ac15f))
+
 ## [1.3.1](https://github.com/BeyondTrust/terraform-provider-beyondtrust/compare/v1.3.0...v1.3.1) (2026-07-10)
 
 
