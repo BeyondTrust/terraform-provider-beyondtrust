@@ -47,8 +47,10 @@ jobs:
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
 
-  security-gate:
-    name: Security Gate
+  # In-pipeline backstop to the pre-merge gate in security-gate.yml (the sole gate if branch
+  # protection is bypassed). Runs only on an actual release.
+  release-security-gate:
+    name: Release Security Gate
     runs-on: ubuntu-latest
     timeout-minutes: 10
     needs: release-please
@@ -69,7 +71,7 @@ jobs:
     name: GoReleaser
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    needs: [release-please, security-gate]
+    needs: [release-please, release-security-gate]
     if: needs.release-please.outputs.release_created == 'true'
     permissions:
       contents: write       # upload artifacts to the draft release
