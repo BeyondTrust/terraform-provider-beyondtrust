@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.3.2](https://github.com/BeyondTrust/terraform-provider-beyondtrust/compare/v1.3.1...v1.3.2) (2026-08-26)
+
+
+### Bug Fixes
+
+* bump golang.org/x/mod to v0.40.0 and go toolchain to 1.26.7 ([#110](https://github.com/BeyondTrust/terraform-provider-beyondtrust/issues/110)) ([e92cbc7](https://github.com/BeyondTrust/terraform-provider-beyondtrust/commit/e92cbc789974d8fa34eb4701e9c091374eee81e0))
+* static secret resource reads secret_wo from req.Config instead of req.Plan ([#97](https://github.com/BeyondTrust/terraform-provider-beyondtrust/issues/97)) ([214395c](https://github.com/BeyondTrust/terraform-provider-beyondtrust/commit/214395c2c8b7b5edac2a1a7354cef8c7506ac15f))
+
 ## [1.3.1](https://github.com/BeyondTrust/terraform-provider-beyondtrust/compare/v1.3.0...v1.3.1) (2026-07-10)
 
 
