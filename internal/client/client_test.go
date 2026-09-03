@@ -978,8 +978,19 @@ func TestStaleReadRetry_ContextCancellation(t *testing.T) {
 
 	client := newStaleReadTestClient(t, server.URL)
 
-	// Cancel partway through the first 25ms backoff.
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Millisecond)
+	// Stretch the first backoff so the deadline lands deep inside it. This test
+	// is about cancellation semantics, not the production schedule, so the exact
+	// durations do not matter — only that the sleep is long relative to a request.
+	//
+	// The margin matters: if the deadline expires while the request is in flight
+	// rather than during the sleep, the transport returns a wrapped context error
+	// instead of an *APIError and the assertions below fail. Against the real
+	// 25ms first backoff, that needed only a 10ms loopback request to trigger,
+	// which a contended runner can easily produce.
+	client.StaleReadInitialBackoff = 1 * time.Second
+	client.StaleReadMaxElapsed = 30 * time.Second
+
+	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 	defer cancel()
 
 	var result map[string]string
@@ -990,7 +1001,8 @@ func TestStaleReadRetry_ContextCancellation(t *testing.T) {
 	var apiErr *APIError
 	require.ErrorAs(t, err, &apiErr)
 	assert.Equal(t, http.StatusForbidden, apiErr.StatusCode)
-	assert.Less(t, attempts.Load(), int32(7), "cancellation should stop the retry loop early")
+	assert.Equal(t, int32(1), attempts.Load(),
+		"cancellation during the first backoff must stop the loop after one attempt")
 }
 
 // TestStaleReadRetry_DisabledWhenBudgetZero verifies a zero backoff turns retrying off,
