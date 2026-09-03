@@ -898,8 +898,11 @@ func TestStaleReadRetry_ExhaustsBudget(t *testing.T) {
 	assert.Equal(t, int32(7), attempts.Load(), "expected 7 attempts (6 retries)")
 	assert.GreaterOrEqual(t, elapsed, 1575*time.Millisecond,
 		"expected to sleep through the 25+50+100+200+400+800ms schedule")
-	assert.Less(t, elapsed, staleReadMaxElapsed+time.Second,
-		"retrying must stay inside the budget plus request overhead")
+
+	// No upper bound on elapsed: the attempt count above already rules out a
+	// runaway loop, and TestStaleReadRetry_NewClientDefaults pins the schedule
+	// arithmetic exactly. A wall-clock ceiling would only add flake risk on a
+	// contended runner.
 }
 
 // TestStaleReadRetry_OnlyRetriesGet verifies write methods are never retried, since

@@ -374,6 +374,15 @@ func (c *Client) DoRequest(ctx context.Context, method, path string, query url.V
 		case <-timer.C:
 		}
 
+		// select chooses pseudo-randomly when both cases are ready, and the
+		// context can also be cancelled in the gap between the sleep and the
+		// next attempt. Re-check so cancellation deterministically returns the
+		// typed *APIError above, rather than spending a doomed request that
+		// fails with a wrapped context error instead.
+		if ctx.Err() != nil {
+			return err
+		}
+
 		elapsed += backoff
 		backoff *= 2
 	}
