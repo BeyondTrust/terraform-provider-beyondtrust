@@ -147,3 +147,25 @@ func NewTestClient() (*client.Client, error) {
 
 	return client.NewClient(clientCfg)
 }
+
+// NewDestroyCheckClient creates an API client for destroy verification, with the
+// stale-read retry on 403 disabled.
+//
+// The client retries a 403 on GET because it may mean a just-written object is
+// not yet visible to reads. A destroy check asserts the opposite — that the
+// object is gone — so the object really is absent and every retry is guaranteed
+// to fail. Retrying there burns the full backoff budget per resource for a
+// result that cannot change.
+//
+// Use NewTestClient for checks that read an object expected to exist, where the
+// retry is doing useful work.
+func NewDestroyCheckClient() (*client.Client, error) {
+	c, err := NewTestClient()
+	if err != nil {
+		return nil, err
+	}
+
+	c.StaleReadInitialBackoff = 0
+
+	return c, nil
+}
