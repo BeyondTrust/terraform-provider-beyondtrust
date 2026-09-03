@@ -20,6 +20,30 @@ const DefaultAPIVersion = "2026-04-28"
 // DefaultAPIURL is the public BeyondTrust API base URL, used when api_url is not set.
 const DefaultAPIURL = "https://api.beyondtrust.io"
 
+// Reads on the BeyondTrust API are eventually consistent: an object that was
+// just written may not yet be visible to an immediately following GET, and the
+// API reports that as 403 rather than 404. A 403 on a GET is therefore
+// ambiguous — it may be a stale read rather than a permission failure — so GET
+// is retried briefly to give the write time to become visible. A 403 that
+// outlives the budget is surfaced to the caller unchanged. Writes do not observe
+// this, so only GET is retried.
+const (
+	// staleReadInitialBackoff is the first sleep before a retry. Each subsequent
+	// attempt doubles, so the client probes at 0, 25, 75, 175, 375, 775 and
+	// 1575ms — 7 attempts across 6 retries.
+	//
+	// The schedule is front-loaded because reads normally converge quickly, so
+	// nearly every stale read clears on the second or third attempt. The long
+	// tail exists only to absorb rare outliers rather than fail an apply, and
+	// costs nothing in the common case. The bounds were chosen from internal
+	// service latency measurements; consult those before narrowing them.
+	staleReadInitialBackoff = 25 * time.Millisecond
+	// staleReadMaxElapsed caps the total time spent sleeping between retries.
+	// The doubling schedule above stops on its own at 1575ms; the remaining
+	// headroom means the schedule can be extended without editing this ceiling.
+	staleReadMaxElapsed = 2 * time.Second
+)
+
 // Client is the BeyondTrust API client
 type Client struct {
 	BaseURL        string
@@ -30,6 +54,11 @@ type Client struct {
 	Role           string // X-BT-Role header value (when set, auth type is always CUSTOM-IDP)
 	HTTPClient     *http.Client
 	ServiceName    string // Optional service name for user agent
+
+	// StaleReadInitialBackoff and StaleReadMaxElapsed tune the 403 stale-read
+	// retry on GET requests. A zero StaleReadInitialBackoff disables retrying.
+	StaleReadInitialBackoff time.Duration
+	StaleReadMaxElapsed     time.Duration
 }
 
 // Config holds the client configuration
@@ -156,6 +185,9 @@ func NewClient(cfg *Config) (*Client, error) {
 		Role:           cfg.Role,
 		ServiceName:    cfg.ServiceName,
 		HTTPClient:     httpClient,
+
+		StaleReadInitialBackoff: staleReadInitialBackoff,
+		StaleReadMaxElapsed:     staleReadMaxElapsed,
 	}, nil
 }
 
@@ -299,8 +331,56 @@ func (c *Client) handleErrorResponse(resp *http.Response) error {
 	return &apiErr
 }
 
-// DoRequest performs a request and unmarshals the response
+// isStaleReadForbidden reports whether err is (or wraps) a 403 from the API,
+// which on a GET may mean a just-written object is not yet visible to reads.
+// This deliberately checks 403 alone rather than using IsPermissionError, which
+// also matches 401 — retrying an invalid token only adds latency.
+func isStaleReadForbidden(err error) bool {
+	var apiErr *APIError
+	return errors.As(err, &apiErr) && apiErr.StatusCode == http.StatusForbidden
+}
+
+// DoRequest performs a request and unmarshals the response.
+//
+// GET requests that fail with 403 are retried with exponential backoff to ride
+// out eventually consistent reads (see staleReadInitialBackoff). A 403 that
+// outlives the backoff budget is returned unchanged, as are all other errors.
 func (c *Client) DoRequest(ctx context.Context, method, path string, query url.Values, body interface{}, result interface{}) error {
+	if method != http.MethodGet {
+		return c.doRequestOnce(ctx, method, path, query, body, result)
+	}
+
+	var elapsed time.Duration
+	backoff := c.StaleReadInitialBackoff
+
+	for {
+		err := c.doRequestOnce(ctx, method, path, query, body, result)
+		if err == nil || !isStaleReadForbidden(err) {
+			return err
+		}
+
+		// Stop once another sleep would exceed the budget, and surface the 403.
+		if backoff <= 0 || elapsed+backoff > c.StaleReadMaxElapsed {
+			return err
+		}
+
+		timer := time.NewTimer(backoff)
+		select {
+		case <-ctx.Done():
+			timer.Stop()
+			// Return the API error rather than ctx.Err() so callers keep the
+			// typed *APIError they use to classify failures.
+			return err
+		case <-timer.C:
+		}
+
+		elapsed += backoff
+		backoff *= 2
+	}
+}
+
+// doRequestOnce performs a single request attempt and unmarshals the response.
+func (c *Client) doRequestOnce(ctx context.Context, method, path string, query url.Values, body interface{}, result interface{}) error {
 	var req *http.Request
 	var err error
 

@@ -7,7 +7,9 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -816,4 +818,220 @@ func TestAPIError_IsAWSCredentialValidationError(t *testing.T) {
 			assert.Equal(t, tt.want, result)
 		})
 	}
+}
+
+// newStaleReadTestClient returns a client pointed at server with the stale-read
+// retry budget left at its production defaults.
+func newStaleReadTestClient(t *testing.T, serverURL string) *Client {
+	t.Helper()
+
+	c, err := NewClient(&Config{
+		BaseURL:     serverURL,
+		AccessToken: "test-token",
+		SiteID:      "test-site",
+		APIVersion:  DefaultAPIVersion,
+		Timeout:     "30s",
+	})
+	require.NoError(t, err)
+
+	return c
+}
+
+// TestStaleReadRetry_ForbiddenThenSuccess verifies a GET that first reads before the
+// write is visible (403) succeeds once the read converges.
+func TestStaleReadRetry_ForbiddenThenSuccess(t *testing.T) {
+	var attempts atomic.Int32
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if attempts.Add(1) == 1 {
+			w.WriteHeader(http.StatusForbidden)
+			_ = json.NewEncoder(w).Encode(map[string]string{"message": "forbidden"})
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+		_ = json.NewEncoder(w).Encode(map[string]string{"name": "test-secret"})
+	}))
+	defer server.Close()
+
+	client := newStaleReadTestClient(t, server.URL)
+
+	var result map[string]string
+	err := client.Get(context.Background(), "/test", nil, &result)
+
+	require.NoError(t, err)
+	assert.Equal(t, "test-secret", result["name"])
+	assert.Equal(t, int32(2), attempts.Load(), "expected one retry after the 403")
+}
+
+// TestStaleReadRetry_ExhaustsBudget verifies a 403 that outlives the backoff budget
+// is surfaced as a typed *APIError after exactly 7 attempts (6 retries).
+//
+// This exercises the production constants, so it sleeps through the full
+// 25+50+100+200+400+800ms schedule and takes ~1.6s. That is deliberate: it is the
+// only test that pins the real retry budget end to end.
+func TestStaleReadRetry_ExhaustsBudget(t *testing.T) {
+	var attempts atomic.Int32
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		attempts.Add(1)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusForbidden)
+		_ = json.NewEncoder(w).Encode(map[string]string{"message": "forbidden"})
+	}))
+	defer server.Close()
+
+	client := newStaleReadTestClient(t, server.URL)
+
+	start := time.Now()
+	var result map[string]string
+	err := client.Get(context.Background(), "/test", nil, &result)
+	elapsed := time.Since(start)
+
+	require.Error(t, err)
+
+	var apiErr *APIError
+	require.ErrorAs(t, err, &apiErr)
+	assert.Equal(t, http.StatusForbidden, apiErr.StatusCode)
+	assert.True(t, apiErr.IsPermissionError(), "terminal 403 stays a permission error")
+
+	assert.Equal(t, int32(7), attempts.Load(), "expected 7 attempts (6 retries)")
+	assert.GreaterOrEqual(t, elapsed, 1575*time.Millisecond,
+		"expected to sleep through the 25+50+100+200+400+800ms schedule")
+	assert.Less(t, elapsed, staleReadMaxElapsed+time.Second,
+		"retrying must stay inside the budget plus request overhead")
+}
+
+// TestStaleReadRetry_OnlyRetriesGet verifies write methods are never retried, since
+// they do not observe eventually consistent reads.
+func TestStaleReadRetry_OnlyRetriesGet(t *testing.T) {
+	for _, method := range []string{"POST", "PUT", "PATCH", "DELETE"} {
+		t.Run(method, func(t *testing.T) {
+			var attempts atomic.Int32
+
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				attempts.Add(1)
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusForbidden)
+				_ = json.NewEncoder(w).Encode(map[string]string{"message": "forbidden"})
+			}))
+			defer server.Close()
+
+			client := newStaleReadTestClient(t, server.URL)
+
+			err := client.DoRequest(context.Background(), method, "/test", nil, map[string]string{"k": "v"}, nil)
+
+			require.Error(t, err)
+			assert.Equal(t, int32(1), attempts.Load(), "%s must not be retried", method)
+		})
+	}
+}
+
+// TestStaleReadRetry_OnlyRetriesForbidden verifies other failing statuses are returned
+// on the first attempt. 401 in particular must not retry: an invalid token will not
+// become valid, so retrying only adds latency.
+func TestStaleReadRetry_OnlyRetriesForbidden(t *testing.T) {
+	for _, status := range []int{
+		http.StatusBadRequest,
+		http.StatusUnauthorized,
+		http.StatusNotFound,
+		http.StatusConflict,
+		http.StatusInternalServerError,
+	} {
+		t.Run(http.StatusText(status), func(t *testing.T) {
+			var attempts atomic.Int32
+
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				attempts.Add(1)
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(status)
+				_ = json.NewEncoder(w).Encode(map[string]string{"message": "boom"})
+			}))
+			defer server.Close()
+
+			client := newStaleReadTestClient(t, server.URL)
+
+			var result map[string]string
+			err := client.Get(context.Background(), "/test", nil, &result)
+
+			require.Error(t, err)
+			assert.Equal(t, int32(1), attempts.Load(), "status %d must not be retried", status)
+		})
+	}
+}
+
+// TestStaleReadRetry_ContextCancellation verifies a cancelled context cuts the retry
+// loop short and still yields the typed *APIError callers classify on.
+func TestStaleReadRetry_ContextCancellation(t *testing.T) {
+	var attempts atomic.Int32
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		attempts.Add(1)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusForbidden)
+		_ = json.NewEncoder(w).Encode(map[string]string{"message": "forbidden"})
+	}))
+	defer server.Close()
+
+	client := newStaleReadTestClient(t, server.URL)
+
+	// Cancel partway through the first 25ms backoff.
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Millisecond)
+	defer cancel()
+
+	var result map[string]string
+	err := client.Get(ctx, "/test", nil, &result)
+
+	require.Error(t, err)
+
+	var apiErr *APIError
+	require.ErrorAs(t, err, &apiErr)
+	assert.Equal(t, http.StatusForbidden, apiErr.StatusCode)
+	assert.Less(t, attempts.Load(), int32(7), "cancellation should stop the retry loop early")
+}
+
+// TestStaleReadRetry_DisabledWhenBudgetZero verifies a zero backoff turns retrying off,
+// which keeps directly constructed Client literals behaving as single-shot.
+func TestStaleReadRetry_DisabledWhenBudgetZero(t *testing.T) {
+	var attempts atomic.Int32
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		attempts.Add(1)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusForbidden)
+		_ = json.NewEncoder(w).Encode(map[string]string{"message": "forbidden"})
+	}))
+	defer server.Close()
+
+	client := newStaleReadTestClient(t, server.URL)
+	client.StaleReadInitialBackoff = 0
+
+	var result map[string]string
+	err := client.Get(context.Background(), "/test", nil, &result)
+
+	require.Error(t, err)
+	assert.Equal(t, int32(1), attempts.Load(), "zero backoff disables retrying")
+}
+
+// TestStaleReadRetry_NewClientDefaults verifies NewClient wires the production budget.
+func TestStaleReadRetry_NewClientDefaults(t *testing.T) {
+	c, err := NewClient(&Config{
+		BaseURL:     "https://api.example.com",
+		AccessToken: "test-token",
+		SiteID:      "test-site",
+		Timeout:     "30s",
+	})
+	require.NoError(t, err)
+
+	assert.Equal(t, staleReadInitialBackoff, c.StaleReadInitialBackoff)
+	assert.Equal(t, staleReadMaxElapsed, c.StaleReadMaxElapsed)
+
+	// The doubling schedule must fit inside the budget, and the final probe must
+	// stay far enough out to absorb outlier convergence times.
+	var elapsed time.Duration
+	for b := staleReadInitialBackoff; elapsed+b <= staleReadMaxElapsed; b *= 2 {
+		elapsed += b
+	}
+	assert.Equal(t, 1575*time.Millisecond, elapsed, "final probe lands at 1575ms")
+	assert.Greater(t, elapsed, time.Second, "final probe must keep at least a second of coverage")
 }
