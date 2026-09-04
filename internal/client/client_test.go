@@ -1092,8 +1092,10 @@ func TestStaleReadRetry_NewClientDefaults(t *testing.T) {
 	}
 
 	assert.Equal(t,
-		[]time.Duration{25 * time.Millisecond, 50 * time.Millisecond, 100 * time.Millisecond,
-			200 * time.Millisecond, 400 * time.Millisecond, 500 * time.Millisecond, 500 * time.Millisecond},
+		[]time.Duration{
+			25 * time.Millisecond, 50 * time.Millisecond, 100 * time.Millisecond,
+			200 * time.Millisecond, 400 * time.Millisecond, 500 * time.Millisecond, 500 * time.Millisecond,
+		},
 		sleeps, "nominal backoff schedule")
 	assert.Equal(t, 1775*time.Millisecond, elapsed, "final probe lands at 1775ms")
 	assert.Len(t, sleeps, 7, "7 retries, so 8 attempts")
