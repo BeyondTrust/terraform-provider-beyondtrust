@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math/rand/v2"
 	"net/http"
 	"net/url"
 	"strings"
@@ -29,8 +30,8 @@ const DefaultAPIURL = "https://api.beyondtrust.io"
 // this, so only GET is retried.
 const (
 	// staleReadInitialBackoff is the first sleep before a retry. Each subsequent
-	// attempt doubles, so the client probes at 0, 25, 75, 175, 375, 775 and
-	// 1575ms — 7 attempts across 6 retries.
+	// attempt doubles until staleReadMaxBackoff, so the client probes at 0, 25,
+	// 75, 175, 375, 775, 1275 and 1775ms — 8 attempts across 7 retries.
 	//
 	// The schedule is front-loaded because reads normally converge quickly, so
 	// nearly every stale read clears on the second or third attempt. The long
@@ -38,10 +39,26 @@ const (
 	// costs nothing in the common case. The bounds were chosen from internal
 	// service latency measurements; consult those before narrowing them.
 	staleReadInitialBackoff = 25 * time.Millisecond
-	// staleReadMaxElapsed caps the total time spent sleeping between retries.
-	// The doubling schedule above stops on its own at 1575ms; the remaining
-	// headroom means the schedule can be extended without editing this ceiling.
+	// staleReadMaxBackoff caps any single sleep. Uncapped doubling would spend
+	// the last 800ms of the budget on one sleep; capping fits another probe in
+	// the same budget instead, which both reaches further and leaves a smaller
+	// worst-case gap between probes.
+	staleReadMaxBackoff = 500 * time.Millisecond
+	// staleReadMaxElapsed caps the time spent sleeping between retries. The
+	// schedule above stops on its own at 1775ms. This governs the nominal
+	// schedule: jitter is applied to each sleep, so actual wall time varies by
+	// up to staleReadJitter either way.
 	staleReadMaxElapsed = 2 * time.Second
+	// staleReadJitter is the fraction by which each sleep is randomly scaled up
+	// or down. Terraform applies resources in parallel, so without jitter every
+	// worker that hits a stale read retries on an identical schedule and the
+	// attempts arrive in synchronised bursts.
+	//
+	// This is proportional rather than full jitter (a uniform value in [0, d))
+	// deliberately: full jitter would halve the expected schedule and with it
+	// the tail coverage the budget was sized for, whereas scaling around the
+	// nominal value decorrelates workers while preserving it.
+	staleReadJitter = 0.25
 )
 
 // Client is the BeyondTrust API client
@@ -55,10 +72,14 @@ type Client struct {
 	HTTPClient     *http.Client
 	ServiceName    string // Optional service name for user agent
 
-	// StaleReadInitialBackoff and StaleReadMaxElapsed tune the 403 stale-read
-	// retry on GET requests. A zero StaleReadInitialBackoff disables retrying.
+	// These tune the 403 stale-read retry on GET requests. A zero
+	// StaleReadInitialBackoff disables retrying; a zero StaleReadMaxBackoff
+	// leaves the backoff uncapped; a zero StaleReadJitter makes the schedule
+	// exact, which is useful in tests.
 	StaleReadInitialBackoff time.Duration
+	StaleReadMaxBackoff     time.Duration
 	StaleReadMaxElapsed     time.Duration
+	StaleReadJitter         float64
 }
 
 // Config holds the client configuration
@@ -187,7 +208,9 @@ func NewClient(cfg *Config) (*Client, error) {
 		HTTPClient:     httpClient,
 
 		StaleReadInitialBackoff: staleReadInitialBackoff,
+		StaleReadMaxBackoff:     staleReadMaxBackoff,
 		StaleReadMaxElapsed:     staleReadMaxElapsed,
+		StaleReadJitter:         staleReadJitter,
 	}, nil
 }
 
@@ -360,11 +383,13 @@ func (c *Client) DoRequest(ctx context.Context, method, path string, query url.V
 		}
 
 		// Stop once another sleep would exceed the budget, and surface the 403.
+		// Accounting uses the nominal backoff rather than the jittered sleep, so
+		// the attempt count stays fixed and only the timing varies.
 		if backoff <= 0 || elapsed+backoff > c.StaleReadMaxElapsed {
 			return err
 		}
 
-		timer := time.NewTimer(backoff)
+		timer := time.NewTimer(jitterBackoff(backoff, c.StaleReadJitter))
 		select {
 		case <-ctx.Done():
 			timer.Stop()
@@ -384,8 +409,23 @@ func (c *Client) DoRequest(ctx context.Context, method, path string, query url.V
 		}
 
 		elapsed += backoff
+
 		backoff *= 2
+		if c.StaleReadMaxBackoff > 0 && backoff > c.StaleReadMaxBackoff {
+			backoff = c.StaleReadMaxBackoff
+		}
 	}
+}
+
+// jitterBackoff scales d by a random factor uniform in [1-jitter, 1+jitter), so
+// that clients retrying concurrently do not stay in lockstep. A non-positive
+// jitter returns d unchanged.
+func jitterBackoff(d time.Duration, jitter float64) time.Duration {
+	if d <= 0 || jitter <= 0 {
+		return d
+	}
+
+	return time.Duration(float64(d) * (1 + jitter*(2*rand.Float64()-1)))
 }
 
 // doRequestOnce performs a single request attempt and unmarshals the response.

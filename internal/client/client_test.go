@@ -865,11 +865,11 @@ func TestStaleReadRetry_ForbiddenThenSuccess(t *testing.T) {
 }
 
 // TestStaleReadRetry_ExhaustsBudget verifies a 403 that outlives the backoff budget
-// is surfaced as a typed *APIError after exactly 7 attempts (6 retries).
+// is surfaced as a typed *APIError after exactly 8 attempts (7 retries).
 //
 // This exercises the production constants, so it sleeps through the full
-// 25+50+100+200+400+800ms schedule and takes ~1.6s. That is deliberate: it is the
-// only test that pins the real retry budget end to end.
+// 25+50+100+200+400+500+500ms schedule and takes ~1.8s. That is deliberate: it is
+// the only test that pins the real retry budget end to end.
 func TestStaleReadRetry_ExhaustsBudget(t *testing.T) {
 	var attempts atomic.Int32
 
@@ -895,9 +895,12 @@ func TestStaleReadRetry_ExhaustsBudget(t *testing.T) {
 	assert.Equal(t, http.StatusForbidden, apiErr.StatusCode)
 	assert.True(t, apiErr.IsPermissionError(), "terminal 403 stays a permission error")
 
-	assert.Equal(t, int32(7), attempts.Load(), "expected 7 attempts (6 retries)")
-	assert.GreaterOrEqual(t, elapsed, 1575*time.Millisecond,
-		"expected to sleep through the 25+50+100+200+400+800ms schedule")
+	// The attempt count is exact even with jitter on, because the budget is
+	// accounted against the nominal backoff. Only the wall clock varies, so the
+	// timing bound allows for jitter running the full 25% short.
+	assert.Equal(t, int32(8), attempts.Load(), "expected 8 attempts (7 retries)")
+	assert.GreaterOrEqual(t, elapsed, time.Duration(float64(1775*time.Millisecond)*(1-staleReadJitter)),
+		"expected to sleep through the 25+50+100+200+400+500+500ms schedule, less jitter")
 
 	// No upper bound on elapsed: the attempt count above already rules out a
 	// runaway loop, and TestStaleReadRetry_NewClientDefaults pins the schedule
@@ -989,6 +992,7 @@ func TestStaleReadRetry_ContextCancellation(t *testing.T) {
 	// which a contended runner can easily produce.
 	client.StaleReadInitialBackoff = 1 * time.Second
 	client.StaleReadMaxElapsed = 30 * time.Second
+	client.StaleReadJitter = 0 // keep the sleep exact so the margin is known
 
 	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 	defer cancel()
@@ -1039,14 +1043,93 @@ func TestStaleReadRetry_NewClientDefaults(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Equal(t, staleReadInitialBackoff, c.StaleReadInitialBackoff)
+	assert.Equal(t, staleReadMaxBackoff, c.StaleReadMaxBackoff)
 	assert.Equal(t, staleReadMaxElapsed, c.StaleReadMaxElapsed)
+	assert.Equal(t, staleReadJitter, c.StaleReadJitter)
 
-	// The doubling schedule must fit inside the budget, and the final probe must
-	// stay far enough out to absorb outlier convergence times.
+	// Derive the nominal schedule the loop will follow: double until the cap,
+	// stopping before the budget is exceeded.
 	var elapsed time.Duration
-	for b := staleReadInitialBackoff; elapsed+b <= staleReadMaxElapsed; b *= 2 {
+	var sleeps []time.Duration
+	for b := staleReadInitialBackoff; elapsed+b <= staleReadMaxElapsed; {
+		sleeps = append(sleeps, b)
 		elapsed += b
+		if b *= 2; b > staleReadMaxBackoff {
+			b = staleReadMaxBackoff
+		}
 	}
-	assert.Equal(t, 1575*time.Millisecond, elapsed, "final probe lands at 1575ms")
-	assert.Greater(t, elapsed, time.Second, "final probe must keep at least a second of coverage")
+
+	assert.Equal(t,
+		[]time.Duration{25 * time.Millisecond, 50 * time.Millisecond, 100 * time.Millisecond,
+			200 * time.Millisecond, 400 * time.Millisecond, 500 * time.Millisecond, 500 * time.Millisecond},
+		sleeps, "nominal backoff schedule")
+	assert.Equal(t, 1775*time.Millisecond, elapsed, "final probe lands at 1775ms")
+	assert.Len(t, sleeps, 7, "7 retries, so 8 attempts")
+
+	// No single sleep may exceed the cap, and the final probe must stay far
+	// enough out to absorb outlier convergence times even if jitter runs short.
+	for _, s := range sleeps {
+		assert.LessOrEqual(t, s, staleReadMaxBackoff, "no sleep may exceed the cap")
+	}
+	assert.Greater(t, time.Duration(float64(elapsed)*(1-staleReadJitter)), time.Second,
+		"worst-case jittered coverage must stay above one second")
+}
+
+// TestJitterBackoff verifies jitter stays within its band, actually varies, and can
+// be switched off for an exact schedule.
+func TestJitterBackoff(t *testing.T) {
+	const d = 400 * time.Millisecond
+
+	t.Run("stays within band and varies", func(t *testing.T) {
+		lo := time.Duration(float64(d) * (1 - staleReadJitter))
+		hi := time.Duration(float64(d) * (1 + staleReadJitter))
+
+		seen := make(map[time.Duration]struct{})
+		for range 200 {
+			got := jitterBackoff(d, staleReadJitter)
+			assert.GreaterOrEqual(t, got, lo, "jittered sleep below band")
+			assert.LessOrEqual(t, got, hi, "jittered sleep above band")
+			seen[got] = struct{}{}
+		}
+
+		// Lockstep retries are the whole reason jitter exists, so a constant
+		// value would defeat the purpose even while staying inside the band.
+		assert.Greater(t, len(seen), 100, "jitter should spread values, not return a constant")
+	})
+
+	t.Run("disabled by zero or negative jitter", func(t *testing.T) {
+		assert.Equal(t, d, jitterBackoff(d, 0))
+		assert.Equal(t, d, jitterBackoff(d, -1))
+	})
+
+	t.Run("non-positive duration passes through", func(t *testing.T) {
+		assert.Zero(t, jitterBackoff(0, staleReadJitter))
+	})
+}
+
+// TestStaleReadRetry_UncappedWhenMaxBackoffZero verifies a zero cap leaves the
+// backoff doubling unbounded, so a hand-built Client keeps working.
+func TestStaleReadRetry_UncappedWhenMaxBackoffZero(t *testing.T) {
+	var attempts atomic.Int32
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		attempts.Add(1)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusForbidden)
+		_ = json.NewEncoder(w).Encode(map[string]string{"message": "forbidden"})
+	}))
+	defer server.Close()
+
+	client := newStaleReadTestClient(t, server.URL)
+	client.StaleReadInitialBackoff = 10 * time.Millisecond
+	client.StaleReadMaxBackoff = 0 // uncapped
+	client.StaleReadMaxElapsed = 70 * time.Millisecond
+	client.StaleReadJitter = 0
+
+	var result map[string]string
+	err := client.Get(context.Background(), "/test", nil, &result)
+
+	require.Error(t, err)
+	// Pure doubling: 10+20+40 = 70ms fits, the next 80ms would not.
+	assert.Equal(t, int32(4), attempts.Load(), "uncapped doubling should give 4 attempts")
 }
