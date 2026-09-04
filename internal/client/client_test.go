@@ -899,7 +899,7 @@ func TestStaleReadRetry_ExhaustsBudget(t *testing.T) {
 	// accounted against the nominal backoff. Only the wall clock varies, so the
 	// timing bound allows for jitter running the full 25% short.
 	assert.Equal(t, int32(8), attempts.Load(), "expected 8 attempts (7 retries)")
-	assert.GreaterOrEqual(t, elapsed, time.Duration(float64(1775*time.Millisecond)*(1-defaultStaleReadRetry.Jitter)),
+	assert.GreaterOrEqual(t, elapsed, time.Duration(float64(1775*time.Millisecond)*(1-defaultStaleReadRetry().Jitter)),
 		"expected to sleep through the 25+50+100+200+400+500+500ms schedule, less jitter")
 
 	// No upper bound on elapsed: the attempt count above already rules out a
@@ -990,9 +990,9 @@ func TestStaleReadRetry_ContextCancellation(t *testing.T) {
 	// instead of an *APIError and the assertions below fail. Against the real
 	// 25ms first backoff, that needed only a 10ms loopback request to trigger,
 	// which a contended runner can easily produce.
-	client.StaleRead.InitialBackoff = 1 * time.Second
-	client.StaleRead.MaxTotalBackoff = 30 * time.Second
-	client.StaleRead.Jitter = 0 // keep the sleep exact so the margin is known
+	client.StaleReadRetry.InitialBackoff = 1 * time.Second
+	client.StaleReadRetry.MaxTotalBackoff = 30 * time.Second
+	client.StaleReadRetry.Jitter = 0 // keep the sleep exact so the margin is known
 
 	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 	defer cancel()
@@ -1009,27 +1009,61 @@ func TestStaleReadRetry_ContextCancellation(t *testing.T) {
 		"cancellation during the first backoff must stop the loop after one attempt")
 }
 
-// TestStaleReadRetry_DisabledWhenBudgetZero verifies a zero backoff turns retrying off,
-// which keeps directly constructed Client literals behaving as single-shot.
-func TestStaleReadRetry_DisabledWhenBudgetZero(t *testing.T) {
-	var attempts atomic.Int32
+// TestStaleReadRetry_Disabled verifies the ways of turning retrying off, which is
+// also what keeps directly constructed Client literals behaving as single-shot.
+func TestStaleReadRetry_Disabled(t *testing.T) {
+	tests := []struct {
+		name    string
+		disable func(*Client)
+	}{
+		{
+			name:    "zero initial backoff",
+			disable: func(c *Client) { c.StaleReadRetry.InitialBackoff = 0 },
+		},
+		{
+			// Pins the sentinel to the contract its name claims, so it cannot
+			// drift into something that quietly still retries.
+			name:    "disabled sentinel",
+			disable: func(c *Client) { c.StaleReadRetry = StaleReadRetryDisabled() },
+		},
+		{
+			name:    "zero-value policy",
+			disable: func(c *Client) { c.StaleReadRetry = StaleReadRetry{} },
+		},
+		{
+			// The zero-value case above also zeroes InitialBackoff, so the
+			// backoff <= 0 check short-circuits and this path never runs. Keep a
+			// valid InitialBackoff to reach the budget comparison itself.
+			name: "zero total budget with a valid initial backoff",
+			disable: func(c *Client) {
+				c.StaleReadRetry.InitialBackoff = 25 * time.Millisecond
+				c.StaleReadRetry.MaxTotalBackoff = 0
+			},
+		},
+	}
 
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		attempts.Add(1)
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusForbidden)
-		_ = json.NewEncoder(w).Encode(map[string]string{"message": "forbidden"})
-	}))
-	defer server.Close()
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var attempts atomic.Int32
 
-	client := newStaleReadTestClient(t, server.URL)
-	client.StaleRead.InitialBackoff = 0
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				attempts.Add(1)
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusForbidden)
+				_ = json.NewEncoder(w).Encode(map[string]string{"message": "forbidden"})
+			}))
+			defer server.Close()
 
-	var result map[string]string
-	err := client.Get(context.Background(), "/test", nil, &result)
+			client := newStaleReadTestClient(t, server.URL)
+			tt.disable(client)
 
-	require.Error(t, err)
-	assert.Equal(t, int32(1), attempts.Load(), "zero backoff disables retrying")
+			var result map[string]string
+			err := client.Get(context.Background(), "/test", nil, &result)
+
+			require.Error(t, err)
+			assert.Equal(t, int32(1), attempts.Load(), "retrying must be off")
+		})
+	}
 }
 
 // TestStaleReadRetry_NewClientDefaults verifies NewClient wires the production budget.
@@ -1042,8 +1076,8 @@ func TestStaleReadRetry_NewClientDefaults(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	retry := defaultStaleReadRetry
-	assert.Equal(t, retry, c.StaleRead, "NewClient must install the default policy")
+	retry := defaultStaleReadRetry()
+	assert.Equal(t, retry, c.StaleReadRetry, "NewClient must install the default policy")
 
 	// Derive the nominal schedule the loop will follow: double until the cap,
 	// stopping before the budget is exceeded.
@@ -1088,14 +1122,15 @@ func TestStaleReadRetry_NewClientDefaults(t *testing.T) {
 // be switched off for an exact schedule.
 func TestJitterBackoff(t *testing.T) {
 	const d = 400 * time.Millisecond
+	jitter := defaultStaleReadRetry().Jitter
 
 	t.Run("stays within band and varies", func(t *testing.T) {
-		lo := time.Duration(float64(d) * (1 - defaultStaleReadRetry.Jitter))
-		hi := time.Duration(float64(d) * (1 + defaultStaleReadRetry.Jitter))
+		lo := time.Duration(float64(d) * (1 - jitter))
+		hi := time.Duration(float64(d) * (1 + jitter))
 
 		seen := make(map[time.Duration]struct{})
 		for range 200 {
-			got := jitterBackoff(d, defaultStaleReadRetry.Jitter)
+			got := jitterBackoff(d, jitter)
 			assert.GreaterOrEqual(t, got, lo, "jittered sleep below band")
 			assert.LessOrEqual(t, got, hi, "jittered sleep above band")
 			seen[got] = struct{}{}
@@ -1112,7 +1147,7 @@ func TestJitterBackoff(t *testing.T) {
 	})
 
 	t.Run("non-positive duration passes through", func(t *testing.T) {
-		assert.Zero(t, jitterBackoff(0, defaultStaleReadRetry.Jitter))
+		assert.Zero(t, jitterBackoff(0, jitter))
 	})
 }
 
@@ -1130,10 +1165,10 @@ func TestStaleReadRetry_UncappedWhenMaxBackoffZero(t *testing.T) {
 	defer server.Close()
 
 	client := newStaleReadTestClient(t, server.URL)
-	client.StaleRead.InitialBackoff = 10 * time.Millisecond
-	client.StaleRead.MaxBackoff = 0 // uncapped
-	client.StaleRead.MaxTotalBackoff = 70 * time.Millisecond
-	client.StaleRead.Jitter = 0
+	client.StaleReadRetry.InitialBackoff = 10 * time.Millisecond
+	client.StaleReadRetry.MaxBackoff = 0 // uncapped
+	client.StaleReadRetry.MaxTotalBackoff = 70 * time.Millisecond
+	client.StaleReadRetry.Jitter = 0
 
 	var result map[string]string
 	err := client.Get(context.Background(), "/test", nil, &result)

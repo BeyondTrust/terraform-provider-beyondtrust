@@ -84,11 +84,29 @@ type StaleReadRetry struct {
 // exists only to absorb rare outliers rather than fail an apply, and costs
 // nothing in the common case. The bounds were chosen from internal service
 // latency measurements; consult those before narrowing them.
-var defaultStaleReadRetry = StaleReadRetry{
-	InitialBackoff:  25 * time.Millisecond,
-	MaxBackoff:      500 * time.Millisecond,
-	MaxTotalBackoff: 2 * time.Second,
-	Jitter:          0.25,
+//
+// A function rather than a var because a struct cannot be const, and a package
+// var holding one is mutable: a single caller reaching into it would change the
+// policy for every Client built afterwards.
+func defaultStaleReadRetry() StaleReadRetry {
+	return StaleReadRetry{
+		InitialBackoff:  25 * time.Millisecond,
+		MaxBackoff:      500 * time.Millisecond,
+		MaxTotalBackoff: 2 * time.Second,
+		Jitter:          0.25,
+	}
+}
+
+// StaleReadRetryDisabled returns a policy that performs a single attempt. It is
+// the zero value, named so that switching the retry off says what it means at
+// the call site rather than relying on the reader knowing what an empty policy
+// does.
+//
+// Assigning it is the right choice when a 403 is the expected outcome rather
+// than a symptom — a destroy check, say, where the object really is gone and
+// every retry is guaranteed to fail.
+func StaleReadRetryDisabled() StaleReadRetry {
+	return StaleReadRetry{}
 }
 
 // Client is the BeyondTrust API client
@@ -102,8 +120,8 @@ type Client struct {
 	HTTPClient     *http.Client
 	ServiceName    string // Optional service name for user agent
 
-	// StaleRead tunes the 403 stale-read retry on GET requests.
-	StaleRead StaleReadRetry
+	// StaleReadRetry tunes the 403 stale-read retry on GET requests.
+	StaleReadRetry StaleReadRetry
 }
 
 // Config holds the client configuration
@@ -231,7 +249,7 @@ func NewClient(cfg *Config) (*Client, error) {
 		ServiceName:    cfg.ServiceName,
 		HTTPClient:     httpClient,
 
-		StaleRead: defaultStaleReadRetry,
+		StaleReadRetry: defaultStaleReadRetry(),
 	}, nil
 }
 
@@ -395,7 +413,7 @@ func (c *Client) DoRequest(ctx context.Context, method, path string, query url.V
 	}
 
 	var elapsed time.Duration
-	retry := c.StaleRead
+	retry := c.StaleReadRetry
 	backoff := retry.InitialBackoff
 
 	for {

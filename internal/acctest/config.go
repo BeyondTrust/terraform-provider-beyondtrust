@@ -165,7 +165,7 @@ func NewDestroyCheckClient() (*client.Client, error) {
 		return nil, err
 	}
 
-	c.StaleRead = client.StaleReadRetry{}
+	c.StaleReadRetry = client.StaleReadRetryDisabled()
 
 	return c, nil
 }
