@@ -857,7 +857,7 @@ func TestStaleReadRetry_ForbiddenThenSuccess(t *testing.T) {
 	client := newStaleReadTestClient(t, server.URL)
 
 	var result map[string]string
-	err := client.Get(context.Background(), "/test", nil, &result)
+	err := client.Get(context.Background(), client.BuildPath("/static/test-secret"), nil, &result)
 
 	require.NoError(t, err)
 	assert.Equal(t, "test-secret", result["name"])
@@ -885,7 +885,7 @@ func TestStaleReadRetry_ExhaustsBudget(t *testing.T) {
 
 	start := time.Now()
 	var result map[string]string
-	err := client.Get(context.Background(), "/test", nil, &result)
+	err := client.Get(context.Background(), client.BuildPath("/static/test-secret"), nil, &result)
 	elapsed := time.Since(start)
 
 	require.Error(t, err)
@@ -925,7 +925,7 @@ func TestStaleReadRetry_OnlyRetriesGet(t *testing.T) {
 
 			client := newStaleReadTestClient(t, server.URL)
 
-			err := client.DoRequest(context.Background(), method, "/test", nil, map[string]string{"k": "v"}, nil)
+			err := client.DoRequest(context.Background(), method, client.BuildPath("/static/test-secret"), nil, map[string]string{"k": "v"}, nil)
 
 			require.Error(t, err)
 			assert.Equal(t, int32(1), attempts.Load(), "%s must not be retried", method)
@@ -958,7 +958,7 @@ func TestStaleReadRetry_OnlyRetriesForbidden(t *testing.T) {
 			client := newStaleReadTestClient(t, server.URL)
 
 			var result map[string]string
-			err := client.Get(context.Background(), "/test", nil, &result)
+			err := client.Get(context.Background(), client.BuildPath("/static/test-secret"), nil, &result)
 
 			require.Error(t, err)
 			assert.Equal(t, int32(1), attempts.Load(), "status %d must not be retried", status)
@@ -998,7 +998,7 @@ func TestStaleReadRetry_ContextCancellation(t *testing.T) {
 	defer cancel()
 
 	var result map[string]string
-	err := client.Get(ctx, "/test", nil, &result)
+	err := client.Get(ctx, client.BuildPath("/static/test-secret"), nil, &result)
 
 	require.Error(t, err)
 
@@ -1058,7 +1058,7 @@ func TestStaleReadRetry_Disabled(t *testing.T) {
 			tt.disable(client)
 
 			var result map[string]string
-			err := client.Get(context.Background(), "/test", nil, &result)
+			err := client.Get(context.Background(), client.BuildPath("/static/test-secret"), nil, &result)
 
 			require.Error(t, err)
 			assert.Equal(t, int32(1), attempts.Load(), "retrying must be off")
@@ -1171,9 +1171,98 @@ func TestStaleReadRetry_UncappedWhenMaxBackoffZero(t *testing.T) {
 	client.StaleReadRetry.Jitter = 0
 
 	var result map[string]string
-	err := client.Get(context.Background(), "/test", nil, &result)
+	err := client.Get(context.Background(), client.BuildPath("/static/test-secret"), nil, &result)
 
 	require.Error(t, err)
 	// Pure doubling: 10+20+40 = 70ms fits, the next 80ms would not.
 	assert.Equal(t, int32(4), attempts.Load(), "uncapped doubling should give 4 attempts")
+}
+
+// TestStaleReadRetryApplies covers the retry gate directly, across both the
+// method and path dimensions.
+func TestStaleReadRetryApplies(t *testing.T) {
+	c := &Client{SiteID: "test-site"}
+	versioned := &Client{SiteID: "test-site", APIPathVersion: "v1"}
+
+	tests := []struct {
+		name   string
+		client *Client
+		method string
+		path   string
+		want   bool
+	}{
+		{"secrets GET", c, "GET", c.BuildPath("/static/name"), true},
+		{"secrets GET, bare prefix", c, "GET", c.BuildPath(""), true},
+		{"secrets GET, versioned path", versioned, "GET", versioned.BuildPath("/static/name"), true},
+		{"secrets GET, nested path", c, "GET", c.BuildPath("/folders/a/metadata"), true},
+
+		// Writes reach the same service but do not observe stale reads.
+		{"secrets POST", c, "POST", c.BuildPath("/static/name"), false},
+		{"secrets PUT", c, "PUT", c.BuildPath("/static/name"), false},
+		{"secrets PATCH", c, "PATCH", c.BuildPath("/static/name"), false},
+		{"secrets DELETE", c, "DELETE", c.BuildPath("/static/name"), false},
+
+		// The auth service does not share the behaviour, so its 403s are real.
+		{"auth GET", c, "GET", c.BuildAuthPath("/workload-identities"), false},
+		{"auth GET, nested", c, "GET", c.BuildAuthPath("/workload-identities/id"), false},
+
+		// Unrecognised paths fall through to a single attempt.
+		{"unrelated path", c, "GET", "/test", false},
+		{"root", c, "GET", "/", false},
+		{"empty", c, "GET", "", false},
+		{"another site", c, "GET", "/site/other-site/secrets/static/name", false},
+		{"prefix not at segment boundary", c, "GET", "/site/test-site/secretsomething", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, tt.client.staleReadRetryApplies(tt.method, tt.path),
+				"%s %s", tt.method, tt.path)
+		})
+	}
+}
+
+// TestStaleReadRetry_OnlyRetriesSecretsPath verifies the gate end to end: an
+// identical 403 is retried on the secrets path and returned immediately on the
+// auth path, which does not have eventually consistent reads.
+func TestStaleReadRetry_OnlyRetriesSecretsPath(t *testing.T) {
+	tests := []struct {
+		name         string
+		path         func(c *Client) string
+		wantAttempts int32
+	}{
+		{"secrets path retries", func(c *Client) string { return c.BuildPath("/static/name") }, 8},
+		{"auth path does not", func(c *Client) string { return c.BuildAuthPath("/workload-identities") }, 1},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var attempts atomic.Int32
+
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				attempts.Add(1)
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusForbidden)
+				_ = json.NewEncoder(w).Encode(map[string]string{"message": "forbidden"})
+			}))
+			defer server.Close()
+
+			client := newStaleReadTestClient(t, server.URL)
+			// Keep the schedule short; the attempt count is what matters here.
+			client.StaleReadRetry.InitialBackoff = time.Millisecond
+			client.StaleReadRetry.MaxBackoff = time.Millisecond
+			client.StaleReadRetry.MaxTotalBackoff = 7 * time.Millisecond
+			client.StaleReadRetry.Jitter = 0
+
+			var result map[string]string
+			err := client.Get(context.Background(), tt.path(client), nil, &result)
+
+			require.Error(t, err)
+
+			var apiErr *APIError
+			require.ErrorAs(t, err, &apiErr)
+			assert.Equal(t, http.StatusForbidden, apiErr.StatusCode)
+			assert.Equal(t, tt.wantAttempts, attempts.Load())
+		})
+	}
 }

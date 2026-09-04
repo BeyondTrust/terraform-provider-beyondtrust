@@ -23,13 +23,18 @@ const DefaultAPIURL = "https://api.beyondtrust.io"
 
 // StaleReadRetry is the backoff policy for the stale-read retry.
 //
-// Reads on the BeyondTrust API are eventually consistent: an object that was
+// Reads on the secrets service are eventually consistent: an object that was
 // just written may not yet be visible to an immediately following GET, and the
-// API reports that as 403 rather than 404. A 403 on a GET is therefore
-// ambiguous — it may be a stale read rather than a permission failure — so GET
-// is retried briefly to give the write time to become visible. A 403 that
-// outlives the budget is surfaced to the caller unchanged. Writes do not observe
-// this, so only GET is retried.
+// service reports that as 403 rather than 404. Such a 403 is therefore
+// ambiguous — it may be a stale read rather than a permission failure — so it is
+// retried briefly to give the write time to become visible. A 403 that outlives
+// the budget is surfaced to the caller unchanged.
+//
+// The retry is scoped to GET against the secrets path (see
+// staleReadRetryApplies). Writes are not affected, and other surfaces of the
+// API — the auth service behind BuildAuthPath, for one — do not share this
+// behaviour, so a 403 from them is taken at face value and fails on the first
+// attempt.
 //
 // The zero value disables retrying, so a Client built without one behaves as
 // single-shot. Individually: a zero InitialBackoff disables retrying, a zero
@@ -253,13 +258,20 @@ func NewClient(cfg *Config) (*Client, error) {
 	}, nil
 }
 
+// secretsPathPrefix is the root every secrets-service path shares. BuildPath and
+// staleReadRetryApplies both derive from this so the builder and the retry gate
+// cannot drift apart.
+func (c *Client) secretsPathPrefix() string {
+	return fmt.Sprintf("/site/%s/secrets", c.SiteID)
+}
+
 // BuildPath constructs an API path with optional version segment
 // Format: /site/{site-id}/secrets[/version]/endpoint
 func (c *Client) BuildPath(endpoint string) string {
 	if c.APIPathVersion == "" {
-		return fmt.Sprintf("/site/%s/secrets%s", c.SiteID, endpoint)
+		return c.secretsPathPrefix() + endpoint
 	}
-	return fmt.Sprintf("/site/%s/secrets/%s%s", c.SiteID, c.APIPathVersion, endpoint)
+	return fmt.Sprintf("%s/%s%s", c.secretsPathPrefix(), c.APIPathVersion, endpoint)
 }
 
 // BuildAuthPath constructs a path for the BeyondTrust auth service (workload identities).
@@ -402,13 +414,33 @@ func isStaleReadForbidden(err error) bool {
 	return errors.As(err, &apiErr) && apiErr.StatusCode == http.StatusForbidden
 }
 
+// staleReadRetryApplies reports whether a request is eligible for the stale-read
+// retry: a GET against the secrets service, the only surface with eventually
+// consistent reads. Everything else — writes, and reads of other services such
+// as the auth surface behind BuildAuthPath — gets a single attempt.
+//
+// A path this does not recognise falls through to no retry, so a hand-built path
+// behaves as it did before the retry existed rather than picking it up silently.
+func (c *Client) staleReadRetryApplies(method, path string) bool {
+	if method != http.MethodGet {
+		return false
+	}
+
+	prefix := c.secretsPathPrefix()
+
+	// Require the prefix to end at a segment boundary, so a sibling route such
+	// as /site/x/secretsomething cannot match.
+	return path == prefix || strings.HasPrefix(path, prefix+"/")
+}
+
 // DoRequest performs a request and unmarshals the response.
 //
-// GET requests that fail with 403 are retried with exponential backoff to ride
-// out eventually consistent reads (see StaleReadRetry). A 403 that
-// outlives the backoff budget is returned unchanged, as are all other errors.
+// GET requests to the secrets service that fail with 403 are retried with
+// exponential backoff to ride out eventually consistent reads (see
+// StaleReadRetry and staleReadRetryApplies). A 403 that outlives the backoff
+// budget is returned unchanged, as are all other errors.
 func (c *Client) DoRequest(ctx context.Context, method, path string, query url.Values, body interface{}, result interface{}) error {
-	if method != http.MethodGet {
+	if !c.staleReadRetryApplies(method, path) {
 		return c.doRequestOnce(ctx, method, path, query, body, result)
 	}
 
