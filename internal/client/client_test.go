@@ -899,7 +899,7 @@ func TestStaleReadRetry_ExhaustsBudget(t *testing.T) {
 	// accounted against the nominal backoff. Only the wall clock varies, so the
 	// timing bound allows for jitter running the full 25% short.
 	assert.Equal(t, int32(8), attempts.Load(), "expected 8 attempts (7 retries)")
-	assert.GreaterOrEqual(t, elapsed, time.Duration(float64(1775*time.Millisecond)*(1-staleReadJitter)),
+	assert.GreaterOrEqual(t, elapsed, time.Duration(float64(1775*time.Millisecond)*(1-defaultStaleReadRetry.Jitter)),
 		"expected to sleep through the 25+50+100+200+400+500+500ms schedule, less jitter")
 
 	// No upper bound on elapsed: the attempt count above already rules out a
@@ -990,9 +990,9 @@ func TestStaleReadRetry_ContextCancellation(t *testing.T) {
 	// instead of an *APIError and the assertions below fail. Against the real
 	// 25ms first backoff, that needed only a 10ms loopback request to trigger,
 	// which a contended runner can easily produce.
-	client.StaleReadInitialBackoff = 1 * time.Second
-	client.StaleReadMaxElapsed = 30 * time.Second
-	client.StaleReadJitter = 0 // keep the sleep exact so the margin is known
+	client.StaleRead.InitialBackoff = 1 * time.Second
+	client.StaleRead.MaxElapsed = 30 * time.Second
+	client.StaleRead.Jitter = 0 // keep the sleep exact so the margin is known
 
 	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 	defer cancel()
@@ -1023,7 +1023,7 @@ func TestStaleReadRetry_DisabledWhenBudgetZero(t *testing.T) {
 	defer server.Close()
 
 	client := newStaleReadTestClient(t, server.URL)
-	client.StaleReadInitialBackoff = 0
+	client.StaleRead.InitialBackoff = 0
 
 	var result map[string]string
 	err := client.Get(context.Background(), "/test", nil, &result)
@@ -1042,20 +1042,18 @@ func TestStaleReadRetry_NewClientDefaults(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	assert.Equal(t, staleReadInitialBackoff, c.StaleReadInitialBackoff)
-	assert.Equal(t, staleReadMaxBackoff, c.StaleReadMaxBackoff)
-	assert.Equal(t, staleReadMaxElapsed, c.StaleReadMaxElapsed)
-	assert.Equal(t, staleReadJitter, c.StaleReadJitter)
+	retry := defaultStaleReadRetry
+	assert.Equal(t, retry, c.StaleRead, "NewClient must install the default policy")
 
 	// Derive the nominal schedule the loop will follow: double until the cap,
 	// stopping before the budget is exceeded.
 	var elapsed time.Duration
 	var sleeps []time.Duration
-	for b := staleReadInitialBackoff; elapsed+b <= staleReadMaxElapsed; {
+	for b := retry.InitialBackoff; elapsed+b <= retry.MaxElapsed; {
 		sleeps = append(sleeps, b)
 		elapsed += b
-		if b *= 2; b > staleReadMaxBackoff {
-			b = staleReadMaxBackoff
+		if b *= 2; b > retry.MaxBackoff {
+			b = retry.MaxBackoff
 		}
 	}
 
@@ -1069,9 +1067,9 @@ func TestStaleReadRetry_NewClientDefaults(t *testing.T) {
 	// No single sleep may exceed the cap, and the final probe must stay far
 	// enough out to absorb outlier convergence times even if jitter runs short.
 	for _, s := range sleeps {
-		assert.LessOrEqual(t, s, staleReadMaxBackoff, "no sleep may exceed the cap")
+		assert.LessOrEqual(t, s, retry.MaxBackoff, "no sleep may exceed the cap")
 	}
-	assert.Greater(t, time.Duration(float64(elapsed)*(1-staleReadJitter)), time.Second,
+	assert.Greater(t, time.Duration(float64(elapsed)*(1-retry.Jitter)), time.Second,
 		"worst-case jittered coverage must stay above one second")
 }
 
@@ -1081,12 +1079,12 @@ func TestJitterBackoff(t *testing.T) {
 	const d = 400 * time.Millisecond
 
 	t.Run("stays within band and varies", func(t *testing.T) {
-		lo := time.Duration(float64(d) * (1 - staleReadJitter))
-		hi := time.Duration(float64(d) * (1 + staleReadJitter))
+		lo := time.Duration(float64(d) * (1 - defaultStaleReadRetry.Jitter))
+		hi := time.Duration(float64(d) * (1 + defaultStaleReadRetry.Jitter))
 
 		seen := make(map[time.Duration]struct{})
 		for range 200 {
-			got := jitterBackoff(d, staleReadJitter)
+			got := jitterBackoff(d, defaultStaleReadRetry.Jitter)
 			assert.GreaterOrEqual(t, got, lo, "jittered sleep below band")
 			assert.LessOrEqual(t, got, hi, "jittered sleep above band")
 			seen[got] = struct{}{}
@@ -1103,7 +1101,7 @@ func TestJitterBackoff(t *testing.T) {
 	})
 
 	t.Run("non-positive duration passes through", func(t *testing.T) {
-		assert.Zero(t, jitterBackoff(0, staleReadJitter))
+		assert.Zero(t, jitterBackoff(0, defaultStaleReadRetry.Jitter))
 	})
 }
 
@@ -1121,10 +1119,10 @@ func TestStaleReadRetry_UncappedWhenMaxBackoffZero(t *testing.T) {
 	defer server.Close()
 
 	client := newStaleReadTestClient(t, server.URL)
-	client.StaleReadInitialBackoff = 10 * time.Millisecond
-	client.StaleReadMaxBackoff = 0 // uncapped
-	client.StaleReadMaxElapsed = 70 * time.Millisecond
-	client.StaleReadJitter = 0
+	client.StaleRead.InitialBackoff = 10 * time.Millisecond
+	client.StaleRead.MaxBackoff = 0 // uncapped
+	client.StaleRead.MaxElapsed = 70 * time.Millisecond
+	client.StaleRead.Jitter = 0
 
 	var result map[string]string
 	err := client.Get(context.Background(), "/test", nil, &result)

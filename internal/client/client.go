@@ -28,38 +28,51 @@ const DefaultAPIURL = "https://api.beyondtrust.io"
 // is retried briefly to give the write time to become visible. A 403 that
 // outlives the budget is surfaced to the caller unchanged. Writes do not observe
 // this, so only GET is retried.
-const (
-	// staleReadInitialBackoff is the first sleep before a retry. Each subsequent
-	// attempt doubles until staleReadMaxBackoff, so the client probes at 0, 25,
-	// 75, 175, 375, 775, 1275 and 1775ms — 8 attempts across 7 retries.
-	//
-	// The schedule is front-loaded because reads normally converge quickly, so
-	// nearly every stale read clears on the second or third attempt. The long
-	// tail exists only to absorb rare outliers rather than fail an apply, and
-	// costs nothing in the common case. The bounds were chosen from internal
-	// service latency measurements; consult those before narrowing them.
-	staleReadInitialBackoff = 25 * time.Millisecond
-	// staleReadMaxBackoff caps any single sleep. Uncapped doubling would spend
-	// the last 800ms of the budget on one sleep; capping fits another probe in
-	// the same budget instead, which both reaches further and leaves a smaller
-	// worst-case gap between probes.
-	staleReadMaxBackoff = 500 * time.Millisecond
-	// staleReadMaxElapsed caps the time spent sleeping between retries. The
-	// schedule above stops on its own at 1775ms. This governs the nominal
-	// schedule: jitter is applied to each sleep, so actual wall time varies by
-	// up to staleReadJitter either way.
-	staleReadMaxElapsed = 2 * time.Second
-	// staleReadJitter is the fraction by which each sleep is randomly scaled up
-	// or down. Terraform applies resources in parallel, so without jitter every
-	// worker that hits a stale read retries on an identical schedule and the
-	// attempts arrive in synchronised bursts.
+// StaleReadRetry is the backoff policy for the stale-read retry described above.
+//
+// The zero value disables retrying, so a Client built without one behaves as
+// single-shot. Individually: a zero InitialBackoff disables retrying, a zero
+// MaxBackoff leaves the backoff uncapped, and a zero Jitter makes the schedule
+// exact, which is useful in tests.
+type StaleReadRetry struct {
+	// InitialBackoff is the first sleep before a retry. Each subsequent attempt
+	// doubles until MaxBackoff.
+	InitialBackoff time.Duration
+	// MaxBackoff caps any single sleep. Uncapped doubling would spend the last
+	// 800ms of the budget on one sleep; capping fits another probe into the same
+	// budget instead, which both reaches further and leaves a smaller worst-case
+	// gap between probes.
+	MaxBackoff time.Duration
+	// MaxElapsed caps the time spent sleeping between retries. It governs the
+	// nominal schedule: Jitter is applied to each sleep, so actual wall time
+	// varies by up to that fraction either way.
+	MaxElapsed time.Duration
+	// Jitter is the fraction by which each sleep is randomly scaled up or down.
+	// Terraform applies resources in parallel, so without jitter every worker
+	// that hits a stale read retries on an identical schedule and the attempts
+	// arrive in synchronised bursts.
 	//
 	// This is proportional rather than full jitter (a uniform value in [0, d))
 	// deliberately: full jitter would halve the expected schedule and with it
 	// the tail coverage the budget was sized for, whereas scaling around the
 	// nominal value decorrelates workers while preserving it.
-	staleReadJitter = 0.25
-)
+	Jitter float64
+}
+
+// defaultStaleReadRetry is the policy NewClient installs. It probes at 0, 25,
+// 75, 175, 375, 775, 1275 and 1775ms — 8 attempts across 7 retries.
+//
+// The schedule is front-loaded because reads normally converge quickly, so
+// nearly every stale read clears on the second or third attempt. The long tail
+// exists only to absorb rare outliers rather than fail an apply, and costs
+// nothing in the common case. The bounds were chosen from internal service
+// latency measurements; consult those before narrowing them.
+var defaultStaleReadRetry = StaleReadRetry{
+	InitialBackoff: 25 * time.Millisecond,
+	MaxBackoff:     500 * time.Millisecond,
+	MaxElapsed:     2 * time.Second,
+	Jitter:         0.25,
+}
 
 // Client is the BeyondTrust API client
 type Client struct {
@@ -72,14 +85,8 @@ type Client struct {
 	HTTPClient     *http.Client
 	ServiceName    string // Optional service name for user agent
 
-	// These tune the 403 stale-read retry on GET requests. A zero
-	// StaleReadInitialBackoff disables retrying; a zero StaleReadMaxBackoff
-	// leaves the backoff uncapped; a zero StaleReadJitter makes the schedule
-	// exact, which is useful in tests.
-	StaleReadInitialBackoff time.Duration
-	StaleReadMaxBackoff     time.Duration
-	StaleReadMaxElapsed     time.Duration
-	StaleReadJitter         float64
+	// StaleRead tunes the 403 stale-read retry on GET requests.
+	StaleRead StaleReadRetry
 }
 
 // Config holds the client configuration
@@ -207,10 +214,7 @@ func NewClient(cfg *Config) (*Client, error) {
 		ServiceName:    cfg.ServiceName,
 		HTTPClient:     httpClient,
 
-		StaleReadInitialBackoff: staleReadInitialBackoff,
-		StaleReadMaxBackoff:     staleReadMaxBackoff,
-		StaleReadMaxElapsed:     staleReadMaxElapsed,
-		StaleReadJitter:         staleReadJitter,
+		StaleRead: defaultStaleReadRetry,
 	}, nil
 }
 
@@ -366,7 +370,7 @@ func isStaleReadForbidden(err error) bool {
 // DoRequest performs a request and unmarshals the response.
 //
 // GET requests that fail with 403 are retried with exponential backoff to ride
-// out eventually consistent reads (see staleReadInitialBackoff). A 403 that
+// out eventually consistent reads (see StaleReadRetry). A 403 that
 // outlives the backoff budget is returned unchanged, as are all other errors.
 func (c *Client) DoRequest(ctx context.Context, method, path string, query url.Values, body interface{}, result interface{}) error {
 	if method != http.MethodGet {
@@ -374,7 +378,8 @@ func (c *Client) DoRequest(ctx context.Context, method, path string, query url.V
 	}
 
 	var elapsed time.Duration
-	backoff := c.StaleReadInitialBackoff
+	retry := c.StaleRead
+	backoff := retry.InitialBackoff
 
 	for {
 		err := c.doRequestOnce(ctx, method, path, query, body, result)
@@ -385,11 +390,11 @@ func (c *Client) DoRequest(ctx context.Context, method, path string, query url.V
 		// Stop once another sleep would exceed the budget, and surface the 403.
 		// Accounting uses the nominal backoff rather than the jittered sleep, so
 		// the attempt count stays fixed and only the timing varies.
-		if backoff <= 0 || elapsed+backoff > c.StaleReadMaxElapsed {
+		if backoff <= 0 || elapsed+backoff > retry.MaxElapsed {
 			return err
 		}
 
-		timer := time.NewTimer(jitterBackoff(backoff, c.StaleReadJitter))
+		timer := time.NewTimer(jitterBackoff(backoff, retry.Jitter))
 		select {
 		case <-ctx.Done():
 			timer.Stop()
@@ -411,8 +416,8 @@ func (c *Client) DoRequest(ctx context.Context, method, path string, query url.V
 		elapsed += backoff
 
 		backoff *= 2
-		if c.StaleReadMaxBackoff > 0 && backoff > c.StaleReadMaxBackoff {
-			backoff = c.StaleReadMaxBackoff
+		if retry.MaxBackoff > 0 && backoff > retry.MaxBackoff {
+			backoff = retry.MaxBackoff
 		}
 	}
 }
