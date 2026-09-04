@@ -991,7 +991,7 @@ func TestStaleReadRetry_ContextCancellation(t *testing.T) {
 	// 25ms first backoff, that needed only a 10ms loopback request to trigger,
 	// which a contended runner can easily produce.
 	client.StaleRead.InitialBackoff = 1 * time.Second
-	client.StaleRead.MaxElapsed = 30 * time.Second
+	client.StaleRead.MaxTotalBackoff = 30 * time.Second
 	client.StaleRead.Jitter = 0 // keep the sleep exact so the margin is known
 
 	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
@@ -1049,7 +1049,7 @@ func TestStaleReadRetry_NewClientDefaults(t *testing.T) {
 	// stopping before the budget is exceeded.
 	var elapsed time.Duration
 	var sleeps []time.Duration
-	for b := retry.InitialBackoff; elapsed+b <= retry.MaxElapsed; {
+	for b := retry.InitialBackoff; elapsed+b <= retry.MaxTotalBackoff; {
 		sleeps = append(sleeps, b)
 		elapsed += b
 		if b *= 2; b > retry.MaxBackoff {
@@ -1064,11 +1064,22 @@ func TestStaleReadRetry_NewClientDefaults(t *testing.T) {
 	assert.Equal(t, 1775*time.Millisecond, elapsed, "final probe lands at 1775ms")
 	assert.Len(t, sleeps, 7, "7 retries, so 8 attempts")
 
-	// No single sleep may exceed the cap, and the final probe must stay far
-	// enough out to absorb outlier convergence times even if jitter runs short.
 	for _, s := range sleeps {
-		assert.LessOrEqual(t, s, retry.MaxBackoff, "no sleep may exceed the cap")
+		assert.LessOrEqual(t, s, retry.MaxBackoff, "no nominal sleep may exceed the cap")
 	}
+
+	// The assertion above is about the nominal schedule, so on its own it says
+	// nothing about how long a sleep actually lasts. Pin the real bounds, which
+	// jitter puts above MaxBackoff and MaxTotalBackoff rather than at them.
+	assert.Equal(t, 625*time.Millisecond,
+		time.Duration(float64(retry.MaxBackoff)*(1+retry.Jitter)),
+		"longest single sleep once jitter is applied")
+	assert.Equal(t, 2218750*time.Microsecond,
+		time.Duration(float64(elapsed)*(1+retry.Jitter)),
+		"longest total sleep once jitter is applied, which exceeds MaxTotalBackoff")
+
+	// The final probe must stay far enough out to absorb outlier convergence
+	// times even when jitter runs short.
 	assert.Greater(t, time.Duration(float64(elapsed)*(1-retry.Jitter)), time.Second,
 		"worst-case jittered coverage must stay above one second")
 }
@@ -1121,7 +1132,7 @@ func TestStaleReadRetry_UncappedWhenMaxBackoffZero(t *testing.T) {
 	client := newStaleReadTestClient(t, server.URL)
 	client.StaleRead.InitialBackoff = 10 * time.Millisecond
 	client.StaleRead.MaxBackoff = 0 // uncapped
-	client.StaleRead.MaxElapsed = 70 * time.Millisecond
+	client.StaleRead.MaxTotalBackoff = 70 * time.Millisecond
 	client.StaleRead.Jitter = 0
 
 	var result map[string]string
