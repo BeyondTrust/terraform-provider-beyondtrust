@@ -139,7 +139,7 @@ func TestAccAwsIntegrationResource_nameImmutable(t *testing.T) {
 
 func testAccCheckAwsIntegrationDestroy(s *terraform.State) error {
 	// Create a test client to verify resources are destroyed
-	client, err := acctest.NewTestClient()
+	client, err := acctest.NewDestroyCheckClient()
 	if err != nil {
 		return fmt.Errorf("failed to create test client: %w", err)
 	}

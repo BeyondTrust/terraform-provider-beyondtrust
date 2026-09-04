@@ -128,8 +128,12 @@ func LoadAdminTestConfig() (*TestConfig, error) {
 	return cfg, nil
 }
 
-// NewTestClient creates a new API client for acceptance testing.
-// This is useful for destroy verification checks in acceptance tests.
+// NewTestClient creates a new API client for acceptance testing, configured the
+// same way the provider configures its own.
+//
+// Use it for checks that read an object expected to exist. Destroy checks want
+// NewDestroyCheckClient instead: they assert an object is gone, so the
+// stale-read retry can only burn its whole budget failing.
 func NewTestClient() (*client.Client, error) {
 	cfg, err := LoadTestConfig()
 	if err != nil {
@@ -146,4 +150,26 @@ func NewTestClient() (*client.Client, error) {
 	}
 
 	return client.NewClient(clientCfg)
+}
+
+// NewDestroyCheckClient creates an API client for destroy verification, with the
+// stale-read retry on 403 disabled.
+//
+// The client retries a 403 on GET because it may mean a just-written object is
+// not yet visible to reads. A destroy check asserts the opposite — that the
+// object is gone — so the object really is absent and every retry is guaranteed
+// to fail. Retrying there burns the full backoff budget per resource for a
+// result that cannot change.
+//
+// Use NewTestClient for checks that read an object expected to exist, where the
+// retry is doing useful work.
+func NewDestroyCheckClient() (*client.Client, error) {
+	c, err := NewTestClient()
+	if err != nil {
+		return nil, err
+	}
+
+	c.StaleReadRetry = client.StaleReadRetryDisabled()
+
+	return c, nil
 }

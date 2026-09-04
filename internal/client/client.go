@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math/rand/v2"
 	"net/http"
 	"net/url"
 	"strings"
@@ -20,6 +21,103 @@ const DefaultAPIVersion = "2026-04-28"
 // DefaultAPIURL is the public BeyondTrust API base URL, used when api_url is not set.
 const DefaultAPIURL = "https://api.beyondtrust.io"
 
+// StaleReadRetry is the backoff policy for the stale-read retry.
+//
+// Reads on the secrets service are eventually consistent: an object that was
+// just written may not yet be visible to an immediately following GET, and the
+// service reports that as 403 rather than 404. Such a 403 is therefore
+// ambiguous — it may be a stale read rather than a permission failure — so it is
+// retried briefly to give the write time to become visible. A 403 that outlives
+// the budget is surfaced to the caller unchanged.
+//
+// The retry is scoped to GET against the secrets path (see
+// staleReadRetryApplies). Writes are not affected, and other surfaces of the
+// API — the auth service behind BuildAuthPath, for one — do not share this
+// behaviour, so a 403 from them is taken at face value and fails on the first
+// attempt.
+//
+// The zero value disables retrying, so a Client built without one behaves as
+// single-shot. Individually: a zero InitialBackoff disables retrying, a zero
+// MaxBackoff leaves the backoff uncapped, and a zero Jitter makes the schedule
+// exact, which is useful in tests.
+//
+// A zero MaxTotalBackoff also disables retrying, even alongside a valid
+// InitialBackoff, because the first sleep already exceeds a budget of nothing.
+// That is deliberately not symmetrical with MaxBackoff, where zero means
+// uncapped: reading a zero total budget the same way would leave the loop
+// bounded only by the context, and silently doing nothing is a far better
+// failure than silently retrying forever. It does mean there are two ways to
+// switch the feature off by accident, so set both or neither.
+//
+// Every duration here describes the nominal schedule, which is what fixes the
+// attempt count. Jitter is applied afterwards, when each sleep is taken, so an
+// individual sleep and the total can both land up to that fraction above the
+// value configured for them. Nothing clamps a jittered sleep back down: doing so
+// would make the bounds literal, but only by biasing jitter downward at the
+// longest sleeps, which is exactly where decorrelating parallel workers matters
+// most.
+type StaleReadRetry struct {
+	// InitialBackoff is the first nominal sleep before a retry. Each subsequent
+	// attempt doubles until MaxBackoff.
+	InitialBackoff time.Duration
+	// MaxBackoff caps any single nominal sleep. Uncapped doubling would spend the
+	// last 800ms of the budget on one sleep; capping fits another probe into the
+	// same budget instead, which both reaches further and leaves a smaller
+	// worst-case gap between probes.
+	MaxBackoff time.Duration
+	// MaxTotalBackoff caps the summed nominal backoff. It bounds sleep, not wall
+	// clock: request time is not counted against it either, so the retry loop
+	// always outlasts this by however long the attempts themselves take.
+	MaxTotalBackoff time.Duration
+	// Jitter is the fraction by which each sleep is randomly scaled up or down.
+	// Terraform applies resources in parallel, so without jitter every worker
+	// that hits a stale read retries on an identical schedule and the attempts
+	// arrive in synchronised bursts.
+	//
+	// This is proportional rather than full jitter (a uniform value in [0, d))
+	// deliberately: full jitter would halve the expected schedule and with it
+	// the tail coverage the budget was sized for, whereas scaling around the
+	// nominal value decorrelates workers while preserving it.
+	//
+	// Meaningful values run from 0 to 1. Anything above 1 is clamped, since a
+	// larger fraction would put the low end of the band below zero and retry
+	// with no backoff at all.
+	Jitter float64
+}
+
+// defaultStaleReadRetry is the policy NewClient installs. It probes at 0, 25,
+// 75, 175, 375, 775, 1275 and 1775ms — 8 attempts across 7 retries.
+//
+// The schedule is front-loaded because reads normally converge quickly, so
+// nearly every stale read clears on the second or third attempt. The long tail
+// exists only to absorb rare outliers rather than fail an apply, and costs
+// nothing in the common case. The bounds were chosen from internal service
+// latency measurements; consult those before narrowing them.
+//
+// A function rather than a var because a struct cannot be const, and a package
+// var holding one is mutable: a single caller reaching into it would change the
+// policy for every Client built afterwards.
+func defaultStaleReadRetry() StaleReadRetry {
+	return StaleReadRetry{
+		InitialBackoff:  25 * time.Millisecond,
+		MaxBackoff:      500 * time.Millisecond,
+		MaxTotalBackoff: 2 * time.Second,
+		Jitter:          0.25,
+	}
+}
+
+// StaleReadRetryDisabled returns a policy that performs a single attempt. It is
+// the zero value, named so that switching the retry off says what it means at
+// the call site rather than relying on the reader knowing what an empty policy
+// does.
+//
+// Assigning it is the right choice when a 403 is the expected outcome rather
+// than a symptom — a destroy check, say, where the object really is gone and
+// every retry is guaranteed to fail.
+func StaleReadRetryDisabled() StaleReadRetry {
+	return StaleReadRetry{}
+}
+
 // Client is the BeyondTrust API client
 type Client struct {
 	BaseURL        string
@@ -30,6 +128,9 @@ type Client struct {
 	Role           string // X-BT-Role header value (when set, auth type is always CUSTOM-IDP)
 	HTTPClient     *http.Client
 	ServiceName    string // Optional service name for user agent
+
+	// StaleReadRetry tunes the 403 stale-read retry on GET requests.
+	StaleReadRetry StaleReadRetry
 }
 
 // Config holds the client configuration
@@ -156,16 +257,25 @@ func NewClient(cfg *Config) (*Client, error) {
 		Role:           cfg.Role,
 		ServiceName:    cfg.ServiceName,
 		HTTPClient:     httpClient,
+
+		StaleReadRetry: defaultStaleReadRetry(),
 	}, nil
+}
+
+// secretsPathPrefix is the root every secrets-service path shares. BuildPath and
+// staleReadRetryApplies both derive from this so the builder and the retry gate
+// cannot drift apart.
+func (c *Client) secretsPathPrefix() string {
+	return fmt.Sprintf("/site/%s/secrets", c.SiteID)
 }
 
 // BuildPath constructs an API path with optional version segment
 // Format: /site/{site-id}/secrets[/version]/endpoint
 func (c *Client) BuildPath(endpoint string) string {
 	if c.APIPathVersion == "" {
-		return fmt.Sprintf("/site/%s/secrets%s", c.SiteID, endpoint)
+		return c.secretsPathPrefix() + endpoint
 	}
-	return fmt.Sprintf("/site/%s/secrets/%s%s", c.SiteID, c.APIPathVersion, endpoint)
+	return fmt.Sprintf("%s/%s%s", c.secretsPathPrefix(), c.APIPathVersion, endpoint)
 }
 
 // BuildAuthPath constructs a path for the BeyondTrust auth service (workload identities).
@@ -299,8 +409,127 @@ func (c *Client) handleErrorResponse(resp *http.Response) error {
 	return &apiErr
 }
 
-// DoRequest performs a request and unmarshals the response
+// isStaleReadForbidden reports whether err is (or wraps) a 403 from the API,
+// which on a GET may mean a just-written object is not yet visible to reads.
+// This deliberately checks 403 alone rather than using IsPermissionError, which
+// also matches 401 — retrying an invalid token only adds latency.
+func isStaleReadForbidden(err error) bool {
+	var apiErr *APIError
+	return errors.As(err, &apiErr) && apiErr.StatusCode == http.StatusForbidden
+}
+
+// staleReadRetryApplies reports whether a request is eligible for the stale-read
+// retry: a GET against the secrets service, the only surface with eventually
+// consistent reads. Everything else — writes, and reads of other services such
+// as the auth surface behind BuildAuthPath — gets a single attempt.
+//
+// A path this does not recognise falls through to no retry, so a hand-built path
+// behaves as it did before the retry existed rather than picking it up silently.
+func (c *Client) staleReadRetryApplies(method, path string) bool {
+	if method != http.MethodGet {
+		return false
+	}
+
+	prefix := c.secretsPathPrefix()
+
+	// Require the prefix to end at a segment boundary, so a sibling route such
+	// as /site/x/secretsomething cannot match.
+	return path == prefix || strings.HasPrefix(path, prefix+"/")
+}
+
+// DoRequest performs a request and unmarshals the response.
+//
+// GET requests to the secrets service that fail with 403 are retried with
+// exponential backoff to ride out eventually consistent reads (see
+// StaleReadRetry and staleReadRetryApplies). A 403 that outlives the backoff
+// budget is returned unchanged, as are all other errors.
 func (c *Client) DoRequest(ctx context.Context, method, path string, query url.Values, body interface{}, result interface{}) error {
+	if !c.staleReadRetryApplies(method, path) {
+		return c.doRequestOnce(ctx, method, path, query, body, result)
+	}
+
+	var elapsed time.Duration
+	retry := c.StaleReadRetry
+	backoff := retry.InitialBackoff
+
+	// The most recent stale-read 403, kept so cancellation reports the same
+	// typed error wherever it lands. See the check below.
+	var lastForbidden error
+
+	for {
+		err := c.doRequestOnce(ctx, method, path, query, body, result)
+		if err == nil {
+			return nil
+		}
+
+		if !isStaleReadForbidden(err) {
+			// A context cancelled mid-request fails the attempt at the transport,
+			// which yields a wrapped context error rather than an *APIError. Prefer
+			// the 403 already in hand, so cancellation is reported identically
+			// whether it arrived during a sleep or during a request in flight.
+			if lastForbidden != nil && ctx.Err() != nil {
+				return lastForbidden
+			}
+			return err
+		}
+
+		lastForbidden = err
+
+		// Stop once another sleep would exceed the budget, and surface the 403.
+		// Accounting uses the nominal backoff rather than the jittered sleep, so
+		// the attempt count stays fixed and only the timing varies.
+		if backoff <= 0 || elapsed+backoff > retry.MaxTotalBackoff {
+			return err
+		}
+
+		timer := time.NewTimer(jitterBackoff(backoff, retry.Jitter))
+		select {
+		case <-ctx.Done():
+			timer.Stop()
+			// Return the API error rather than ctx.Err() so callers keep the
+			// typed *APIError they use to classify failures.
+			return err
+		case <-timer.C:
+		}
+
+		// select chooses pseudo-randomly when both cases are ready, and the
+		// context can also be cancelled in the gap between the sleep and the
+		// next attempt. Re-check so cancellation deterministically returns the
+		// typed *APIError above, rather than spending a doomed request that
+		// fails with a wrapped context error instead.
+		if ctx.Err() != nil {
+			return err
+		}
+
+		elapsed += backoff
+
+		backoff *= 2
+		if retry.MaxBackoff > 0 && backoff > retry.MaxBackoff {
+			backoff = retry.MaxBackoff
+		}
+	}
+}
+
+// jitterBackoff scales d by a random factor uniform in [1-jitter, 1+jitter), so
+// that clients retrying concurrently do not stay in lockstep. A non-positive
+// jitter returns d unchanged.
+func jitterBackoff(d time.Duration, jitter float64) time.Duration {
+	if d <= 0 || jitter <= 0 {
+		return d
+	}
+
+	// Clamp so an out-of-range value cannot invert the multiplier. Above 1 the
+	// low end of the band goes negative, which would hand the timer a negative
+	// duration and retry with no backoff at all.
+	if jitter > 1 {
+		jitter = 1
+	}
+
+	return time.Duration(float64(d) * (1 + jitter*(2*rand.Float64()-1)))
+}
+
+// doRequestOnce performs a single request attempt and unmarshals the response.
+func (c *Client) doRequestOnce(ctx context.Context, method, path string, query url.Values, body interface{}, result interface{}) error {
 	var req *http.Request
 	var err error
 
