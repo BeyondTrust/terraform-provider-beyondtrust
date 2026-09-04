@@ -78,6 +78,10 @@ type StaleReadRetry struct {
 	// deliberately: full jitter would halve the expected schedule and with it
 	// the tail coverage the budget was sized for, whereas scaling around the
 	// nominal value decorrelates workers while preserving it.
+	//
+	// Meaningful values run from 0 to 1. Anything above 1 is clamped, since a
+	// larger fraction would put the low end of the band below zero and retry
+	// with no backoff at all.
 	Jitter float64
 }
 
@@ -448,11 +452,28 @@ func (c *Client) DoRequest(ctx context.Context, method, path string, query url.V
 	retry := c.StaleReadRetry
 	backoff := retry.InitialBackoff
 
+	// The most recent stale-read 403, kept so cancellation reports the same
+	// typed error wherever it lands. See the check below.
+	var lastForbidden error
+
 	for {
 		err := c.doRequestOnce(ctx, method, path, query, body, result)
-		if err == nil || !isStaleReadForbidden(err) {
+		if err == nil {
+			return nil
+		}
+
+		if !isStaleReadForbidden(err) {
+			// A context cancelled mid-request fails the attempt at the transport,
+			// which yields a wrapped context error rather than an *APIError. Prefer
+			// the 403 already in hand, so cancellation is reported identically
+			// whether it arrived during a sleep or during a request in flight.
+			if lastForbidden != nil && ctx.Err() != nil {
+				return lastForbidden
+			}
 			return err
 		}
+
+		lastForbidden = err
 
 		// Stop once another sleep would exceed the budget, and surface the 403.
 		// Accounting uses the nominal backoff rather than the jittered sleep, so
@@ -495,6 +516,13 @@ func (c *Client) DoRequest(ctx context.Context, method, path string, query url.V
 func jitterBackoff(d time.Duration, jitter float64) time.Duration {
 	if d <= 0 || jitter <= 0 {
 		return d
+	}
+
+	// Clamp so an out-of-range value cannot invert the multiplier. Above 1 the
+	// low end of the band goes negative, which would hand the timer a negative
+	// duration and retry with no backoff at all.
+	if jitter > 1 {
+		jitter = 1
 	}
 
 	return time.Duration(float64(d) * (1 + jitter*(2*rand.Float64()-1)))

@@ -1148,6 +1148,19 @@ func TestJitterBackoff(t *testing.T) {
 		assert.Equal(t, d, jitterBackoff(d, -1))
 	})
 
+	t.Run("clamped above one", func(t *testing.T) {
+		// Unclamped, a fraction above 1 puts the low end of the band below zero,
+		// and a negative duration makes the timer fire at once — retrying with no
+		// backoff at all. Clamping keeps the sleep positive for any input.
+		for _, j := range []float64{1.5, 2, 100} {
+			for range 200 {
+				got := jitterBackoff(d, j)
+				assert.Positive(t, got, "jitter %v must not produce a non-positive sleep", j)
+				assert.LessOrEqual(t, got, 2*d, "jitter %v must stay within the clamped band", j)
+			}
+		}
+	})
+
 	t.Run("non-positive duration passes through", func(t *testing.T) {
 		assert.Zero(t, jitterBackoff(0, jitter))
 	})
@@ -1267,4 +1280,44 @@ func TestStaleReadRetry_OnlyRetriesSecretsPath(t *testing.T) {
 			assert.Equal(t, tt.wantAttempts, attempts.Load())
 		})
 	}
+}
+
+// TestStaleReadRetry_CancelledMidRequest verifies cancellation reports the typed
+// *APIError even when it lands while a retry request is in flight, rather than the
+// wrapped context error the transport produces for that attempt.
+func TestStaleReadRetry_CancelledMidRequest(t *testing.T) {
+	var attempts atomic.Int32
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Stall every attempt after the first, so the context deadline expires
+		// with a request outstanding instead of during a backoff sleep.
+		if attempts.Add(1) > 1 {
+			time.Sleep(400 * time.Millisecond)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusForbidden)
+		_ = json.NewEncoder(w).Encode(map[string]string{"message": "forbidden"})
+	}))
+	defer server.Close()
+
+	client := newStaleReadTestClient(t, server.URL)
+	// Reach the second attempt almost immediately, so the deadline below lands
+	// inside the stalled request rather than inside a sleep.
+	client.StaleReadRetry.InitialBackoff = time.Millisecond
+	client.StaleReadRetry.MaxTotalBackoff = time.Second
+	client.StaleReadRetry.Jitter = 0
+
+	ctx, cancel := context.WithTimeout(context.Background(), 150*time.Millisecond)
+	defer cancel()
+
+	var result map[string]string
+	err := client.Get(ctx, client.BuildPath("/static/test-secret"), nil, &result)
+
+	require.Error(t, err)
+
+	var apiErr *APIError
+	require.ErrorAs(t, err, &apiErr,
+		"cancellation during an in-flight retry must still yield the typed error")
+	assert.Equal(t, http.StatusForbidden, apiErr.StatusCode)
+	assert.GreaterOrEqual(t, attempts.Load(), int32(2), "expected to reach a retry")
 }

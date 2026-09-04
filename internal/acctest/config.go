@@ -128,8 +128,12 @@ func LoadAdminTestConfig() (*TestConfig, error) {
 	return cfg, nil
 }
 
-// NewTestClient creates a new API client for acceptance testing.
-// This is useful for destroy verification checks in acceptance tests.
+// NewTestClient creates a new API client for acceptance testing, configured the
+// same way the provider configures its own.
+//
+// Use it for checks that read an object expected to exist. Destroy checks want
+// NewDestroyCheckClient instead: they assert an object is gone, so the
+// stale-read retry can only burn its whole budget failing.
 func NewTestClient() (*client.Client, error) {
 	cfg, err := LoadTestConfig()
 	if err != nil {
