@@ -129,7 +129,7 @@ func TestAccAzureIntegrationResource_nameImmutable(t *testing.T) {
 }
 
 func testAccCheckAzureIntegrationDestroy(s *terraform.State) error {
-	client, err := acctest.NewTestClient()
+	client, err := acctest.NewDestroyCheckClient()
 	if err != nil {
 		return fmt.Errorf("failed to create test client: %w", err)
 	}

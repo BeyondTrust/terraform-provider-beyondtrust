@@ -174,7 +174,7 @@ func TestAccAzureDynamicSecretResource_updateAppObjectID(t *testing.T) {
 }
 
 func testAccCheckAzureDynamicSecretDestroy(s *terraform.State) error {
-	client, err := acctest.NewTestClient()
+	client, err := acctest.NewDestroyCheckClient()
 	if err != nil {
 		return fmt.Errorf("failed to create test client: %w", err)
 	}
