@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -816,4 +817,176 @@ func TestAPIError_IsAWSCredentialValidationError(t *testing.T) {
 			assert.Equal(t, tt.want, result)
 		})
 	}
+}
+
+func TestBuildIAMPath(t *testing.T) {
+	tests := []struct {
+		name           string
+		siteID         string
+		apiPathVersion string
+		endpoint       string
+		want           string
+	}{
+		{
+			name:     "policies collection",
+			siteID:   "admin-site-123",
+			endpoint: "/policies",
+			want:     "/site/admin-site-123/platform/iam/policies",
+		},
+		{
+			name:     "single policy",
+			siteID:   "admin-site-123",
+			endpoint: "/policies/devops-production-access",
+			want:     "/site/admin-site-123/platform/iam/policies/devops-production-access",
+		},
+		{
+			// The IAM service exposes no path version segment, so api_path_version is ignored
+			// here just as it is for BuildAuthPath.
+			name:           "path version is ignored",
+			siteID:         "admin-site-123",
+			apiPathVersion: "v1",
+			endpoint:       "/policies",
+			want:           "/site/admin-site-123/platform/iam/policies",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := &Client{SiteID: tt.siteID, APIPathVersion: tt.apiPathVersion}
+			assert.Equal(t, tt.want, c.BuildIAMPath(tt.endpoint))
+		})
+	}
+}
+
+func TestDoRequest_RawBody(t *testing.T) {
+	const cedarText = "@siteId(\"11111111-2222-3333-4444-555555555555\")\npermit(principal, action, resource);"
+
+	var gotContentType, gotBody string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotContentType = r.Header.Get("Content-Type")
+		body, _ := io.ReadAll(r.Body)
+		gotBody = string(body)
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusAccepted)
+		_ = json.NewEncoder(w).Encode(map[string]string{"status": "RESOURCE_LOOKUP"})
+	}))
+	defer server.Close()
+
+	c, err := NewClient(&Config{BaseURL: server.URL, AccessToken: "t", SiteID: "s", Timeout: "30s"})
+	require.NoError(t, err)
+
+	var result map[string]string
+	err = c.Put(context.Background(), "/policies/example", nil,
+		RawBody{ContentType: "text/plain", Data: []byte(cedarText)}, &result)
+	require.NoError(t, err)
+
+	// The raw bytes must arrive verbatim — no JSON envelope, no quote escaping.
+	assert.Equal(t, "text/plain", gotContentType)
+	assert.Equal(t, cedarText, gotBody)
+	assert.Equal(t, "RESOURCE_LOOKUP", result["status"])
+}
+
+func TestDoRequest_RawBodyDefaultsToJSONContentType(t *testing.T) {
+	var gotContentType string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotContentType = r.Header.Get("Content-Type")
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	c, err := NewClient(&Config{BaseURL: server.URL, AccessToken: "t", SiteID: "s", Timeout: "30s"})
+	require.NoError(t, err)
+
+	require.NoError(t, c.Put(context.Background(), "/thing", nil, RawBody{Data: []byte("x")}, nil))
+	assert.Equal(t, "application/json", gotContentType)
+}
+
+func TestDoRequest_JSONBodyUnaffectedByRawBodySupport(t *testing.T) {
+	var gotContentType, gotBody string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotContentType = r.Header.Get("Content-Type")
+		body, _ := io.ReadAll(r.Body)
+		gotBody = string(body)
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	c, err := NewClient(&Config{BaseURL: server.URL, AccessToken: "t", SiteID: "s", Timeout: "30s"})
+	require.NoError(t, err)
+
+	err = c.Post(context.Background(), "/thing", nil, map[string]string{"roleArn": "arn:aws:iam::1:role/x"}, nil)
+	require.NoError(t, err)
+
+	assert.Equal(t, "application/json", gotContentType)
+	assert.JSONEq(t, `{"roleArn":"arn:aws:iam::1:role/x"}`, gotBody)
+}
+
+func TestHandleErrorResponse_CapturesTraceID(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("X-Trace-Id", "trace-abc-123")
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		_ = json.NewEncoder(w).Encode(map[string]string{
+			"code":    "invalid_site",
+			"message": "cedar policy must include an @siteId(\"<uuid>\") annotation",
+		})
+	}))
+	defer server.Close()
+
+	c, err := NewClient(&Config{BaseURL: server.URL, AccessToken: "t", SiteID: "s", Timeout: "30s"})
+	require.NoError(t, err)
+
+	err = c.Get(context.Background(), "/policies/example", nil, nil)
+	require.Error(t, err)
+
+	var apiErr *APIError
+	require.True(t, errors.As(err, &apiErr))
+	assert.Equal(t, "invalid_site", apiErr.Code)
+	assert.Equal(t, "trace-abc-123", apiErr.TraceID)
+	assert.Equal(t, http.StatusBadRequest, apiErr.StatusCode)
+}
+
+func TestHandleErrorResponse_CapturesTraceIDOnUnstructuredBody(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("X-Trace-Id", "trace-xyz-789")
+		w.WriteHeader(http.StatusBadGateway)
+		_, _ = w.Write([]byte("upstream unavailable"))
+	}))
+	defer server.Close()
+
+	c, err := NewClient(&Config{BaseURL: server.URL, AccessToken: "t", SiteID: "s", Timeout: "30s"})
+	require.NoError(t, err)
+
+	err = c.Get(context.Background(), "/policies/example", nil, nil)
+	require.Error(t, err)
+
+	var apiErr *APIError
+	require.True(t, errors.As(err, &apiErr))
+	assert.Equal(t, "trace-xyz-789", apiErr.TraceID)
+	assert.True(t, apiErr.IsServerError())
+}
+
+func TestHandleErrorResponse_NonStandardEnvelopeKeepsMessage(t *testing.T) {
+	// The API edge rejects an unknown personal access token with {"error": "..."} rather than
+	// the {code, message} envelope. That parses cleanly into APIError with an empty Message,
+	// which previously produced a diagnostic with nothing after the colon.
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusUnauthorized)
+		_, _ = w.Write([]byte(`{"error":"Personal access token not found"}`))
+	}))
+	defer server.Close()
+
+	c, err := NewClient(&Config{BaseURL: server.URL, AccessToken: "t", SiteID: "s", Timeout: "30s"})
+	require.NoError(t, err)
+
+	err = c.Get(context.Background(), "/policies", nil, nil)
+	require.Error(t, err)
+
+	var apiErr *APIError
+	require.True(t, errors.As(err, &apiErr))
+	assert.Equal(t, http.StatusUnauthorized, apiErr.StatusCode)
+	assert.Contains(t, apiErr.Message, "Personal access token not found",
+		"an unrecognized envelope must still surface the body")
 }
