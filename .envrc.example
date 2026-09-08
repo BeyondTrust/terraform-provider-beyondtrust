@@ -22,6 +22,26 @@ export BEYONDTRUST_SITE_ID="your-site-uuid"
 export BEYONDTRUST_ADMIN_SITE_ID="your-admin-site-uuid"
 export BEYONDTRUST_ADMIN_ACCESS_TOKEN="your-admin-site-access-token"
 
+# Optional. Sent as X-BT-Service-Name; required when authenticating via workload identity
+# federation (e.g. GitHub OIDC) rather than a personal access token.
+# export BEYONDTRUST_SERVICE_NAME="your-service-name"
+
+# Required for the IAM policy binding tests (make test-acc-binding), which prove a Cedar policy
+# actually changes what the Workload Credentials API returns.
+#
+# These need a THIRD identity beyond the two above: a low-privilege user on the product site
+# whose access is denied before the policy is granted and allowed after. The admin credentials
+# author the policy and BEYONDTRUST_ACCESS_TOKEN seeds the fixtures, so neither can play it.
+#
+# Mint the principal token FRESH for each run. A token's authorization can outlive the resources
+# the test cleans up, so a reused one may already carry access and silently defeat the baseline.
+# export BEYONDTRUST_TEST_POLICY_PRINCIPAL_TOKEN="low-privilege-product-site-token"
+# export BEYONDTRUST_TEST_POLICY_PRINCIPAL_EMAIL="principal@example.com"
+# Optional: the site named in the policy's @siteId annotation. Defaults to BEYONDTRUST_SITE_ID.
+# export BEYONDTRUST_TEST_POLICY_SITE_ID="your-product-site-uuid"
+# Optional: seconds to wait for a grant to bind. Default 180.
+# export BEYONDTRUST_TEST_POLICY_BIND_TIMEOUT="180"
+
 # Required for AWS Integration Tests
 export BEYONDTRUST_TEST_AWS_ROLE_ARN="arn:aws:iam::123456789012:role/staging-test-role"
 export BEYONDTRUST_TEST_AWS_ROLE_ARN_2="arn:aws:iam::123456789012:role/second-staging-test-role"

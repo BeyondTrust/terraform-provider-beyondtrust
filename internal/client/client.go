@@ -146,12 +146,22 @@ type Config struct {
 	Timeout        string
 }
 
+// RawBody carries a pre-encoded request body with an explicit content type, bypassing the
+// JSON marshaling newRequest applies to every other body. The IAM policy service accepts raw
+// Cedar as text/plain rather than a JSON envelope, so that policy text does not have to be
+// quote-escaped by practitioners writing heredocs or templatefile output.
+type RawBody struct {
+	ContentType string
+	Data        []byte
+}
+
 // APIError represents an error response from the API
 type APIError struct {
 	Message    string                 `json:"message"`
 	Code       string                 `json:"code,omitempty"`
 	Details    map[string]interface{} `json:"details,omitempty"`
 	StatusCode int                    // HTTP status code
+	TraceID    string                 `json:"-"` // From the X-Trace-Id response header, when present
 }
 
 func (e *APIError) Error() string {
@@ -286,6 +296,14 @@ func (c *Client) BuildAuthPath(endpoint string) string {
 	return fmt.Sprintf("/site/%s/platform/auth%s", c.SiteID, endpoint)
 }
 
+// BuildIAMPath constructs a path for the BeyondTrust IAM policy service (Cedar policies).
+// Format: /site/{site-id}/platform/iam/endpoint
+// SiteID here is the operator's admin site — the site CRUD is performed against. The site a
+// policy grants access to is carried separately in the policy's Cedar @siteId annotation.
+func (c *Client) BuildIAMPath(endpoint string) string {
+	return fmt.Sprintf("/site/%s/platform/iam%s", c.SiteID, endpoint)
+}
+
 // ValidateSession validates the access token by calling GET /session.
 // A 200 response indicates the credentials are valid.
 func (c *Client) ValidateSession(ctx context.Context) error {
@@ -318,7 +336,14 @@ func (c *Client) newRequest(ctx context.Context, method, path string, query url.
 	}
 
 	var bodyReader io.Reader
-	if body != nil {
+	contentType := "application/json"
+	if raw, ok := body.(RawBody); ok {
+		// Pre-encoded body (e.g. raw Cedar as text/plain) — send the bytes verbatim.
+		bodyReader = bytes.NewReader(raw.Data)
+		if raw.ContentType != "" {
+			contentType = raw.ContentType
+		}
+	} else if body != nil {
 		jsonData, err := json.Marshal(body)
 		if err != nil {
 			return nil, fmt.Errorf("error marshaling request body: %w", err)
@@ -348,8 +373,8 @@ func (c *Client) newRequest(ctx context.Context, method, path string, query url.
 		req.Header.Set("X-BT-Service-Name", c.ServiceName)
 	}
 
-	if body != nil {
-		req.Header.Set("Content-Type", "application/json")
+	if bodyReader != nil {
+		req.Header.Set("Content-Type", contentType)
 	}
 
 	return req, nil
@@ -386,11 +411,16 @@ func (c *Client) do(req *http.Request) (*http.Response, error) {
 
 // handleErrorResponse parses and returns an error from the API response
 func (c *Client) handleErrorResponse(resp *http.Response) error {
+	// Services that emit a request trace id return it as a response header rather than in
+	// the error envelope; carry it through so diagnostics can quote it for support.
+	traceID := resp.Header.Get("X-Trace-Id")
+
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return &APIError{
 			StatusCode: resp.StatusCode,
 			Message:    "failed to read error response",
+			TraceID:    traceID,
 		}
 	}
 
@@ -400,11 +430,21 @@ func (c *Client) handleErrorResponse(resp *http.Response) error {
 		return &APIError{
 			StatusCode: resp.StatusCode,
 			Message:    string(body),
+			TraceID:    traceID,
 		}
 	}
 
 	// Capture the HTTP status code
 	apiErr.StatusCode = resp.StatusCode
+	apiErr.TraceID = traceID
+
+	// Not every service answers with the {code, message} envelope — the API edge rejects an
+	// unknown token with {"error": "..."}, which parses cleanly but leaves Message empty and
+	// yields a diagnostic that says nothing at all. Fall back to the raw body so the caller
+	// still learns why the call failed.
+	if apiErr.Message == "" {
+		apiErr.Message = strings.TrimSpace(string(body))
+	}
 
 	return &apiErr
 }
