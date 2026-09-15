@@ -118,3 +118,20 @@ jobs:
           BEYONDTRUST_ADMIN_ACCESS_TOKEN: ${{ steps.oidc.outputs.token }}
           BEYONDTRUST_SERVICE_NAME: ${{ secrets.BEYONDTRUST_SERVICE_NAME }}
           TF_ACC: "1"
+
+      # Policies are authored against the admin site, so they belong in this job.
+      # The enforcement tests additionally need two product-site identities that OIDC cannot
+      # mint; without those secrets they skip and say so.
+      - name: Run IAM policy acceptance tests
+        run: make test-acc-policy
+        env:
+          BEYONDTRUST_ADMIN_SITE_ID: ${{ secrets.BEYONDTRUST_ADMIN_SITE_ID }}
+          BEYONDTRUST_ADMIN_ACCESS_TOKEN: ${{ steps.oidc.outputs.token }}
+          BEYONDTRUST_SITE_ID: ${{ secrets.BEYONDTRUST_SITE_ID }}
+          BEYONDTRUST_TEST_POLICY_PRINCIPAL_EMAIL: ${{ secrets.BEYONDTRUST_TEST_POLICY_PRINCIPAL_EMAIL }}
+          BEYONDTRUST_SERVICE_NAME: ${{ secrets.BEYONDTRUST_SERVICE_NAME }}
+          # Optional: enable the enforcement tests.
+          BEYONDTRUST_ACCESS_TOKEN: ${{ secrets.BEYONDTRUST_TEST_POLICY_OWNER_TOKEN }}
+          BEYONDTRUST_TEST_POLICY_PRINCIPAL_TOKEN: ${{ secrets.BEYONDTRUST_TEST_POLICY_PRINCIPAL_TOKEN }}
+          BEYONDTRUST_TEST_REQUIRE_ACC: "1"
+          TF_ACC: "1"

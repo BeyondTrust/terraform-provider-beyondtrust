@@ -33,6 +33,18 @@ const (
 	EnvAdminAccessToken = "BEYONDTRUST_ADMIN_ACCESS_TOKEN"
 )
 
+// Environment variable names for the IAM policy binding tests, which prove a Cedar policy
+// actually changes what the product API returns.
+//
+// These need a third identity: a low-privilege user on the product site whose access must be
+// denied before the policy is granted and allowed after. The admin-site credentials author the
+// policy and the normal-site credentials create the fixtures, so neither can play that role.
+const (
+	EnvTestPolicyPrincipalToken = "BEYONDTRUST_TEST_POLICY_PRINCIPAL_TOKEN"
+	EnvTestPolicyPrincipalEmail = "BEYONDTRUST_TEST_POLICY_PRINCIPAL_EMAIL"
+	EnvTestPolicySiteID         = "BEYONDTRUST_TEST_POLICY_SITE_ID"
+)
+
 // TestConfig holds configuration for acceptance tests
 type TestConfig struct {
 	APIURL      string `json:"api_url"`
@@ -111,6 +123,7 @@ func LoadAdminTestConfig() (*TestConfig, error) {
 		SiteID:      os.Getenv(EnvAdminSiteID),
 		AccessToken: os.Getenv(EnvAdminAccessToken),
 		APIVersion:  os.Getenv(constants.EnvAPIVersion),
+		ServiceName: os.Getenv(constants.EnvServiceName),
 	}
 	if cfg.APIVersion == "" {
 		cfg.APIVersion = client.DefaultAPIVersion
@@ -128,6 +141,46 @@ func LoadAdminTestConfig() (*TestConfig, error) {
 	return cfg, nil
 }
 
+// LoadPrincipalTestConfig returns the product-site config with the access token swapped for the
+// low-privilege principal's. The site is the same as LoadTestConfig's — only the identity differs,
+// because the whole point is to observe two identities against one site.
+func LoadPrincipalTestConfig() (*TestConfig, error) {
+	cfg, err := LoadTestConfig()
+	if err != nil {
+		return nil, err
+	}
+
+	token := os.Getenv(EnvTestPolicyPrincipalToken)
+	if token == "" {
+		return nil, fmt.Errorf("%s is required", EnvTestPolicyPrincipalToken)
+	}
+	cfg.AccessToken = token
+	return cfg, nil
+}
+
+// PolicyTargetSiteID returns the site a test policy's @siteId annotation should name: the product
+// site the fixtures live on, unless explicitly overridden.
+func PolicyTargetSiteID() string {
+	if override := os.Getenv(EnvTestPolicySiteID); override != "" {
+		return override
+	}
+	return os.Getenv(constants.EnvSiteID)
+}
+
+// NewClientForConfig builds an API client for an explicit site/token pair, so one test can hold
+// several identities at once — the admin-site policy author, the product-site owner that seeds
+// fixtures, and the low-privilege principal under test.
+func NewClientForConfig(cfg *TestConfig) (*client.Client, error) {
+	return client.NewClient(&client.Config{
+		BaseURL:     cfg.APIURL,
+		AccessToken: cfg.AccessToken,
+		SiteID:      cfg.SiteID,
+		APIVersion:  cfg.APIVersion,
+		ServiceName: cfg.ServiceName,
+		Timeout:     "30s",
+	})
+}
+
 // NewTestClient creates a new API client for acceptance testing, configured the
 // same way the provider configures its own.
 //
@@ -139,17 +192,37 @@ func NewTestClient() (*client.Client, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to load test config: %w", err)
 	}
+	return NewClientForConfig(cfg)
+}
 
-	clientCfg := &client.Config{
-		BaseURL:     cfg.APIURL,
-		AccessToken: cfg.AccessToken,
-		SiteID:      cfg.SiteID,
-		APIVersion:  cfg.APIVersion,
-		ServiceName: cfg.ServiceName,
-		Timeout:     "30s",
+// NewAdminTestClient creates a client against the org's admin site, where the IAM policy and
+// auth services live.
+func NewAdminTestClient() (*client.Client, error) {
+	cfg, err := LoadAdminTestConfig()
+	if err != nil {
+		return nil, fmt.Errorf("failed to load admin test config: %w", err)
 	}
+	return NewClientForConfig(cfg)
+}
 
-	return client.NewClient(clientCfg)
+// NewPrincipalTestClient creates a client for the low-privilege principal on the product site,
+// with the stale-read retry on 403 disabled.
+//
+// The binding tests treat 403 as a result rather than a symptom: they assert the principal is
+// denied before a policy is granted, and poll for the denial to turn into access afterwards.
+// Retrying inside the client would burn the whole budget proving a denial that is expected, and
+// would sit underneath the tests' own waiting for the grant to take effect.
+func NewPrincipalTestClient() (*client.Client, error) {
+	cfg, err := LoadPrincipalTestConfig()
+	if err != nil {
+		return nil, fmt.Errorf("failed to load principal test config: %w", err)
+	}
+	c, err := NewClientForConfig(cfg)
+	if err != nil {
+		return nil, err
+	}
+	c.StaleReadRetry = client.StaleReadRetryDisabled()
+	return c, nil
 }
 
 // NewDestroyCheckClient creates an API client for destroy verification, with the

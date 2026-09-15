@@ -90,6 +90,8 @@
         "AzureIntegrationConfig",
         "AzureDynamicSecret",
         "PreCheckAzure",
-        "GetAzure"
+        "GetAzure",
+        "policyset",
+        "tftest"
     ]
 }

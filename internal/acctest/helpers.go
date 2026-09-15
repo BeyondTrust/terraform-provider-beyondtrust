@@ -106,6 +106,27 @@ func PreCheckAdmin(t *testing.T) {
 	}
 }
 
+// PolicyBindingSkipReason returns why the IAM policy binding tests cannot run, or "" when every
+// credential they need is present: the admin site (authors the policy), the product site (seeds
+// fixtures), and the low-privilege principal (the subject whose access must flip).
+//
+// Returned rather than skipped directly so callers can also count and report it — a suite that
+// skips silently reports green while verifying nothing.
+func PolicyBindingSkipReason() string {
+	if _, err := LoadAdminTestConfig(); err != nil {
+		return fmt.Sprintf("%v (set %s and %s)", err, EnvAdminSiteID, EnvAdminAccessToken)
+	}
+	if _, err := LoadPrincipalTestConfig(); err != nil {
+		return fmt.Sprintf("%v (set %s, %s and %s)",
+			err, constants.EnvSiteID, constants.EnvAccessToken, EnvTestPolicyPrincipalToken)
+	}
+	if os.Getenv(EnvTestPolicyPrincipalEmail) == "" {
+		return fmt.Sprintf("%s is not set (it must name the identity that owns %s)",
+			EnvTestPolicyPrincipalEmail, EnvTestPolicyPrincipalToken)
+	}
+	return ""
+}
+
 // GetAWSRoleARN returns the AWS role ARN for testing
 func GetAWSRoleARN(t *testing.T) string {
 	t.Helper()
