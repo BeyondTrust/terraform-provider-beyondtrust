@@ -18,8 +18,8 @@ resource "beyondtrust_iam_policy" "app_team_db_password" {
     @siteId("${var.site_id}")
     permit(
       principal == Pathfinder::User::Email::"app-team@example.com",
-      action == WorkloadCreds::Action::"can_read_secret",
-      resource == WorkloadCreds::Secret::"/production/database/password"
+      action == WorkloadCredentials::Action::"ReadSecret",
+      resource == WorkloadCredentials::Secret::"/production/database/password"
     );
   EOT
 }
@@ -99,7 +99,3 @@ keep access to resources the test has already deleted, which would invalidate th
 Tests skip when credentials are missing, and the suite prints what it skipped and why, because a
 run that verifies nothing should not look like one that passed. `BEYONDTRUST_TEST_REQUIRE_ACC=1`
 turns that into a failure, as CI does.
-
-Set `BEYONDTRUST_TEST_POLICY_SCHEMA=current` once the newer Cedar schema is deployed. Until then
-the tests use the vocabulary the service accepts today, and the list-scoping test skips because the
-permission it needs does not exist yet.

@@ -31,8 +31,8 @@ resource "beyondtrust_iam_policy" "app_team_db_password" {
     @siteId("${var.site_id}")
     permit(
       principal == Pathfinder::User::Email::"app-team@example.com",
-      action == WorkloadCreds::Action::"can_read_secret",
-      resource == WorkloadCreds::Secret::"/production/database/password"
+      action == WorkloadCredentials::Action::"ReadSecret",
+      resource == WorkloadCredentials::Secret::"/production/database/password"
     );
   EOT
 }
@@ -47,8 +47,8 @@ resource "beyondtrust_iam_policy" "platform_admins_production" {
     @siteId("${var.site_id}")
     permit(
       principal == Pathfinder::Group::"platform-admins",
-      action == WorkloadCreds::Action::"owner",
-      resource == WorkloadCreds::Folder::"/production"
+      action == WorkloadCredentials::Action::"Owner",
+      resource == WorkloadCredentials::Folder::"/production"
     );
   EOT
 }
@@ -64,10 +64,10 @@ resource "beyondtrust_iam_policy" "ci_rotates_api_key" {
     permit(
       principal == Pathfinder::Workload::Id::"${var.ci_workload_id}",
       action in [
-        WorkloadCreds::Action::"can_read_secret",
-        WorkloadCreds::Action::"can_update_secret"
+        WorkloadCredentials::Action::"ReadSecret",
+        WorkloadCredentials::Action::"UpdateSecret"
       ],
-      resource == WorkloadCreds::Secret::"/production/api-key"
+      resource == WorkloadCredentials::Secret::"/production/api-key"
     );
   EOT
 }
@@ -83,8 +83,8 @@ resource "beyondtrust_iam_policy" "auditors_next_quarter" {
     @siteId("${var.site_id}")
     permit(
       principal == Pathfinder::Role::"auditor",
-      action == WorkloadCreds::Action::"can_read_folder_metadata",
-      resource == WorkloadCreds::Folder::"/2027-q1"
+      action == WorkloadCredentials::Action::"ReadFolderMetadata",
+      resource == WorkloadCredentials::Folder::"/2027-q1"
     );
   EOT
 
@@ -110,11 +110,11 @@ data "cedar_policyset" "reporting" {
       id   = "reporting@example.com"
     }
     action = {
-      type = "WorkloadCreds::Action"
-      id   = "can_read_secret"
+      type = "WorkloadCredentials::Action"
+      id   = "ReadSecret"
     }
     resource = {
-      type = "WorkloadCreds::Secret"
+      type = "WorkloadCredentials::Secret"
       id   = "/production/reporting/token"
     }
   }

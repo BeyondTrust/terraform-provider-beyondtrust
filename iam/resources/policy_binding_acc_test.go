@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"os"
 	"strconv"
-	"strings"
 	"testing"
 	"time"
 
@@ -56,51 +55,16 @@ const (
 	secretCharlie = "charlie"
 )
 
-// envPolicySchema selects which generation of the WLC Cedar vocabulary to write.
-//
-// The schema is mid-migration: the namespace becomes WorkloadCredentials and action ids become
-// PascalCase display names. Until that ships, the
-// deployed schema uses the WorkloadCreds namespace with snake_case relation names — and has no
-// list gate at all, which is why the scoping test cannot run against it.
-//
-// Default to what is deployed so the suite works today, and set this to "current" once the new
-// schema rolls out. Neither the provider nor the resource cares: action names are validated
-// server-side precisely so this kind of change does not require a provider release.
-const envPolicySchema = "BEYONDTRUST_TEST_POLICY_SCHEMA"
-
-// wlcVocab is the Cedar vocabulary for one schema generation. listAction is empty when the
-// schema has no grantable list gate.
-type wlcVocab struct {
-	namespace    string
-	listAction   string
-	readAction   string
-	updateAction string
-	// Actions valid on a Folder, used by the resource lifecycle tests, which only need Cedar the
-	// service will accept — they assert on Terraform behaviour, not on enforcement.
-	folderAction    string
-	folderAltAction string
-}
-
-func vocabulary() wlcVocab {
-	if strings.EqualFold(os.Getenv(envPolicySchema), "current") {
-		return wlcVocab{
-			namespace:       "WorkloadCredentials",
-			listAction:      "ListFolderContents",
-			readAction:      "ReadSecret",
-			updateAction:    "UpdateSecret",
-			folderAction:    "Owner",
-			folderAltAction: "ReadFolderMetadata",
-		}
-	}
-	return wlcVocab{
-		namespace:       "WorkloadCreds",
-		listAction:      "", // no can_list_folder_contents in the deployed schema
-		readAction:      "can_read_secret",
-		updateAction:    "can_update_secret",
-		folderAction:    "owner",
-		folderAltAction: "can_read_folder_metadata",
-	}
-}
+// The Cedar vocabulary the service accepts. Action ids are the schema's PascalCase display
+// names, and every type carries its product namespace.
+const (
+	cedarNamespace     = "WorkloadCredentials"
+	actionListContents = "ListFolderContents"
+	actionReadSecret   = "ReadSecret"
+	actionUpdateSecret = "UpdateSecret"
+	actionFolderOwner  = "Owner"
+	actionFolderRead   = "ReadFolderMetadata"
+)
 
 // policyBindingEnv holds the three identities and the fixture names for one test run.
 type policyBindingEnv struct {
@@ -180,7 +144,6 @@ func setupPolicyBinding(t *testing.T) *policyBindingEnv {
 // Viewer here instead would grant access to all three secrets and the scoping assertion would
 // pass while proving nothing.
 func (e *policyBindingEnv) gatePolicyHCL() string {
-	v := vocabulary()
 	return fmt.Sprintf(`
 resource "beyondtrust_iam_policy" "gate" {
   name  = %[1]q
@@ -193,12 +156,11 @@ resource "beyondtrust_iam_policy" "gate" {
     );
   EOT
 }
-`, e.gateName, e.targetSite, e.principalEmail, v.namespace, v.listAction, "/"+e.folder)
+`, e.gateName, e.targetSite, e.principalEmail, cedarNamespace, actionListContents, "/"+e.folder)
 }
 
 // secretPolicyHCL grants one action on one secret.
 func (e *policyBindingEnv) secretPolicyHCL(action, secret string) string {
-	v := vocabulary()
 	return fmt.Sprintf(`
 resource "beyondtrust_iam_policy" "grant" {
   name  = %[1]q
@@ -211,7 +173,7 @@ resource "beyondtrust_iam_policy" "grant" {
     );
   EOT
 }
-`, e.grantName, e.targetSite, e.principalEmail, v.namespace, action, "/"+e.folder+"/"+secret)
+`, e.grantName, e.targetSite, e.principalEmail, cedarNamespace, action, "/"+e.folder+"/"+secret)
 }
 
 func (e *policyBindingEnv) providerBlock() string {
@@ -222,16 +184,18 @@ func (e *policyBindingEnv) providerBlock() string {
 // folder and a read grant on one secret, listing returns that secret and nothing else — even
 // though the folder holds three.
 func TestAccPolicyBinding_listScoping(t *testing.T) {
-	v := vocabulary()
-	if v.listAction == "" {
-		recordSkip(t, fmt.Sprintf("the deployed Cedar schema has no grantable list gate; set "+
-			"%s=current once the newer schema is deployed", envPolicySchema))
-	}
-
 	env := setupPolicyBinding(t)
 	ctx := context.Background()
 
 	_, status, err := listStaticSecrets(ctx, env.principal, env.folder)
+	if status == http.StatusOK {
+		// Scoping can only be observed from a principal that starts with no access to the folder.
+		// Roles on the product site still confer blanket read and list, so there is currently no
+		// such principal to test with — and granting a policy on top would change nothing.
+		// A precondition of the environment rather than a defect, so skip rather than fail.
+		recordSkip(t, "the principal can already list this folder, so scoping cannot be observed; "+
+			"product roles still confer blanket read and list")
+	}
 	requireDenied(t, status, err, "baseline list of "+env.folder)
 
 	resource.Test(t, resource.TestCase{
@@ -239,7 +203,7 @@ func TestAccPolicyBinding_listScoping(t *testing.T) {
 		CheckDestroy:             testAccCheckPolicyDestroy,
 		Steps: []resource.TestStep{
 			{
-				Config: env.providerBlock() + env.gatePolicyHCL() + env.secretPolicyHCL(v.readAction, secretAlpha),
+				Config: env.providerBlock() + env.gatePolicyHCL() + env.secretPolicyHCL(actionReadSecret, secretAlpha),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("beyondtrust_iam_policy.gate", "status", "ACTIVE"),
 					resource.TestCheckResourceAttr("beyondtrust_iam_policy.grant", "status", "ACTIVE"),
@@ -258,7 +222,6 @@ func TestAccPolicyBinding_listScoping(t *testing.T) {
 // role confers it — unlike read, which some product roles grant blanket. If the list-scoping
 // test ever goes ambiguous because of a role model change, this one still holds.
 func TestAccPolicyBinding_updateFlip(t *testing.T) {
-	v := vocabulary()
 	env := setupPolicyBinding(t)
 	ctx := context.Background()
 
@@ -270,7 +233,7 @@ func TestAccPolicyBinding_updateFlip(t *testing.T) {
 		CheckDestroy:             testAccCheckPolicyDestroy,
 		Steps: []resource.TestStep{
 			{
-				Config: env.providerBlock() + env.secretPolicyHCL(v.updateAction, secretAlpha),
+				Config: env.providerBlock() + env.secretPolicyHCL(actionUpdateSecret, secretAlpha),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("beyondtrust_iam_policy.grant", "status", "ACTIVE"),
 					env.checkSecretUpdatable(t, secretAlpha),
@@ -283,7 +246,6 @@ func TestAccPolicyBinding_updateFlip(t *testing.T) {
 // TestAccPolicyBinding_revoked asserts destroying the policy actually withdraws the grant.
 // Nothing else in the suite proves an unbind happens.
 func TestAccPolicyBinding_revoked(t *testing.T) {
-	v := vocabulary()
 	env := setupPolicyBinding(t)
 	ctx := context.Background()
 
@@ -295,7 +257,7 @@ func TestAccPolicyBinding_revoked(t *testing.T) {
 		CheckDestroy:             testAccCheckPolicyDestroy,
 		Steps: []resource.TestStep{
 			{
-				Config: env.providerBlock() + env.secretPolicyHCL(v.updateAction, secretAlpha),
+				Config: env.providerBlock() + env.secretPolicyHCL(actionUpdateSecret, secretAlpha),
 				Check:  env.checkSecretUpdatable(t, secretAlpha),
 			},
 			{

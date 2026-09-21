@@ -32,7 +32,7 @@ resource "beyondtrust_iam_policy" "test" {
     );
   EOT
 }
-`, name, siteID, principal, action, folder, vocabulary().namespace)
+`, name, siteID, principal, action, folder, cedarNamespace)
 }
 
 // checkStatusHealthy asserts the policy settled somewhere that means the write succeeded.
@@ -68,7 +68,7 @@ func TestAccPolicyResource_basic(t *testing.T) {
 		CheckDestroy:             testAccCheckPolicyDestroy,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccPolicyConfig(env.cfg, name, env.siteID, env.principal, vocabulary().folderAction, env.folder),
+				Config: testAccPolicyConfig(env.cfg, name, env.siteID, env.principal, actionFolderOwner, env.folder),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr(policyResourceName, "name", name),
 					resource.TestCheckResourceAttr(policyResourceName, "site", env.siteID),
@@ -90,7 +90,7 @@ func TestAccPolicyResource_noDrift(t *testing.T) {
 	name := acctest.RandomResourceName("policy")
 	registerPolicyCleanup(t, name)
 
-	config := testAccPolicyConfig(env.cfg, name, env.siteID, env.principal, vocabulary().folderAction, env.folder)
+	config := testAccPolicyConfig(env.cfg, name, env.siteID, env.principal, actionFolderOwner, env.folder)
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { preCheckPolicyEnv(t) },
@@ -120,12 +120,12 @@ func TestAccPolicyResource_updateCedar(t *testing.T) {
 		CheckDestroy:             testAccCheckPolicyDestroy,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccPolicyConfig(env.cfg, name, env.siteID, env.principal, vocabulary().folderAction, env.folder),
+				Config: testAccPolicyConfig(env.cfg, name, env.siteID, env.principal, actionFolderOwner, env.folder),
 				Check:  checkStatusHealthy(policyResourceName),
 			},
 			{
 				// Changing the action is an in-place replace (PUT), not a destroy/create.
-				Config: testAccPolicyConfig(env.cfg, name, env.siteID, env.principal, vocabulary().folderAltAction, env.folder),
+				Config: testAccPolicyConfig(env.cfg, name, env.siteID, env.principal, actionFolderRead, env.folder),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr(policyResourceName, "name", name),
 					checkStatusHealthy(policyResourceName),
@@ -149,11 +149,11 @@ func TestAccPolicyResource_nameImmutable(t *testing.T) {
 		CheckDestroy:             testAccCheckPolicyDestroy,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccPolicyConfig(env.cfg, name, env.siteID, env.principal, vocabulary().folderAction, env.folder),
+				Config: testAccPolicyConfig(env.cfg, name, env.siteID, env.principal, actionFolderOwner, env.folder),
 				Check:  resource.TestCheckResourceAttr(policyResourceName, "name", name),
 			},
 			{
-				Config: testAccPolicyConfig(env.cfg, renamed, env.siteID, env.principal, vocabulary().folderAction, env.folder),
+				Config: testAccPolicyConfig(env.cfg, renamed, env.siteID, env.principal, actionFolderOwner, env.folder),
 				Check:  resource.TestCheckResourceAttr(policyResourceName, "name", renamed),
 			},
 		},
@@ -171,7 +171,7 @@ func TestAccPolicyResource_import(t *testing.T) {
 		CheckDestroy:             testAccCheckPolicyDestroy,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccPolicyConfig(env.cfg, name, env.siteID, env.principal, vocabulary().folderAction, env.folder),
+				Config: testAccPolicyConfig(env.cfg, name, env.siteID, env.principal, actionFolderOwner, env.folder),
 			},
 			{
 				ResourceName:      policyResourceName,
@@ -204,8 +204,8 @@ resource "beyondtrust_iam_policy" "test" {
   cedar = <<-EOT
     permit(
       principal == Pathfinder::User::Email::%[2]q,
-      action == WorkloadCreds::Action::"owner",
-      resource == WorkloadCreds::Folder::%[3]q
+      action == WorkloadCredentials::Action::"Owner",
+      resource == WorkloadCredentials::Folder::%[3]q
     );
   EOT
 }

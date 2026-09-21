@@ -121,5 +121,5 @@ func regexpMissingSiteID() *regexp.Regexp {
 }
 
 func regexpUpdatedAction() *regexp.Regexp {
-	return regexp.MustCompile(`Action::"` + regexp.QuoteMeta(vocabulary().folderAltAction) + `"`)
+	return regexp.MustCompile(`Action::"` + regexp.QuoteMeta(actionFolderRead) + `"`)
 }
