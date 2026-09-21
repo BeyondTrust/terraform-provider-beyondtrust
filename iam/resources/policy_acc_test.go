@@ -26,7 +26,7 @@ resource "beyondtrust_iam_policy" "test" {
   cedar = <<-EOT
     @siteId(%[2]q)
     permit(
-      principal == Pathfinder::User::Email::%[3]q,
+      principal == %[3]s,
       action == %[6]s::Action::%[4]q,
       resource == %[6]s::Folder::%[5]q
     );
@@ -203,7 +203,7 @@ resource "beyondtrust_iam_policy" "test" {
   name  = %[1]q
   cedar = <<-EOT
     permit(
-      principal == Pathfinder::User::Email::%[2]q,
+      principal == %[2]s,
       action == WorkloadCredentials::Action::"Owner",
       resource == WorkloadCredentials::Folder::%[3]q
     );

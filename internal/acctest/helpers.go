@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math/rand"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -120,9 +121,27 @@ func PolicyBindingSkipReason() string {
 		return fmt.Sprintf("%v (set %s, %s and %s)",
 			err, constants.EnvSiteID, constants.EnvAccessToken, EnvTestPolicyPrincipalToken)
 	}
-	if os.Getenv(EnvTestPolicyPrincipalEmail) == "" {
-		return fmt.Sprintf("%s is not set (it must name the identity that owns %s)",
-			EnvTestPolicyPrincipalEmail, EnvTestPolicyPrincipalToken)
+	if reason := PolicyPrincipalSkipReason(); reason != "" {
+		return reason
+	}
+	return ""
+}
+
+// PolicyPrincipalSkipReason returns why the configured Cedar principal is unusable, or "".
+//
+// The value is a whole Cedar entity rather than a bare name, because a workload identity has no
+// email and the tests should not have to know which principal type they were handed. The check
+// is deliberately shallow — the service validates the rest — but it catches a bare email or id
+// pasted in, which is the mistake this variable invites.
+func PolicyPrincipalSkipReason() string {
+	principal := os.Getenv(EnvTestPolicyPrincipal)
+	if principal == "" {
+		return fmt.Sprintf("%s is not set (a Cedar entity, e.g. Pathfinder::Workload::Id::%q)",
+			EnvTestPolicyPrincipal, "<uuid>")
+	}
+	if !strings.Contains(principal, "::") || !strings.Contains(principal, `"`) {
+		return fmt.Sprintf("%s must be a whole Cedar entity such as Pathfinder::Workload::Id::%q, got %q",
+			EnvTestPolicyPrincipal, "<uuid>", principal)
 	}
 	return ""
 }

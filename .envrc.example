@@ -33,10 +33,19 @@ export BEYONDTRUST_ADMIN_ACCESS_TOKEN="your-admin-site-access-token"
 # whose access is denied before the policy is granted and allowed after. The admin credentials
 # author the policy and BEYONDTRUST_ACCESS_TOKEN seeds the fixtures, so neither can play it.
 #
-# Mint the principal token FRESH for each run. A token's authorization can outlive the resources
-# the test cleans up, so a reused one may already carry access and silently defeat the baseline.
+# The Cedar principal the test policies grant to, as a whole entity. A workload identity has
+# no email, so use its id; a human uses their email.
+# export BEYONDTRUST_TEST_POLICY_PRINCIPAL='Pathfinder::Workload::Id::"00000000-0000-0000-0000-000000000000"'
+# export BEYONDTRUST_TEST_POLICY_PRINCIPAL='Pathfinder::User::Email::"principal@example.com"'
+#
+# How that principal authenticates — set exactly one. A service name reuses the product-site
+# token and selects a different workload identity, which suits federated credentials.
 # export BEYONDTRUST_TEST_POLICY_PRINCIPAL_TOKEN="low-privilege-product-site-token"
-# export BEYONDTRUST_TEST_POLICY_PRINCIPAL_EMAIL="principal@example.com"
+# export BEYONDTRUST_TEST_POLICY_PRINCIPAL_SERVICE_NAME="tf-acc-low-privilege"
+#
+# If you use a token rather than a service name, mint it FRESH each run: its access can outlive
+# the resources the test cleans up, and a stale one silently defeats the baseline.
+#
 # Optional: the site named in the policy's @siteId annotation. Defaults to BEYONDTRUST_SITE_ID.
 # export BEYONDTRUST_TEST_POLICY_SITE_ID="your-product-site-uuid"
 # Optional: seconds to wait for a grant to bind. Default 180.

@@ -19,9 +19,8 @@ import (
 // Environment variables specific to the IAM policy acceptance tests. The policy service needs a
 // real principal and a real target site, neither of which the test can create for itself.
 const (
-	envPolicySiteID    = "BEYONDTRUST_TEST_POLICY_SITE_ID"
-	envPolicyPrincipal = "BEYONDTRUST_TEST_POLICY_PRINCIPAL_EMAIL"
-	envPolicyFolder    = "BEYONDTRUST_TEST_POLICY_FOLDER_PATH"
+	envPolicySiteID = "BEYONDTRUST_TEST_POLICY_SITE_ID"
+	envPolicyFolder = "BEYONDTRUST_TEST_POLICY_FOLDER_PATH"
 )
 
 type policyTestEnv struct {
@@ -47,10 +46,10 @@ func preCheckPolicyEnv(t *testing.T) *policyTestEnv {
 	if siteID == "" {
 		recordSkip(t, fmt.Sprintf("%s is not set (or %s)", constants.EnvSiteID, envPolicySiteID))
 	}
-	principal := os.Getenv(envPolicyPrincipal)
-	if principal == "" {
-		recordSkip(t, fmt.Sprintf("%s is not set", envPolicyPrincipal))
+	if reason := acctest.PolicyPrincipalSkipReason(); reason != "" {
+		recordSkip(t, reason)
 	}
+	principal := os.Getenv(acctest.EnvTestPolicyPrincipal)
 	recordRan(t)
 
 	folder := os.Getenv(envPolicyFolder)

@@ -72,11 +72,11 @@ type policyBindingEnv struct {
 	owner     *client.Client // product-site owner: seeds and cleans up fixtures
 	principal *client.Client // low-privilege subject under test
 
-	targetSite     string // goes in the policy's @siteId annotation
-	principalEmail string
-	folder         string
-	gateName       string
-	grantName      string
+	targetSite      string // goes in the policy's @siteId annotation
+	principalEntity string // the Cedar principal the policies grant to
+	folder          string
+	gateName        string
+	grantName       string
 }
 
 // setupPolicyBinding checks credentials, builds the three clients, and seeds a folder holding
@@ -103,14 +103,14 @@ func setupPolicyBinding(t *testing.T) *policyBindingEnv {
 	}
 
 	env := &policyBindingEnv{
-		adminCfg:       adminCfg,
-		owner:          owner,
-		principal:      principal,
-		targetSite:     acctest.PolicyTargetSiteID(),
-		principalEmail: os.Getenv(acctest.EnvTestPolicyPrincipalEmail),
-		folder:         acctest.RandomFolderName(),
-		gateName:       acctest.RandomResourceName("gate"),
-		grantName:      acctest.RandomResourceName("grant"),
+		adminCfg:        adminCfg,
+		owner:           owner,
+		principal:       principal,
+		targetSite:      acctest.PolicyTargetSiteID(),
+		principalEntity: os.Getenv(acctest.EnvTestPolicyPrincipal),
+		folder:          acctest.RandomFolderName(),
+		gateName:        acctest.RandomResourceName("gate"),
+		grantName:       acctest.RandomResourceName("grant"),
 	}
 	if env.targetSite == "" {
 		t.Fatalf("no target site: set BEYONDTRUST_SITE_ID (or %s)", acctest.EnvTestPolicySiteID)
@@ -150,13 +150,13 @@ resource "beyondtrust_iam_policy" "gate" {
   cedar = <<-EOT
     @siteId(%[2]q)
     permit(
-      principal == Pathfinder::User::Email::%[3]q,
+      principal == %[3]s,
       action == %[4]s::Action::%[5]q,
       resource == %[4]s::Folder::%[6]q
     );
   EOT
 }
-`, e.gateName, e.targetSite, e.principalEmail, cedarNamespace, actionListContents, "/"+e.folder)
+`, e.gateName, e.targetSite, e.principalEntity, cedarNamespace, actionListContents, "/"+e.folder)
 }
 
 // secretPolicyHCL grants one action on one secret.
@@ -167,13 +167,13 @@ resource "beyondtrust_iam_policy" "grant" {
   cedar = <<-EOT
     @siteId(%[2]q)
     permit(
-      principal == Pathfinder::User::Email::%[3]q,
+      principal == %[3]s,
       action == %[4]s::Action::%[5]q,
       resource == %[4]s::Secret::%[6]q
     );
   EOT
 }
-`, e.grantName, e.targetSite, e.principalEmail, cedarNamespace, action, "/"+e.folder+"/"+secret)
+`, e.grantName, e.targetSite, e.principalEntity, cedarNamespace, action, "/"+e.folder+"/"+secret)
 }
 
 func (e *policyBindingEnv) providerBlock() string {

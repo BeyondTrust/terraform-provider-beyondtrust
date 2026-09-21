@@ -85,16 +85,25 @@ Lifecycle tests need admin-site credentials, a target site, and a real principal
 ```bash
 export BEYONDTRUST_ADMIN_SITE_ID=... BEYONDTRUST_ADMIN_ACCESS_TOKEN=...
 export BEYONDTRUST_SITE_ID=...
-export BEYONDTRUST_TEST_POLICY_PRINCIPAL_EMAIL=...
+export BEYONDTRUST_TEST_POLICY_PRINCIPAL='Pathfinder::Workload::Id::"<uuid>"'
 
 make test-acc-policy
 ```
 
 `make test-acc-binding` additionally proves a policy changes what the product API returns. That
 needs two more identities on the product site: an owner to create the test fixtures
-(`BEYONDTRUST_ACCESS_TOKEN`) and a low-privilege principal whose access must change
-(`BEYONDTRUST_TEST_POLICY_PRINCIPAL_TOKEN`). Mint the principal token fresh each run — a token can
-keep access to resources the test has already deleted, which would invalidate the result.
+(`BEYONDTRUST_ACCESS_TOKEN`) and the low-privilege principal whose access must change. The
+principal authenticates with either its own token (`BEYONDTRUST_TEST_POLICY_PRINCIPAL_TOKEN`) or,
+where credentials are federated, a service name that selects its workload identity while reusing
+the product-site token (`BEYONDTRUST_TEST_POLICY_PRINCIPAL_SERVICE_NAME`).
+
+`BEYONDTRUST_TEST_POLICY_PRINCIPAL` is the Cedar entity the policies grant to, written in full —
+`Pathfinder::Workload::Id::"<uuid>"` for a workload identity, which has no email. A workload id is
+never checked for existence, so a wrong one still reports `ACTIVE`; the binding tests catch it by
+asserting access actually changes.
+
+If you use a long-lived principal token, mint it fresh each run — a token can keep access to
+resources the test has already deleted, which would invalidate the result.
 
 Tests skip when credentials are missing, and the suite prints what it skipped and why, because a
 run that verifies nothing should not look like one that passed. `BEYONDTRUST_TEST_REQUIRE_ACC=1`

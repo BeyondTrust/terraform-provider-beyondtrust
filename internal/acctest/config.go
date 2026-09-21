@@ -40,9 +40,28 @@ const (
 // denied before the policy is granted and allowed after. The admin-site credentials author the
 // policy and the normal-site credentials create the fixtures, so neither can play that role.
 const (
+	// EnvTestPolicyPrincipal is the Cedar principal the test policies grant to, written as a
+	// complete entity so any principal type works without the tests knowing about each one:
+	//
+	//	Pathfinder::Workload::Id::"<uuid>"     a workload identity, which has no email
+	//	Pathfinder::User::Email::"a@b.com"     a human
+	//	Pathfinder::Group::"platform-admins"   a group
+	//
+	// A workload id is taken at face value and never checked for existence, so a wrong one
+	// still reports ACTIVE. The binding tests catch that by asserting access actually changes.
+	EnvTestPolicyPrincipal = "BEYONDTRUST_TEST_POLICY_PRINCIPAL"
+
+	// EnvTestPolicyPrincipalToken is an access token for the principal above. Set either this
+	// or EnvTestPolicyPrincipalServiceName.
 	EnvTestPolicyPrincipalToken = "BEYONDTRUST_TEST_POLICY_PRINCIPAL_TOKEN"
-	EnvTestPolicyPrincipalEmail = "BEYONDTRUST_TEST_POLICY_PRINCIPAL_EMAIL"
-	EnvTestPolicySiteID         = "BEYONDTRUST_TEST_POLICY_SITE_ID"
+
+	// EnvTestPolicyPrincipalServiceName selects the principal's workload identity by service
+	// name, reusing the product-site token. This suits CI, where identities are federated
+	// rather than issued long-lived tokens: one token is minted for the site, and the service
+	// name picks which registration it resolves to.
+	EnvTestPolicyPrincipalServiceName = "BEYONDTRUST_TEST_POLICY_PRINCIPAL_SERVICE_NAME"
+
+	EnvTestPolicySiteID = "BEYONDTRUST_TEST_POLICY_SITE_ID"
 )
 
 // TestConfig holds configuration for acceptance tests
@@ -141,21 +160,28 @@ func LoadAdminTestConfig() (*TestConfig, error) {
 	return cfg, nil
 }
 
-// LoadPrincipalTestConfig returns the product-site config with the access token swapped for the
-// low-privilege principal's. The site is the same as LoadTestConfig's — only the identity differs,
-// because the whole point is to observe two identities against one site.
+// LoadPrincipalTestConfig returns the product-site config for the low-privilege principal. The
+// site is the same as LoadTestConfig's — only the identity differs, because the whole point is to
+// observe two identities against one site.
+//
+// The identity comes from whichever is set: a dedicated access token, or a service name that
+// selects a different workload identity while reusing the product-site token.
 func LoadPrincipalTestConfig() (*TestConfig, error) {
 	cfg, err := LoadTestConfig()
 	if err != nil {
 		return nil, err
 	}
 
-	token := os.Getenv(EnvTestPolicyPrincipalToken)
-	if token == "" {
-		return nil, fmt.Errorf("%s is required", EnvTestPolicyPrincipalToken)
+	if token := os.Getenv(EnvTestPolicyPrincipalToken); token != "" {
+		cfg.AccessToken = token
+		cfg.ServiceName = os.Getenv(EnvTestPolicyPrincipalServiceName) // usually empty
+		return cfg, nil
 	}
-	cfg.AccessToken = token
-	return cfg, nil
+	if name := os.Getenv(EnvTestPolicyPrincipalServiceName); name != "" {
+		cfg.ServiceName = name
+		return cfg, nil
+	}
+	return nil, fmt.Errorf("set %s or %s", EnvTestPolicyPrincipalToken, EnvTestPolicyPrincipalServiceName)
 }
 
 // PolicyTargetSiteID returns the site a test policy's @siteId annotation should name: the product

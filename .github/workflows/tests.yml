@@ -119,19 +119,30 @@ jobs:
           BEYONDTRUST_SERVICE_NAME: ${{ secrets.BEYONDTRUST_SERVICE_NAME }}
           TF_ACC: "1"
 
+      # A second token, for the product site, so the enforcement tests can seed fixtures and
+      # act as the low-privilege principal. Same OIDC identity, different audience.
+      - name: Get product-site OIDC token
+        id: oidc-product
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const token = await core.getIDToken('${{ secrets.BEYONDTRUST_SITE_ID }}')
+            core.setOutput('token', token)
+
       # Policies are authored against the admin site, so they belong in this job.
-      # The enforcement tests additionally need two product-site identities that OIDC cannot
-      # mint; without those secrets they skip and say so.
+      # The enforcement tests need a second product-site identity with less privilege; without
+      # that service name they skip and say so.
       - name: Run IAM policy acceptance tests
         run: make test-acc-policy
         env:
           BEYONDTRUST_ADMIN_SITE_ID: ${{ secrets.BEYONDTRUST_ADMIN_SITE_ID }}
           BEYONDTRUST_ADMIN_ACCESS_TOKEN: ${{ steps.oidc.outputs.token }}
           BEYONDTRUST_SITE_ID: ${{ secrets.BEYONDTRUST_SITE_ID }}
-          BEYONDTRUST_TEST_POLICY_PRINCIPAL_EMAIL: ${{ secrets.BEYONDTRUST_TEST_POLICY_PRINCIPAL_EMAIL }}
+          BEYONDTRUST_TEST_POLICY_PRINCIPAL: ${{ secrets.BEYONDTRUST_TEST_POLICY_PRINCIPAL }}
           BEYONDTRUST_SERVICE_NAME: ${{ secrets.BEYONDTRUST_SERVICE_NAME }}
-          # Optional: enable the enforcement tests.
-          BEYONDTRUST_ACCESS_TOKEN: ${{ secrets.BEYONDTRUST_TEST_POLICY_OWNER_TOKEN }}
-          BEYONDTRUST_TEST_POLICY_PRINCIPAL_TOKEN: ${{ secrets.BEYONDTRUST_TEST_POLICY_PRINCIPAL_TOKEN }}
+          # Optional: enable the enforcement tests. The principal is selected by service name,
+          # reusing the product-site token, so neither needs a long-lived credential.
+          BEYONDTRUST_ACCESS_TOKEN: ${{ steps.oidc-product.outputs.token }}
+          BEYONDTRUST_TEST_POLICY_PRINCIPAL_SERVICE_NAME: ${{ secrets.BEYONDTRUST_TEST_POLICY_PRINCIPAL_SERVICE_NAME }}
           BEYONDTRUST_TEST_REQUIRE_ACC: "1"
           TF_ACC: "1"
