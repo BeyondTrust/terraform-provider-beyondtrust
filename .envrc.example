@@ -43,6 +43,10 @@ export BEYONDTRUST_ADMIN_ACCESS_TOKEN="your-admin-site-access-token"
 # export BEYONDTRUST_TEST_POLICY_PRINCIPAL_TOKEN="low-privilege-product-site-token"
 # export BEYONDTRUST_TEST_POLICY_PRINCIPAL_SERVICE_NAME="tf-acc-low-privilege"
 #
+# The identity that seeds the fixtures. Only needed when one identity cannot cover both sites —
+# BEYONDTRUST_SERVICE_NAME names the admin-site one, so the product-site owner needs its own.
+# export BEYONDTRUST_TEST_POLICY_OWNER_SERVICE_NAME="tf-acc-owner"
+#
 # If you use a token rather than a service name, mint it FRESH each run: its access can outlive
 # the resources the test cleans up, and a stale one silently defeats the baseline.
 #

@@ -93,7 +93,7 @@ func setupPolicyBinding(t *testing.T) *policyBindingEnv {
 	if err != nil {
 		t.Fatalf("loading admin test config: %v", err)
 	}
-	owner, err := acctest.NewTestClient()
+	owner, err := acctest.NewPolicyOwnerTestClient()
 	if err != nil {
 		t.Fatalf("building product-site owner client: %v", err)
 	}

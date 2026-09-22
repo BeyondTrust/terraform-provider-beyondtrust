@@ -61,6 +61,13 @@ const (
 	// name picks which registration it resolves to.
 	EnvTestPolicyPrincipalServiceName = "BEYONDTRUST_TEST_POLICY_PRINCIPAL_SERVICE_NAME"
 
+	// EnvTestPolicyOwnerServiceName selects the workload identity that seeds the binding tests'
+	// fixtures. It exists because BEYONDTRUST_SERVICE_NAME cannot serve both sites at once: in
+	// the policy job that variable names the admin-site identity, which the provider and the
+	// admin client need, while the fixture owner is a separate identity on the product site.
+	// Unset falls back to BEYONDTRUST_SERVICE_NAME, which is right when one identity covers both.
+	EnvTestPolicyOwnerServiceName = "BEYONDTRUST_TEST_POLICY_OWNER_SERVICE_NAME"
+
 	EnvTestPolicySiteID = "BEYONDTRUST_TEST_POLICY_SITE_ID"
 )
 
@@ -217,6 +224,19 @@ func NewTestClient() (*client.Client, error) {
 	cfg, err := LoadTestConfig()
 	if err != nil {
 		return nil, fmt.Errorf("failed to load test config: %w", err)
+	}
+	return NewClientForConfig(cfg)
+}
+
+// NewPolicyOwnerTestClient creates the product-site client that seeds the binding tests'
+// fixtures, selecting its workload identity by service name when one is configured.
+func NewPolicyOwnerTestClient() (*client.Client, error) {
+	cfg, err := LoadTestConfig()
+	if err != nil {
+		return nil, fmt.Errorf("failed to load test config: %w", err)
+	}
+	if name := os.Getenv(EnvTestPolicyOwnerServiceName); name != "" {
+		cfg.ServiceName = name
 	}
 	return NewClientForConfig(cfg)
 }

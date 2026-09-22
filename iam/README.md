@@ -97,6 +97,10 @@ principal authenticates with either its own token (`BEYONDTRUST_TEST_POLICY_PRIN
 where credentials are federated, a service name that selects its workload identity while reusing
 the product-site token (`BEYONDTRUST_TEST_POLICY_PRINCIPAL_SERVICE_NAME`).
 
+Where one identity cannot cover both sites, the fixture owner needs its own service name too
+(`BEYONDTRUST_TEST_POLICY_OWNER_SERVICE_NAME`): `BEYONDTRUST_SERVICE_NAME` names the admin-site
+identity, which the provider and the admin client both use.
+
 `BEYONDTRUST_TEST_POLICY_PRINCIPAL` is the Cedar entity the policies grant to, written in full —
 `Pathfinder::Workload::Id::"<uuid>"` for a workload identity, which has no email. A workload id is
 never checked for existence, so a wrong one still reports `ACTIVE`; the binding tests catch it by
