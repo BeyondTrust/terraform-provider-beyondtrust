@@ -77,6 +77,18 @@ permit(
 			description: "the service stores exactly one statement per policy name",
 		},
 		{
+			name:        "empty",
+			cedar:       "",
+			wantSummary: "No Cedar Statement",
+			description: "empty text parses as zero statements, so it must not be told to split statements apart",
+		},
+		{
+			name:        "comments only",
+			cedar:       "// a policy used to live here\n",
+			wantSummary: "No Cedar Statement",
+			description: "reachable from file() on a stubbed-out file or a templatefile that renders to nothing",
+		},
+		{
 			name: "missing siteId annotation",
 			cedar: `permit(
   principal == Pathfinder::User::Email::"devops@example.com",

@@ -292,7 +292,23 @@ func validateCedar(cedarText string) *cedarValidationError {
 		pol = p
 		count++
 	}
-	if count != 1 {
+	// Nothing to split when there is nothing there. Empty text parses cleanly as a policy set of
+	// zero, which is reachable from file() on an empty file or a templatefile that renders to
+	// comments — so this needs its own message rather than advice about splitting statements up.
+	if count == 0 {
+		return &cedarValidationError{
+			Summary: "No Cedar Statement",
+			Detail: "The policy text contains no Cedar statement. A policy is a single permit " +
+				"statement carrying an @siteId(\"<uuid>\") annotation.\n\nExample:\n\n" +
+				"    @siteId(\"11111111-2222-3333-4444-555555555555\")\n" +
+				"    permit(\n" +
+				"      principal == Pathfinder::User::Email::\"someone@example.com\",\n" +
+				"      action == WorkloadCredentials::Action::\"ReadSecret\",\n" +
+				"      resource == WorkloadCredentials::Secret::\"/path/to/secret\"\n" +
+				"    );",
+		}
+	}
+	if count > 1 {
 		return &cedarValidationError{
 			Summary: "Expected Exactly One Cedar Statement",
 			Detail: fmt.Sprintf(
