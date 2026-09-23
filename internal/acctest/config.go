@@ -3,6 +3,7 @@ package acctest
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/beyondtrust/terraform-provider-beyondtrust/internal/client"
 	"github.com/beyondtrust/terraform-provider-beyondtrust/internal/constants"
@@ -69,7 +70,30 @@ const (
 	EnvTestPolicyOwnerServiceName = "BEYONDTRUST_TEST_POLICY_OWNER_SERVICE_NAME"
 
 	EnvTestPolicySiteID = "BEYONDTRUST_TEST_POLICY_SITE_ID"
+
+	// EnvTestPolicyFixtureRoot is an existing folder the seeding identity owns, which the tests
+	// create their per-run fixtures inside.
+	//
+	// Creating a folder at the product root needs a product-level permission, and folder
+	// ownership does not follow from having created one — so a caller that can make the folder
+	// still cannot put secrets in it. Both of those come with product admin, which is more than
+	// a test identity should hold and cannot be granted by a policy anyway: the Cedar schema
+	// exposes no admin action for the product.
+	//
+	// Owning one folder avoids all of it. Ownership cascades to descendants, so a single grant
+	// on this root covers creating each run's folder, seeding secrets in it, and tearing it down
+	// — and reaches nothing outside it. The grant is itself an ordinary Cedar policy, so the
+	// suite's own prerequisite is expressible in the provider under test.
+	//
+	// Unset puts fixtures at the product root, which is right for a personal token that already
+	// has product admin.
+	EnvTestPolicyFixtureRoot = "BEYONDTRUST_TEST_POLICY_FIXTURE_ROOT"
 )
+
+// PolicyFixtureRoot returns the folder the binding tests seed inside, or "" for the product root.
+func PolicyFixtureRoot() string {
+	return strings.Trim(os.Getenv(EnvTestPolicyFixtureRoot), "/")
+}
 
 // TestConfig holds configuration for acceptance tests
 type TestConfig struct {

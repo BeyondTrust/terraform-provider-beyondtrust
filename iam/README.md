@@ -101,6 +101,44 @@ Where one identity cannot cover both sites, the fixture owner needs its own serv
 (`BEYONDTRUST_TEST_POLICY_OWNER_SERVICE_NAME`): `BEYONDTRUST_SERVICE_NAME` names the admin-site
 identity, which the provider and the admin client both use.
 
+### Giving the fixture owner somewhere to write
+
+Creating a workload identity makes it able to authenticate, not to do anything. It starts with no
+permissions at all, so seeding fixtures fails with `does not have 'can_create_folder' permission`
+until it is granted some — the registration looking correct is not a sign that it can write.
+
+Rather than making it a product admin, give it one folder and point the tests at it. Folder
+ownership cascades to everything beneath, so a single grant covers creating each run's folder,
+seeding secrets in it, and tearing it down, and reaches nothing else:
+
+```bash
+# once: create the folder, then grant the identity Owner on it
+terraform apply   # see the example below
+export BEYONDTRUST_TEST_POLICY_FIXTURE_ROOT=tf-acc-fixtures
+```
+
+```hcl
+resource "beyondtrust_workload_credentials_folder" "fixtures" {
+  provider = beyondtrust.product
+  name     = "tf-acc-fixtures"
+}
+
+resource "beyondtrust_iam_policy" "fixture_owner" {
+  name  = "tf-acc-fixture-owner"
+  cedar = <<-EOT
+    @siteId("${var.product_site_id}")
+    permit(
+      principal == Pathfinder::Workload::Id::"${var.owner_identity_id}",
+      action == WorkloadCredentials::Action::"Owner",
+      resource == WorkloadCredentials::Folder::"/tf-acc-fixtures"
+    );
+  EOT
+}
+```
+
+Leave `BEYONDTRUST_TEST_POLICY_FIXTURE_ROOT` unset only when the seeding identity is already a
+product admin — a personal token usually is — in which case fixtures go at the product root.
+
 `BEYONDTRUST_TEST_POLICY_PRINCIPAL` is the Cedar entity the policies grant to, written in full —
 `Pathfinder::Workload::Id::"<uuid>"` for a workload identity, which has no email. A workload id is
 never checked for existence, so a wrong one still reports `ACTIVE`; the binding tests catch it by

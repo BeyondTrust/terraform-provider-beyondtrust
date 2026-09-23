@@ -47,6 +47,12 @@ export BEYONDTRUST_ADMIN_ACCESS_TOKEN="your-admin-site-access-token"
 # BEYONDTRUST_SERVICE_NAME names the admin-site one, so the product-site owner needs its own.
 # export BEYONDTRUST_TEST_POLICY_OWNER_SERVICE_NAME="tf-acc-owner"
 #
+# The folder that identity owns, which each run's fixtures are created inside. Needed whenever the
+# seeding identity is not a product admin — a freshly created workload identity never is. Grant it
+# once with a Cedar policy (see TESTING.md); leaving this unset puts fixtures at the product root,
+# which only works for a token that already has product admin.
+# export BEYONDTRUST_TEST_POLICY_FIXTURE_ROOT="tf-acc-fixtures"
+#
 # If you use a token rather than a service name, mint it FRESH each run: its access can outlive
 # the resources the test cleans up, and a stale one silently defeats the baseline.
 #

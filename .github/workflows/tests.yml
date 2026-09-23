@@ -165,5 +165,9 @@ jobs:
           BEYONDTRUST_ACCESS_TOKEN: ${{ steps.oidc-product.outputs.token }}
           BEYONDTRUST_TEST_POLICY_OWNER_SERVICE_NAME: ${{ secrets.BEYONDTRUST_TEST_POLICY_OWNER_SERVICE_NAME }}
           BEYONDTRUST_TEST_POLICY_PRINCIPAL_SERVICE_NAME: ${{ secrets.BEYONDTRUST_TEST_POLICY_PRINCIPAL_SERVICE_NAME }}
+          # The folder the owner identity owns and seeds fixtures inside. A workload identity is
+          # created with no product permissions, so without this the fixtures land at the product
+          # root and are refused. See TESTING.md for the one-time grant.
+          BEYONDTRUST_TEST_POLICY_FIXTURE_ROOT: ${{ vars.BEYONDTRUST_TEST_POLICY_FIXTURE_ROOT }}
           BEYONDTRUST_TEST_REQUIRE_ACC: "1"
           TF_ACC: "1"

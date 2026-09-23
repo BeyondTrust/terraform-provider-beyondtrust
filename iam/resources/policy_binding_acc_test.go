@@ -74,9 +74,15 @@ type policyBindingEnv struct {
 
 	targetSite      string // goes in the policy's @siteId annotation
 	principalEntity string // the Cedar principal the policies grant to
-	folder          string
-	gateName        string
-	grantName       string
+
+	// folder is the fixture folder's full path, which every probe and policy names. leaf and
+	// fixtureRoot split it because the create and delete endpoints take the segment and its
+	// parent separately. fixtureRoot is empty when fixtures sit at the product root.
+	folder      string
+	leaf        string
+	fixtureRoot string
+	gateName    string
+	grantName   string
 }
 
 // setupPolicyBinding checks credentials, builds the three clients, and seeds a folder holding
@@ -102,15 +108,21 @@ func setupPolicyBinding(t *testing.T) *policyBindingEnv {
 		t.Fatalf("building principal client: %v", err)
 	}
 
+	leaf := acctest.RandomFolderName()
 	env := &policyBindingEnv{
 		adminCfg:        adminCfg,
 		owner:           owner,
 		principal:       principal,
 		targetSite:      acctest.PolicyTargetSiteID(),
 		principalEntity: os.Getenv(acctest.EnvTestPolicyPrincipal),
-		folder:          acctest.RandomFolderName(),
+		leaf:            leaf,
+		fixtureRoot:     acctest.PolicyFixtureRoot(),
 		gateName:        acctest.RandomResourceName("gate"),
 		grantName:       acctest.RandomResourceName("grant"),
+	}
+	env.folder = leaf
+	if env.fixtureRoot != "" {
+		env.folder = env.fixtureRoot + "/" + leaf
 	}
 	if env.targetSite == "" {
 		t.Fatalf("no target site: set BEYONDTRUST_SITE_ID (or %s)", acctest.EnvTestPolicySiteID)
@@ -120,13 +132,14 @@ func setupPolicyBinding(t *testing.T) *policyBindingEnv {
 	registerPolicyCleanup(t, env.gateName)
 	registerPolicyCleanup(t, env.grantName)
 	t.Cleanup(func() {
-		if err := deleteFolderRecursive(context.Background(), env.owner, env.folder); err != nil {
+		if err := deleteFolderRecursive(context.Background(), env.owner, env.leaf, env.fixtureRoot); err != nil {
 			t.Logf("cleanup: folder %q not deleted (leaked): %v", env.folder, err)
 		}
 	})
 
-	if err := createFolder(ctx, env.owner, env.folder, ""); err != nil {
-		t.Fatalf("seeding folder %q: %v", env.folder, err)
+	if err := createFolder(ctx, env.owner, env.leaf, env.fixtureRoot); err != nil {
+		t.Fatalf("seeding folder %q: %v\n\nA product-root fixture needs product admin; set %s to a folder "+
+			"this identity owns instead.", env.folder, err, acctest.EnvTestPolicyFixtureRoot)
 	}
 	for _, name := range []string{secretAlpha, secretBravo, secretCharlie} {
 		if err := createSecret(ctx, env.owner, name, env.folder, "tf-acc-"+name); err != nil {

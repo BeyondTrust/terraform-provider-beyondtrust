@@ -73,10 +73,11 @@ func createSecret(ctx context.Context, c *client.Client, name, folder, value str
 	return c.Post(ctx, c.BuildPath("/static/"+name), folderQuery(folder), body, nil)
 }
 
-// deleteFolderRecursive removes a folder and everything under it. Used for cleanup, so it is
-// deliberately tolerant: WLC masks a missing resource as 403, and delete is idempotent anyway.
-func deleteFolderRecursive(ctx context.Context, c *client.Client, name string) error {
-	query := url.Values{}
+// deleteFolderRecursive removes a folder and everything under it. Like createFolder it takes the
+// segment and its parent separately. Used for cleanup, so it is deliberately tolerant: WLC masks
+// a missing resource as 403, and delete is idempotent anyway.
+func deleteFolderRecursive(ctx context.Context, c *client.Client, name, parent string) error {
+	query := folderQuery(parent)
 	query.Set("permanent", "true")
 	query.Set("recursive", "true")
 	return c.Delete(ctx, c.BuildPath("/folders/"+name), query)
