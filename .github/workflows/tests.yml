@@ -101,7 +101,7 @@ jobs:
     environment: acceptance-tests-admin
     permissions:
       contents: read
-      id-token: write  # Required for GitHub OIDC
+      id-token: write # Required for GitHub OIDC
     # Skip on fork/Dependabot PRs, which can't access environment secrets or OIDC.
     if: >-
       (github.event_name != 'pull_request' ||
@@ -137,9 +137,9 @@ jobs:
           BEYONDTRUST_SERVICE_NAME: ${{ secrets.BEYONDTRUST_SERVICE_NAME }}
           TF_ACC: "1"
 
-      # A second token, for the product site, so the enforcement tests can seed fixtures and
+      # A second token, scoped to the product site, so the enforcement tests can seed fixtures and
       # act as the low-privilege principal. Same OIDC identity, different audience.
-      - name: Get product-site OIDC token
+      - name: Get product-site OIDC token scoped to a single product and site
         id: oidc-product
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
