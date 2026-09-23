@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math/rand"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -104,6 +105,45 @@ func PreCheckAdmin(t *testing.T) {
 	if _, err := LoadAdminTestConfig(); err != nil {
 		t.Skipf("workload-identity (admin-site) acceptance tests skipped: %v\n\nSet: %s, %s, %s", err, constants.EnvAPIURL, EnvAdminSiteID, EnvAdminAccessToken)
 	}
+}
+
+// PolicyBindingSkipReason returns why the IAM policy binding tests cannot run, or "" when every
+// credential they need is present: the admin site (authors the policy), the product site (seeds
+// fixtures), and the low-privilege principal (the subject whose access must flip).
+//
+// Returned rather than skipped directly so callers can also count and report it — a suite that
+// skips silently reports green while verifying nothing.
+func PolicyBindingSkipReason() string {
+	if _, err := LoadAdminTestConfig(); err != nil {
+		return fmt.Sprintf("%v (set %s and %s)", err, EnvAdminSiteID, EnvAdminAccessToken)
+	}
+	if _, err := LoadPrincipalTestConfig(); err != nil {
+		return fmt.Sprintf("%v (set %s, %s and %s)",
+			err, constants.EnvSiteID, constants.EnvAccessToken, EnvTestPolicyPrincipalToken)
+	}
+	if reason := PolicyPrincipalSkipReason(); reason != "" {
+		return reason
+	}
+	return ""
+}
+
+// PolicyPrincipalSkipReason returns why the configured Cedar principal is unusable, or "".
+//
+// The value is a whole Cedar entity rather than a bare name, because a workload identity has no
+// email and the tests should not have to know which principal type they were handed. The check
+// is deliberately shallow — the service validates the rest — but it catches a bare email or id
+// pasted in, which is the mistake this variable invites.
+func PolicyPrincipalSkipReason() string {
+	principal := os.Getenv(EnvTestPolicyPrincipal)
+	if principal == "" {
+		return fmt.Sprintf("%s is not set (a Cedar entity, e.g. Pathfinder::Workload::Id::%q)",
+			EnvTestPolicyPrincipal, "<uuid>")
+	}
+	if !strings.Contains(principal, "::") || !strings.Contains(principal, `"`) {
+		return fmt.Sprintf("%s must be a whole Cedar entity such as Pathfinder::Workload::Id::%q, got %q",
+			EnvTestPolicyPrincipal, "<uuid>", principal)
+	}
+	return ""
 }
 
 // GetAWSRoleARN returns the AWS role ARN for testing

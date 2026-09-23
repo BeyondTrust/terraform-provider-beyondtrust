@@ -7,9 +7,23 @@ on:
   push:
     branches:
       - main
+  # Run on demand, e.g. to re-check the acceptance suites after a dependency of
+  # theirs is deployed, without pushing a commit to do it.
+  workflow_dispatch:
+    inputs:
+      suite:
+        description: Which acceptance suite to run
+        type: choice
+        default: all
+        options:
+          - all
+          - product-site
+          - admin-site
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  # Manual runs are keyed separately so dispatching one does not cancel the
+  # pull-request run on the same ref.
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}
   cancel-in-progress: true
 
 permissions: {}
@@ -44,9 +58,11 @@ jobs:
     # OIDC and the test-environment secrets are unavailable to fork and Dependabot
     # PRs; push-to-main runs always have them.
     if: >-
-      github.event_name != 'pull_request' ||
-      (github.actor != 'dependabot[bot]' &&
-       github.event.pull_request.head.repo.full_name == github.repository)
+      (github.event_name != 'pull_request' ||
+       (github.actor != 'dependabot[bot]' &&
+        github.event.pull_request.head.repo.full_name == github.repository)) &&
+      (github.event_name != 'workflow_dispatch' ||
+       contains(fromJSON('["all", "product-site"]'), inputs.suite))
     steps:
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -85,12 +101,14 @@ jobs:
     environment: acceptance-tests-admin
     permissions:
       contents: read
-      id-token: write  # Required for GitHub OIDC
+      id-token: write # Required for GitHub OIDC
     # Skip on fork/Dependabot PRs, which can't access environment secrets or OIDC.
     if: >-
-      github.event_name != 'pull_request' ||
-      (github.actor != 'dependabot[bot]' &&
-       github.event.pull_request.head.repo.full_name == github.repository)
+      (github.event_name != 'pull_request' ||
+       (github.actor != 'dependabot[bot]' &&
+        github.event.pull_request.head.repo.full_name == github.repository)) &&
+      (github.event_name != 'workflow_dispatch' ||
+       contains(fromJSON('["all", "admin-site"]'), inputs.suite))
     steps:
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -117,4 +135,39 @@ jobs:
           BEYONDTRUST_ADMIN_SITE_ID: ${{ secrets.BEYONDTRUST_ADMIN_SITE_ID }}
           BEYONDTRUST_ADMIN_ACCESS_TOKEN: ${{ steps.oidc.outputs.token }}
           BEYONDTRUST_SERVICE_NAME: ${{ secrets.BEYONDTRUST_SERVICE_NAME }}
+          TF_ACC: "1"
+
+      # A second token, scoped to the product site, so the enforcement tests can seed fixtures and
+      # act as the low-privilege principal. Same OIDC identity, different audience.
+      - name: Get product-site OIDC token scoped to a single product and site
+        id: oidc-product
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const token = await core.getIDToken('${{ secrets.BEYONDTRUST_SITE_ID }}')
+            core.setOutput('token', token)
+
+      # Policies are authored against the admin site, so they belong in this job.
+      # The enforcement tests need two product-site identities — an owner to seed fixtures and a
+      # low-privilege principal — each selected by service name. Without them they skip and say so.
+      # BEYONDTRUST_SERVICE_NAME stays the admin identity here: the provider and the admin client
+      # both use it, so the owner needs its own variable rather than sharing that one.
+      - name: Run IAM policy acceptance tests
+        run: make test-acc-policy
+        env:
+          BEYONDTRUST_ADMIN_SITE_ID: ${{ secrets.BEYONDTRUST_ADMIN_SITE_ID }}
+          BEYONDTRUST_ADMIN_ACCESS_TOKEN: ${{ steps.oidc.outputs.token }}
+          BEYONDTRUST_SITE_ID: ${{ secrets.BEYONDTRUST_SITE_ID }}
+          BEYONDTRUST_TEST_POLICY_PRINCIPAL: ${{ secrets.BEYONDTRUST_TEST_POLICY_PRINCIPAL }}
+          BEYONDTRUST_SERVICE_NAME: ${{ secrets.BEYONDTRUST_SERVICE_NAME }}
+          # Optional: enable the enforcement tests. The principal is selected by service name,
+          # reusing the product-site token, so neither needs a long-lived credential.
+          BEYONDTRUST_ACCESS_TOKEN: ${{ steps.oidc-product.outputs.token }}
+          BEYONDTRUST_TEST_POLICY_OWNER_SERVICE_NAME: ${{ secrets.BEYONDTRUST_TEST_POLICY_OWNER_SERVICE_NAME }}
+          BEYONDTRUST_TEST_POLICY_PRINCIPAL_SERVICE_NAME: ${{ secrets.BEYONDTRUST_TEST_POLICY_PRINCIPAL_SERVICE_NAME }}
+          # The folder the owner identity owns and seeds fixtures inside. A workload identity is
+          # created with no product permissions, so without this the fixtures land at the product
+          # root and are refused. See iam/README.md for the one-time grant.
+          BEYONDTRUST_TEST_POLICY_FIXTURE_ROOT: ${{ vars.BEYONDTRUST_TEST_POLICY_FIXTURE_ROOT }}
+          BEYONDTRUST_TEST_REQUIRE_ACC: "1"
           TF_ACC: "1"

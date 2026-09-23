@@ -22,6 +22,45 @@ export BEYONDTRUST_SITE_ID="your-site-uuid"
 export BEYONDTRUST_ADMIN_SITE_ID="your-admin-site-uuid"
 export BEYONDTRUST_ADMIN_ACCESS_TOKEN="your-admin-site-access-token"
 
+# Optional. Sent as X-BT-Service-Name; required when authenticating via workload identity
+# federation (e.g. GitHub OIDC) rather than a personal access token.
+# export BEYONDTRUST_SERVICE_NAME="your-service-name"
+
+# Required for the IAM policy binding tests (make test-acc-binding), which prove a Cedar policy
+# actually changes what the Workload Credentials API returns.
+#
+# These need a THIRD identity beyond the two above: a low-privilege user on the product site
+# whose access is denied before the policy is granted and allowed after. The admin credentials
+# author the policy and BEYONDTRUST_ACCESS_TOKEN seeds the fixtures, so neither can play it.
+#
+# The Cedar principal the test policies grant to, as a whole entity. A workload identity has
+# no email, so use its id; a human uses their email.
+# export BEYONDTRUST_TEST_POLICY_PRINCIPAL='Pathfinder::Workload::Id::"00000000-0000-0000-0000-000000000000"'
+# export BEYONDTRUST_TEST_POLICY_PRINCIPAL='Pathfinder::User::Email::"principal@example.com"'
+#
+# How that principal authenticates — set exactly one. A service name reuses the product-site
+# token and selects a different workload identity, which suits federated credentials.
+# export BEYONDTRUST_TEST_POLICY_PRINCIPAL_TOKEN="low-privilege-product-site-token"
+# export BEYONDTRUST_TEST_POLICY_PRINCIPAL_SERVICE_NAME="tf-acc-low-privilege"
+#
+# The identity that seeds the fixtures. Only needed when one identity cannot cover both sites —
+# BEYONDTRUST_SERVICE_NAME names the admin-site one, so the product-site owner needs its own.
+# export BEYONDTRUST_TEST_POLICY_OWNER_SERVICE_NAME="tf-acc-owner"
+#
+# The folder that identity owns, which each run's fixtures are created inside. Needed whenever the
+# seeding identity is not a product admin — a freshly created workload identity never is. Grant it
+# once with a Cedar policy (see iam/README.md); leaving this unset puts fixtures at the product root,
+# which only works for a token that already has product admin.
+# export BEYONDTRUST_TEST_POLICY_FIXTURE_ROOT="tf-acc-fixtures"
+#
+# If you use a token rather than a service name, mint it FRESH each run: its access can outlive
+# the resources the test cleans up, and a stale one silently defeats the baseline.
+#
+# Optional: the site named in the policy's @siteId annotation. Defaults to BEYONDTRUST_SITE_ID.
+# export BEYONDTRUST_TEST_POLICY_SITE_ID="your-product-site-uuid"
+# Optional: seconds to wait for a grant to bind. Default 180.
+# export BEYONDTRUST_TEST_POLICY_BIND_TIMEOUT="180"
+
 # Required for AWS Integration Tests
 export BEYONDTRUST_TEST_AWS_ROLE_ARN="arn:aws:iam::123456789012:role/staging-test-role"
 export BEYONDTRUST_TEST_AWS_ROLE_ARN_2="arn:aws:iam::123456789012:role/second-staging-test-role"
