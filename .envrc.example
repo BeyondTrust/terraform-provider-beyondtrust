@@ -49,7 +49,7 @@ export BEYONDTRUST_ADMIN_ACCESS_TOKEN="your-admin-site-access-token"
 #
 # The folder that identity owns, which each run's fixtures are created inside. Needed whenever the
 # seeding identity is not a product admin — a freshly created workload identity never is. Grant it
-# once with a Cedar policy (see TESTING.md); leaving this unset puts fixtures at the product root,
+# once with a Cedar policy (see iam/README.md); leaving this unset puts fixtures at the product root,
 # which only works for a token that already has product admin.
 # export BEYONDTRUST_TEST_POLICY_FIXTURE_ROOT="tf-acc-fixtures"
 #
