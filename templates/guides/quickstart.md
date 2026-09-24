@@ -215,7 +215,7 @@ Type `yes` to confirm deletion.
 **Best Approach**: Contact your BeyondTrust Workload Credentials platform administrator to obtain your site ID. This is the most reliable method.
 
 **If you already have access:**
-- **Browser DevTools**: The UUID appears in every API request path as `/site/{uuid}/secrets/...`
+- **Browser DevTools**: The UUID appears in every API request path as `/site/{uuid}/wlc/...`
 - **Multiple Sites**: If your organization has multiple sites, ensure you're using the correct site ID for your environment
 
 ### Authentication Fails
@@ -231,7 +231,7 @@ Type `yes` to confirm deletion.
 # Test your credentials
 curl -H "Authorization: Bearer ${BEYONDTRUST_ACCESS_TOKEN}" \
      -H "bt-secrets-api-version: 2026-04-28" \
-     "https://api.beyondtrust.io/site/${BEYONDTRUST_SITE_ID}/secrets/session"
+     "https://api.beyondtrust.io/site/${BEYONDTRUST_SITE_ID}/wlc/session"
 ```
 
 ### Terraform Version Error

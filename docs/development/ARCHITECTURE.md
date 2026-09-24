@@ -59,7 +59,7 @@ The BeyondTrust Terraform Provider enables infrastructure-as-code management of 
                          ↓
 ┌─────────────────────────────────────────────────────────────┐
 │         BeyondTrust Workload Credentials API                 │
-│  /site/{site-id}/secrets[/version]/{endpoint}                │
+│  /site/{site-id}/wlc[/version]/{endpoint}                │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -212,7 +212,7 @@ type APIError struct {
 ```
 
 **API Conventions:**
-- Path format: `/site/{site-id}/secrets[/version]/{endpoint}`
+- Path format: `/site/{site-id}/wlc[/version]/{endpoint}`
 - Required headers on all requests:
   - `Authorization: Bearer <token>`
   - `bt-secrets-api-version: 2026-04-28` (configurable)
@@ -398,11 +398,11 @@ resource "kubernetes_secret" "db" {
 ```go
 // Without path version
 client.BuildPath("/folders")
-// → /site/550e8400-e29b-41d4-a716-446655440000/secrets/folders
+// → /site/550e8400-e29b-41d4-a716-446655440000/wlc/folders
 
 // With api_path_version="v1"
 client.BuildPath("/folders")
-// → /site/550e8400-e29b-41d4-a716-446655440000/secrets/v1/folders
+// → /site/550e8400-e29b-41d4-a716-446655440000/wlc/v1/folders
 ```
 
 **Note**: The `/api` prefix is added by CloudFront, not by provider code.
@@ -718,7 +718,7 @@ terraform import beyondtrust_workload_credentials_folder.prod production/aws
 
 ### 5. Multi-Tenancy via Site ID
 
-**Decision**: Embed Site ID in the request path (`/site/{site-id}/secrets/...`)
+**Decision**: Embed Site ID in the request path (`/site/{site-id}/wlc/...`)
 
 **Rationale:**
 - API enforces tenant isolation at the infrastructure level
