@@ -145,35 +145,35 @@ func TestBuildPath(t *testing.T) {
 			siteID:         "default",
 			apiPathVersion: "",
 			endpoint:       "/folders",
-			want:           "/site/default/secrets/folders",
+			want:           "/site/default/wlc/folders",
 		},
 		{
 			name:           "with path version",
 			siteID:         "default",
 			apiPathVersion: "v1",
 			endpoint:       "/folders",
-			want:           "/site/default/secrets/v1/folders",
+			want:           "/site/default/wlc/v1/folders",
 		},
 		{
 			name:           "root endpoint",
 			siteID:         "test-site",
 			apiPathVersion: "",
 			endpoint:       "/",
-			want:           "/site/test-site/secrets/",
+			want:           "/site/test-site/wlc/",
 		},
 		{
 			name:           "complex path no version",
 			siteID:         "prod",
 			apiPathVersion: "",
 			endpoint:       "/folders/production/secrets",
-			want:           "/site/prod/secrets/folders/production/secrets",
+			want:           "/site/prod/wlc/folders/production/secrets",
 		},
 		{
 			name:           "complex path with version",
 			siteID:         "staging",
 			apiPathVersion: "v2",
 			endpoint:       "/folders/production/secrets",
-			want:           "/site/staging/secrets/v2/folders/production/secrets",
+			want:           "/site/staging/wlc/v2/folders/production/secrets",
 		},
 	}
 
@@ -461,7 +461,7 @@ func TestHandleErrorResponse_UnstructuredJSON(t *testing.T) {
 // TestValidateSession_Success validates successful session validation.
 func TestValidateSession_Success(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/site/test-site/secrets/session" {
+		if r.URL.Path == "/site/test-site/wlc/session" {
 			w.WriteHeader(http.StatusOK)
 			w.Write([]byte("{}"))
 			return
@@ -486,7 +486,7 @@ func TestValidateSession_Success(t *testing.T) {
 // TestValidateSession_Unauthorized validates session validation failure.
 func TestValidateSession_Unauthorized(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/site/test-site/secrets/session" {
+		if r.URL.Path == "/site/test-site/wlc/session" {
 			w.WriteHeader(http.StatusUnauthorized)
 			json.NewEncoder(w).Encode(map[string]string{
 				"message": "Invalid access token",
@@ -1226,8 +1226,8 @@ func TestStaleReadRetryApplies(t *testing.T) {
 		{"unrelated path", c, "GET", "/test", false},
 		{"root", c, "GET", "/", false},
 		{"empty", c, "GET", "", false},
-		{"another site", c, "GET", "/site/other-site/secrets/static/name", false},
-		{"prefix not at segment boundary", c, "GET", "/site/test-site/secretsomething", false},
+		{"another site", c, "GET", "/site/other-site/wlc/static/name", false},
+		{"prefix not at segment boundary", c, "GET", "/site/test-site/wlcsomething", false},
 	}
 
 	for _, tt := range tests {

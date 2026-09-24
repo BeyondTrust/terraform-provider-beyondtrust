@@ -18,7 +18,7 @@ import (
 // This file is the single point of coupling to the Workload Credentials secrets API.
 // Everything the binding tests know about that service's URL shapes, query parameters, request
 // bodies and status codes lives here, so a change on their side breaks one file rather than
-// several. Paths are relative to client.BuildPath, i.e. /site/{site-id}/secrets{endpoint}.
+// several. Paths are relative to client.BuildPath, i.e. /site/{site-id}/wlc{endpoint}.
 
 // wlcListItem is one row of a list response. Only the fields the assertions need are modeled.
 type wlcListItem struct {

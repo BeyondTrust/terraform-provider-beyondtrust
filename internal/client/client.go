@@ -276,11 +276,11 @@ func NewClient(cfg *Config) (*Client, error) {
 // staleReadRetryApplies both derive from this so the builder and the retry gate
 // cannot drift apart.
 func (c *Client) secretsPathPrefix() string {
-	return fmt.Sprintf("/site/%s/secrets", c.SiteID)
+	return fmt.Sprintf("/site/%s/wlc", c.SiteID)
 }
 
 // BuildPath constructs an API path with optional version segment
-// Format: /site/{site-id}/secrets[/version]/endpoint
+// Format: /site/{site-id}/wlc[/version]/endpoint
 func (c *Client) BuildPath(endpoint string) string {
 	if c.APIPathVersion == "" {
 		return c.secretsPathPrefix() + endpoint
@@ -473,7 +473,7 @@ func (c *Client) staleReadRetryApplies(method, path string) bool {
 	prefix := c.secretsPathPrefix()
 
 	// Require the prefix to end at a segment boundary, so a sibling route such
-	// as /site/x/secretsomething cannot match.
+	// as /site/x/wlcsomething cannot match.
 	return path == prefix || strings.HasPrefix(path, prefix+"/")
 }
 
