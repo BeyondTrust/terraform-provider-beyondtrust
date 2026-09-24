@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.4.0](https://github.com/BeyondTrust/terraform-provider-beyondtrust/compare/v1.3.1...v1.4.0) (2026-09-24)
+
+
+### Features
+
+* add beyondtrust_iam_policy resource for Cedar authorization policies ([#113](https://github.com/BeyondTrust/terraform-provider-beyondtrust/issues/113)) ([e7b6687](https://github.com/BeyondTrust/terraform-provider-beyondtrust/commit/e7b66871899243e51b77764a26b6f6a369346fc2))
+* retry 403 on GET for eventually consistent reads ([#112](https://github.com/BeyondTrust/terraform-provider-beyondtrust/issues/112)) ([028d6ff](https://github.com/BeyondTrust/terraform-provider-beyondtrust/commit/028d6ff7a1b76679db8a446a24fb9d044a78cbfc))
+
+
+### Bug Fixes
+
+* bump golang.org/x/crypto to v0.57.0 for CVE-2026-56854 ([#114](https://github.com/BeyondTrust/terraform-provider-beyondtrust/issues/114)) ([e99a6c1](https://github.com/BeyondTrust/terraform-provider-beyondtrust/commit/e99a6c19344913df233fb91676403179a585d58c))
+* bump golang.org/x/mod to v0.40.0 and go toolchain to 1.26.7 ([#110](https://github.com/BeyondTrust/terraform-provider-beyondtrust/issues/110)) ([e92cbc7](https://github.com/BeyondTrust/terraform-provider-beyondtrust/commit/e92cbc789974d8fa34eb4701e9c091374eee81e0))
+* static secret resource reads secret_wo from req.Config instead of req.Plan ([#97](https://github.com/BeyondTrust/terraform-provider-beyondtrust/issues/97)) ([214395c](https://github.com/BeyondTrust/terraform-provider-beyondtrust/commit/214395c2c8b7b5edac2a1a7354cef8c7506ac15f))
+
 ## [1.3.1](https://github.com/BeyondTrust/terraform-provider-beyondtrust/compare/v1.3.0...v1.3.1) (2026-07-10)
 
 
