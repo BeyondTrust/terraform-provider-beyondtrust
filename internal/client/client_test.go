@@ -246,7 +246,7 @@ func TestDoRequest(t *testing.T) {
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				// Verify headers that should always be set
 				assert.Equal(t, "Bearer test-token", r.Header.Get("Authorization"), "Authorization header")
-				assert.Equal(t, "DefaultAPIVersion", r.Header.Get("bt-secrets-api-version"), "API Version header")
+				assert.Equal(t, "DefaultAPIVersion", r.Header.Get("bt-wlc-api-version"), "API Version header")
 				// Content-Type is only set when there's a body, so we don't check it for GET
 
 				w.Header().Set("Content-Type", "application/json")
@@ -288,7 +288,7 @@ func TestDoRequestWithHeaders(t *testing.T) {
 		// Verify all headers
 		assert.Equal(t, "Bearer test-token", r.Header.Get("Authorization"), "Authorization header")
 		assert.Equal(t, "application/json", r.Header.Get("Content-Type"), "Content-Type header")
-		assert.Equal(t, "DefaultAPIVersion", r.Header.Get("bt-secrets-api-version"), "API Version header")
+		assert.Equal(t, "DefaultAPIVersion", r.Header.Get("bt-wlc-api-version"), "API Version header")
 		assert.Equal(t, "test-role", r.Header.Get("X-BT-Role"), "Role header")
 		assert.Equal(t, "CUSTOM-IDP", r.Header.Get("X-BT-Auth-Type"), "Auth Type header")
 

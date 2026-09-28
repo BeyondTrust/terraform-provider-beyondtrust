@@ -194,7 +194,7 @@ client.BuildPath("/folders")              // → /site/{site-id}/wlc/v1/folders
 
 All requests include:
 - `Authorization: Bearer <token>` - Authentication
-- `bt-secrets-api-version: 2026-04-28` - API version (date-based)
+- `bt-wlc-api-version: 2026-04-28` - API version (date-based)
 - `X-BT-Role: <role>` - Optional role (sets `X-BT-Auth-Type: CUSTOM-IDP`)
 
 ### Merge-Patch Semantics (RFC 7396)

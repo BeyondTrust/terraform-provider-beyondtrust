@@ -70,9 +70,9 @@ runs:
 
         # Build URL with folder query parameter
         if [ -n "$FOLDER" ]; then
-          URL="https://api.bt-platform.net/site/${SITE_ID}/secrets/dynamic/${SECRET_NAME}/generate?folder=${FOLDER}"
+          URL="https://api.bt-platform.net/site/${SITE_ID}/wlc/dynamic/${SECRET_NAME}/generate?folder=${FOLDER}"
         else
-          URL="https://api.bt-platform.net/site/${SITE_ID}/secrets/dynamic/${SECRET_NAME}/generate"
+          URL="https://api.bt-platform.net/site/${SITE_ID}/wlc/dynamic/${SECRET_NAME}/generate"
         fi
 
         echo "::notice::Generating AWS credentials from dynamic secret: $DYNAMIC_SECRET_PATH"
@@ -82,7 +82,7 @@ runs:
           -H "Authorization: Bearer $OIDC_TOKEN" \
           -H "X-BT-Role: $ROLE" \
           -H "X-BT-Auth-Type: CUSTOM-IDP" \
-          -H "bt-secrets-api-version: 2026-04-28" \
+          -H "bt-wlc-api-version: 2026-04-28" \
           "$URL")
 
         HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)

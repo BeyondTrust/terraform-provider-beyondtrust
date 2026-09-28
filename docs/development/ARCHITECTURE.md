@@ -59,7 +59,7 @@ The BeyondTrust Terraform Provider enables infrastructure-as-code management of 
                          ↓
 ┌─────────────────────────────────────────────────────────────┐
 │         BeyondTrust Workload Credentials API                 │
-│  /site/{site-id}/wlc[/version]/{endpoint}                │
+│  /site/{site-id}/wlc[/version]/{endpoint}                    │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -215,7 +215,7 @@ type APIError struct {
 - Path format: `/site/{site-id}/wlc[/version]/{endpoint}`
 - Required headers on all requests:
   - `Authorization: Bearer <token>`
-  - `bt-secrets-api-version: 2026-04-28` (configurable)
+  - `bt-wlc-api-version: 2026-04-28` (configurable)
 - Optional headers:
   - `X-BT-Role: <role>` (when role is set, also sets `X-BT-Auth-Type: CUSTOM-IDP`)
 
