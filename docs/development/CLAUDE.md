@@ -180,21 +180,21 @@ The BeyondTrust Workload Credentials API has specific patterns that the provider
 ### Path Construction
 
 ```go
-// Base path: /secrets (or /secrets/v1 if api_path_version is set)
+// Base path: /site/{site-id}/wlc (or /site/{site-id}/wlc/v1 if api_path_version is set)
 // /api prefix is added by CloudFront, not in provider code
 
-client.BuildPath("/folders")              // → /secrets/folders
-client.BuildPath("/folders/my-folder")    // → /secrets/folders/my-folder
+client.BuildPath("/folders")              // → /site/{site-id}/wlc/folders
+client.BuildPath("/folders/my-folder")    // → /site/{site-id}/wlc/folders/my-folder
 
 // With api_path_version="v1":
-client.BuildPath("/folders")              // → /secrets/v1/folders
+client.BuildPath("/folders")              // → /site/{site-id}/wlc/v1/folders
 ```
 
 ### Required Headers
 
 All requests include:
 - `Authorization: Bearer <token>` - Authentication
-- `bt-secrets-api-version: 2026-04-28` - API version (date-based)
+- `bt-wlc-api-version: 2026-04-28` - API version (date-based)
 - `X-BT-Role: <role>` - Optional role (sets `X-BT-Auth-Type: CUSTOM-IDP`)
 
 ### Merge-Patch Semantics (RFC 7396)

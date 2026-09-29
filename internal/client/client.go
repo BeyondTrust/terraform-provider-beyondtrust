@@ -272,20 +272,20 @@ func NewClient(cfg *Config) (*Client, error) {
 	}, nil
 }
 
-// secretsPathPrefix is the root every secrets-service path shares. BuildPath and
+// wlcPathPrefix is the root every secrets-service path shares. BuildPath and
 // staleReadRetryApplies both derive from this so the builder and the retry gate
 // cannot drift apart.
-func (c *Client) secretsPathPrefix() string {
-	return fmt.Sprintf("/site/%s/secrets", c.SiteID)
+func (c *Client) wlcPathPrefix() string {
+	return fmt.Sprintf("/site/%s/wlc", c.SiteID)
 }
 
 // BuildPath constructs an API path with optional version segment
-// Format: /site/{site-id}/secrets[/version]/endpoint
+// Format: /site/{site-id}/wlc[/version]/endpoint
 func (c *Client) BuildPath(endpoint string) string {
 	if c.APIPathVersion == "" {
-		return c.secretsPathPrefix() + endpoint
+		return c.wlcPathPrefix() + endpoint
 	}
-	return fmt.Sprintf("%s/%s%s", c.secretsPathPrefix(), c.APIPathVersion, endpoint)
+	return fmt.Sprintf("%s/%s%s", c.wlcPathPrefix(), c.APIPathVersion, endpoint)
 }
 
 // BuildAuthPath constructs a path for the BeyondTrust auth service (workload identities).
@@ -358,7 +358,7 @@ func (c *Client) newRequest(ctx context.Context, method, path string, query url.
 
 	// Set standard headers
 	req.Header.Set("Authorization", "Bearer "+c.AccessToken)
-	req.Header.Set("bt-secrets-api-version", c.APIVersion)
+	req.Header.Set("bt-wlc-api-version", c.APIVersion)
 	req.Header.Set("Accept", "application/json")
 
 	// Set optional headers if provided
@@ -470,10 +470,10 @@ func (c *Client) staleReadRetryApplies(method, path string) bool {
 		return false
 	}
 
-	prefix := c.secretsPathPrefix()
+	prefix := c.wlcPathPrefix()
 
 	// Require the prefix to end at a segment boundary, so a sibling route such
-	// as /site/x/secretsomething cannot match.
+	// as /site/x/wlcsomething cannot match.
 	return path == prefix || strings.HasPrefix(path, prefix+"/")
 }
 
