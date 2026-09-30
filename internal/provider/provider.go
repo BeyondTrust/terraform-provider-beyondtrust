@@ -252,6 +252,8 @@ func (p *BeyondTrustProvider) DataSources(ctx context.Context) []func() datasour
 func (p *BeyondTrustProvider) EphemeralResources(ctx context.Context) []func() ephemeral.EphemeralResource {
 	return []func() ephemeral.EphemeralResource{
 		ephemeralresources.NewStaticSecretEphemeral,
+		ephemeralresources.NewAwsDynamicSecretEphemeral,
+		ephemeralresources.NewAzureDynamicSecretEphemeral,
 	}
 }
 
