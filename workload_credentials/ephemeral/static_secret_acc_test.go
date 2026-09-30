@@ -19,7 +19,7 @@ func TestAccStaticSecretEphemeral_basic(t *testing.T) {
 	secretValue := acctest.RandomString(32)
 
 	resource.ParallelTest(t, resource.TestCase{
-		PreCheck:                 func() { acctest.PreCheck(t) },
+		PreCheck:                 func() { preCheckBase(t) },
 		ProtoV6ProviderFactories: acctest.ProtoV6ProviderFactories,
 		TerraformVersionChecks: []tfversion.TerraformVersionCheck{
 			tfversion.SkipBelow(tfversion.Version1_10_0),
@@ -29,6 +29,7 @@ func TestAccStaticSecretEphemeral_basic(t *testing.T) {
 			{
 				Config: testAccStaticSecretResourceConfig_setup(secretName, secretValue),
 				Check: resource.ComposeAggregateTestCheckFunc(
+					recordRan(t),
 					resource.TestCheckResourceAttr("beyondtrust_workload_credentials_static_secret.setup", "name", secretName),
 					resource.TestCheckResourceAttr("beyondtrust_workload_credentials_static_secret.setup", "path", secretName),
 				),
@@ -47,7 +48,7 @@ func TestAccStaticSecretEphemeral_inFolder(t *testing.T) {
 	secretValue := acctest.RandomString(32)
 
 	resource.ParallelTest(t, resource.TestCase{
-		PreCheck:                 func() { acctest.PreCheck(t) },
+		PreCheck:                 func() { preCheckBase(t) },
 		ProtoV6ProviderFactories: acctest.ProtoV6ProviderFactories,
 		TerraformVersionChecks: []tfversion.TerraformVersionCheck{
 			tfversion.SkipBelow(tfversion.Version1_10_0),
@@ -57,6 +58,7 @@ func TestAccStaticSecretEphemeral_inFolder(t *testing.T) {
 			{
 				Config: testAccStaticSecretResourceConfig_inFolder(folderName, secretName, secretValue),
 				Check: resource.ComposeAggregateTestCheckFunc(
+					recordRan(t),
 					resource.TestCheckResourceAttr("beyondtrust_workload_credentials_folder.setup", "name", folderName),
 					resource.TestCheckResourceAttr("beyondtrust_workload_credentials_static_secret.setup", "name", secretName),
 					resource.TestCheckResourceAttr("beyondtrust_workload_credentials_static_secret.setup", "path", fmt.Sprintf("%s/%s", folderName, secretName)),
@@ -76,7 +78,7 @@ func TestAccStaticSecretEphemeral_specificVersion(t *testing.T) {
 	secretValue2 := acctest.RandomString(32)
 
 	resource.ParallelTest(t, resource.TestCase{
-		PreCheck:                 func() { acctest.PreCheck(t) },
+		PreCheck:                 func() { preCheckBase(t) },
 		ProtoV6ProviderFactories: acctest.ProtoV6ProviderFactories,
 		TerraformVersionChecks: []tfversion.TerraformVersionCheck{
 			tfversion.SkipBelow(tfversion.Version1_10_0),
@@ -86,6 +88,7 @@ func TestAccStaticSecretEphemeral_specificVersion(t *testing.T) {
 			{
 				Config: testAccStaticSecretResourceConfig_setupWithVersion(secretName, secretValue1, 1),
 				Check: resource.ComposeAggregateTestCheckFunc(
+					recordRan(t),
 					resource.TestCheckResourceAttr("beyondtrust_workload_credentials_static_secret.setup", "name", secretName),
 				),
 			},
