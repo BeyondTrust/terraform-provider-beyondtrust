@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"math/rand/v2"
 	"net/http"
 	"net/url"
@@ -32,6 +33,11 @@ const (
 	// a handful of attempts run for minutes. This is the actual hang guard.
 	closeTimeout = 10 * time.Second
 )
+
+// ErrMalformedGenerateResponse reports a generate response that decoded without error but
+// does not carry a credential. Treated as a failure rather than an empty success, because
+// the silent form leaves a real credential alive with nothing tracking it.
+var ErrMalformedGenerateResponse = errors.New("malformed generate response")
 
 // leasePrivateState is what Open hands to Close. Kept deliberately small: private
 // state has to round-trip as JSON through Terraform core between the two calls.
@@ -64,9 +70,31 @@ func generateCredential[T any](ctx context.Context, c *client.Client, name, fold
 	}
 
 	var envelope generateSecretEnvelope[T]
-	err := c.Post(ctx, c.BuildPath("/dynamic/"+name+"/generate"), query, nil, &envelope)
+	if err := c.Post(ctx, c.BuildPath("/dynamic/"+name+"/generate"), query, nil, &envelope); err != nil {
+		var zero T
+		return zero, err
+	}
 
-	return envelope.Secret, err
+	if leaseID := leaseIDOf(envelope.Secret); leaseID == "" {
+		var zero T
+		return zero, fmt.Errorf("generate returned no leaseId for %q: %w", name, ErrMalformedGenerateResponse)
+	}
+
+	return envelope.Secret, nil
+}
+
+// leaseIDOf reads the lease id a generated credential must carry.
+//
+// Every credential type returns one, so its absence means the response was not the object
+// this code expects — an unwrapped body, a renamed field, or a 204, none of which produce a
+// JSON error because unknown fields are discarded and an empty body is never parsed.
+func leaseIDOf(secret any) string {
+	type leaseCarrier interface{ leaseID() string }
+	if c, ok := secret.(leaseCarrier); ok {
+		return c.leaseID()
+	}
+
+	return ""
 }
 
 // revokeLease destroys a lease's external credential ahead of its expiration.
@@ -91,33 +119,40 @@ func revokeLease(ctx context.Context, c *client.Client, leaseID string) error {
 			return normalizeRevokeError(err)
 		}
 
-		sleep := jittered(backoff)
-		if totalBackoff+sleep > revokeMaxTotalBackoff {
+		if totalBackoff+backoff > revokeMaxTotalBackoff {
 			return normalizeRevokeError(err)
 		}
 
 		select {
 		case <-ctx.Done():
 			return normalizeRevokeError(err)
-		case <-time.After(sleep):
+		case <-time.After(jittered(backoff)):
 		}
 
-		totalBackoff += sleep
+		// The nominal backoff is charged, not the jittered sleep, matching DoRequest: the
+		// attempt count then stays fixed and only the timing varies.
+		totalBackoff += backoff
 		backoff = min(backoff*2, revokeMaxBackoff)
 	}
 }
 
-// normalizeRevokeError folds the one error that is really a success into a nil.
+// normalizeRevokeError folds the outcomes that are really successes into a nil.
 //
-// lease_not_revocable means the credential type has no active revocation path, which
-// is the documented behaviour for AWS assumed-role leases rather than a fault.
+// A 404 after the retry budget is one: the lease is gone, which is the state a revoke is
+// trying to reach. Revocation is idempotent, so a lease already removed — by an earlier
+// Close, by expiry, or by the backend — is not a failure to report.
+//
+// lease_not_revocable is deliberately NOT folded. Only the Azure resource implements Close,
+// and for a revocable credential type that code means the password was not deleted and is
+// still live, which the practitioner needs to hear. The AWS resource, whose leases really
+// are non-revocable, never calls this.
 func normalizeRevokeError(err error) error {
 	if err == nil {
 		return nil
 	}
 
 	var apiErr *client.APIError
-	if errors.As(err, &apiErr) && apiErr.Code == "lease_not_revocable" {
+	if errors.As(err, &apiErr) && apiErr.StatusCode == http.StatusNotFound {
 		return nil
 	}
 
@@ -148,4 +183,41 @@ func jittered(d time.Duration) time.Duration {
 // valid JSON, so this is always built by the marshaler rather than by hand.
 func marshalLeasePrivateState(leaseID string, revokeOnClose bool) ([]byte, error) {
 	return json.Marshal(leasePrivateState{LeaseID: leaseID, RevokeOnClose: revokeOnClose})
+}
+
+// revokeWithTimeout runs a revoke on a context detached from the caller's.
+//
+// Close can be reached during a graceful shutdown with an already-cancelled context, and
+// cleanup that gives up the moment the user presses Ctrl-C is cleanup that does not happen
+// when it matters most. The timeout keeps that from becoming an unbounded wait.
+func revokeWithTimeout(ctx context.Context, c *client.Client, leaseID string) error {
+	revokeCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), closeTimeout)
+	defer cancel()
+
+	return revokeLease(revokeCtx, c, leaseID)
+}
+
+// generateFailureDetail builds the diagnostic for a failed generate.
+//
+// A 403 is genuinely ambiguous here, so the message names both causes rather than guessing:
+// the API reports a dynamic secret the caller cannot see as forbidden rather than missing.
+func generateFailureDetail(name string, err error) string {
+	return fmt.Sprintf("Could not generate credentials from dynamic secret '%s': %s\n\n"+
+		"A 403 here can mean either outcome: the API reports a dynamic secret you cannot see "+
+		"as forbidden rather than missing. Check both.\n\n"+
+		"  - The dynamic secret must already exist when this runs. It is opened during the "+
+		"plan, so a configuration that creates it in the same apply fails here; apply the "+
+		"dynamic secret first. depends_on does not help, because the open happens before it "+
+		"takes effect.\n"+
+		"  - The caller needs the GenerateDynamicCredential permission on it. Product admins "+
+		"hold it already; anyone else needs a policy granting it.", name, err.Error())
+}
+
+// errUnconfiguredClient is the diagnostic for an Open reached without Configure having
+// supplied a client. The framework always configures before opening, so this is a guard
+// against a provider-wiring mistake surfacing as a nil dereference and a plugin crash.
+func errUnconfiguredClient(resourceName string) (string, string) {
+	return "Ephemeral Resource Not Configured",
+		fmt.Sprintf("%s was opened without a configured API client. "+
+			"Please report this issue to the provider developers.", resourceName)
 }
