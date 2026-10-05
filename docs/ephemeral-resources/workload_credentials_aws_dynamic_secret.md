@@ -25,17 +25,18 @@ resource "beyondtrust_workload_credentials_aws_dynamic_secret" "deploy" {
   ttl              = 3600
 }
 
-# Mint a session from that definition.
+# Mint from that definition.
 #
-# depends_on is required rather than decorative. Without it the ephemeral resource is
-# opened during the plan walk, before the dynamic secret exists, and the plan fails.
-# Referencing .name is not sufficient on its own: that value comes from configuration
-# and is therefore already known at plan time, so Terraform has no reason to wait.
+# The dynamic secret above must ALREADY EXIST before this runs. An ephemeral resource is
+# opened while the plan is built, so a single apply that both creates the definition and
+# generates from it fails: the generate call happens first and the secret is not there yet.
+# depends_on does not change that — the open precedes it.
+#
+# So in a configuration that manages the definition, apply it before adding this block.
+# Once the definition exists, every later apply is a single step.
 ephemeral "beyondtrust_workload_credentials_aws_dynamic_secret" "deploy" {
   name   = beyondtrust_workload_credentials_aws_dynamic_secret.deploy.name
   folder = beyondtrust_workload_credentials_aws_dynamic_secret.deploy.folder
-
-  depends_on = [beyondtrust_workload_credentials_aws_dynamic_secret.deploy]
 }
 
 # Ephemeral values may flow into provider configuration, write-only attributes, other
@@ -54,11 +55,59 @@ output "session_expires_at" {
 }
 ```
 
-## Ordering against the dynamic secret
+## The dynamic secret must already exist
 
-If the dynamic secret is managed in the same configuration, the ephemeral resource needs an explicit `depends_on` referencing it. Terraform otherwise opens the ephemeral resource during the plan walk, before the dynamic secret exists, and the plan fails.
+An ephemeral resource is opened while Terraform builds the plan, not during apply. A single
+configuration that both creates a dynamic secret and generates from it therefore fails: the
+generate call runs first, before the secret exists.
 
-Referencing the dynamic secret's `name` is not sufficient on its own — that value comes from configuration and is already known at plan time, so Terraform has no reason to defer.
+`depends_on` does not fix this. The dependency is real, but the open happens before it can
+take effect.
+
+So apply the dynamic secret first, then add the generating block. Once the secret exists,
+every later apply is a single step. The same applies to the permission below — grant it in
+its own apply before the block that generates.
+
+This is also why a failure here is ambiguous. The API reports a dynamic secret the caller
+cannot see as `403 forbidden` rather than `404 not found`, so a secret that does not exist
+yet and a missing permission produce the same error.
+
+## Permissions
+
+Generating requires the `GenerateDynamicCredential` permission on the dynamic secret. Product
+admins already hold it and need no policy. Anyone else needs a grant:
+
+```hcl
+resource "beyondtrust_iam_policy" "generate" {
+  # IAM policies are written against the admin site, so this needs its own provider.
+  provider = beyondtrust.platform
+  name     = "ci-generate-deployer"
+
+  cedar = <<-EOT
+    @siteId("${var.product_site_id}")
+    permit(
+      principal == Pathfinder::Workload::Id::"${var.ci_workload_id}",
+      action == WorkloadCredentials::Action::"GenerateDynamicCredential",
+      resource == WorkloadCredentials::DynamicSecret::"/production/aws/ci-deployer"
+    );
+  EOT
+}
+```
+
+Two things to get right:
+
+- The principal must be the identity whose token the provider authenticates with, not a
+  separate subject. Granting to anyone else yields a policy that reports `ACTIVE` and
+  changes nothing.
+- Granting `Owner` on the dynamic secret does **not** confer generation.
+  `GenerateDynamicCredential` resolves through the `operator` role while most other
+  dynamic-secret permissions resolve through `owner`, and `operator` cannot be granted on a
+  folder or a secret — it only descends from the product. A direct grant of this action is
+  the only least-privilege route.
+
+Check the policy's `status` after applying. `ACTIVE` means the grant is in effect; anything
+else, such as `WAITING_FOR_RESOURCE`, means it is not — and that is reported as a warning
+rather than an error, so the apply succeeds while generation still fails.
 
 ## Credentials are minted per graph walk
 
@@ -69,6 +118,28 @@ That is inherent to generating on demand, and it is harmless for AWS — each se
 ## Expiration and revocation
 
 AWS assumed-role credentials cannot be revoked early. The session expires on its own at the time given by `expiration`, and revoking the lease answers `400 lease_not_revocable` for this credential type. Choose the dynamic secret's `ttl` accordingly: it must comfortably outlast the longest apply that uses the credential, because there is no way to extend a session once issued.
+
+## Using the generated credentials
+
+Generation is the only operation that returns credential values. Nothing stores them: a lease
+records `dynamicSecretPath`, `externalEntityId`, `expiration` and similar metadata, never the
+credential itself, so there is no later call that can hand the values back.
+
+Within Terraform those values may only flow to:
+
+- provider configuration, as in the example above
+- write-only attributes (`*_wo`) on another resource
+- other ephemeral resources
+- outputs and locals marked `ephemeral` in a **non-root** module
+
+They cannot be assigned to an ordinary resource attribute, and they cannot be published as a
+root-module output — not even with `sensitive = true`. Terraform rejects both. Every attribute
+of this resource is ephemeral, including `lease_id`, so lease auditing has to go through the
+API rather than a Terraform output.
+
+The practical consequence: use this resource to let Terraform act with a short-lived
+credential, not to obtain one for yourself. To hold the values directly, generate through the
+API or the portal instead.
 
 ## Schema
 
