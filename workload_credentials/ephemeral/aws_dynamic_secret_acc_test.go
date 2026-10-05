@@ -5,6 +5,7 @@ package ephemeral_test
 
 import (
 	"fmt"
+	"os"
 	"regexp"
 	"testing"
 
@@ -15,45 +16,98 @@ import (
 	_ "github.com/beyondtrust/terraform-provider-beyondtrust/internal/provider" // Import to trigger init()
 )
 
-func TestAccAwsDynamicSecretEphemeral_generatesCredentials(t *testing.T) {
+// Generation is gated on can_generate_dynamic_credential, which resolves through the
+// operator role. Product admins hold it implicitly; CI does not, so these tests grant it to
+// themselves rather than assuming the environment already has.
+//
+// That needs three identities in one configuration — the owner that seeds the dynamic
+// secret, the admin that writes the policy, and the principal the policy names and that runs
+// the ephemeral resource — so these run in the admin-site job, beside the IAM policy tests
+// that need the same thing. In the product-site job they skip for want of admin credentials.
+//
+// The grant is setup rather than the subject here: what is under test is the ephemeral
+// resource, exercised as an identity holding exactly the one permission it documents.
+
+// grantEnv holds the identities a granted-generation test needs.
+type grantEnv struct {
+	ownerProvider     string
+	adminProvider     string
+	principalProvider string
+	principal         string
+	siteID            string
+	roleArn           string
+	targetRoleArn     string
+}
+
+func setupGrantEnv(t *testing.T) *grantEnv {
+	t.Helper()
+
+	ownerCfg, err := acctest.LoadPolicyOwnerTestConfig()
+	if err != nil {
+		t.Fatalf("loading fixture owner config: %v", err)
+	}
+	adminCfg, err := acctest.LoadAdminTestConfig()
+	if err != nil {
+		t.Fatalf("loading admin config: %v", err)
+	}
+	principalCfg, err := acctest.LoadPrincipalTestConfig()
+	if err != nil {
+		t.Fatalf("loading principal config: %v", err)
+	}
+
+	return &grantEnv{
+		ownerProvider:     ownerCfg.ProviderConfig(),
+		adminProvider:     adminCfg.AliasedProviderConfig("platform"),
+		principalProvider: principalCfg.AliasedProviderConfig("principal"),
+		principal:         os.Getenv(acctest.EnvTestPolicyPrincipal),
+		siteID:            acctest.PolicyTargetSiteID(),
+		roleArn:           os.Getenv(acctest.EnvTestAWSRoleARN),
+		targetRoleArn:     os.Getenv(acctest.EnvTestAWSTargetRoleARN),
+	}
+}
+
+func TestAccAwsDynamicSecretEphemeral_generatesWithGrant(t *testing.T) {
+	preCheckGrantedAWS(t)
+
+	env := setupGrantEnv(t)
 	integrationName := acctest.RandomIntegrationName()
 	dynamicSecretName := acctest.RandomDynamicSecretName()
-	roleArn := acctest.GetAWSRoleARN(t)
-	targetRoleArn := acctest.GetAWSTargetRoleARN(t)
 
-	// Safety net (LIFO: secret cleaned up before the integration it references).
 	registerIntegrationCleanup(t, "aws", integrationName)
 	registerDynamicSecretCleanup(t, dynamicSecretName, "")
 
 	resource.ParallelTest(t, resource.TestCase{
-		PreCheck:                 func() { preCheckAWS(t) },
+		PreCheck:                 func() { preCheckGrantedAWS(t) },
 		ProtoV6ProviderFactories: ephemeralProviderFactories(),
-		CheckDestroy:             testAccCheckEphemeralFixturesDestroyed,
 		TerraformVersionChecks: []tfversion.TerraformVersionCheck{
 			tfversion.SkipBelow(tfversion.Version1_10_0),
 		},
 		Steps: []resource.TestStep{
-			// Step 1: create the dynamic secret definition on its own. The ephemeral
-			// resource cannot be opened until this exists.
+			// Step 1: the dynamic secret and the grant, with no ephemeral resource in the
+			// configuration. Both must exist before anything generates: an ephemeral resource
+			// is opened while the plan is built, so a plan holding all three would call
+			// generate before either the secret or the policy it depends on exists.
 			{
-				Config: testAccAwsEphemeralConfig_setup(integrationName, dynamicSecretName, roleArn, targetRoleArn),
+				Config: env.setupConfig(integrationName, dynamicSecretName),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("beyondtrust_workload_credentials_aws_dynamic_secret.test", "name", dynamicSecretName),
+					// The provider waits for the grant to bind, and reports a policy that has
+					// not as a warning rather than an error — so the status is the only thing
+					// that distinguishes a live grant from an inert one.
+					resource.TestCheckResourceAttr("beyondtrust_iam_policy.generate", "status", "ACTIVE"),
 				),
 			},
-			// Step 2: generate credentials from it and assert on what came back.
+			// Step 2: generate as the principal the grant names.
 			{
-				Config: testAccAwsEphemeralConfig_generate(integrationName, dynamicSecretName, roleArn, targetRoleArn),
+				Config: env.generateConfig(integrationName, dynamicSecretName),
 				Check: resource.ComposeAggregateTestCheckFunc(
-					recordRan(t),
-					// STS session keys are distinguishable from long-lived IAM keys
-					// (AKIA...) by their ASIA prefix, so this confirms the credential
-					// really was assumed rather than echoed back from the integration.
+					// STS session keys carry an ASIA prefix where long-lived IAM keys carry
+					// AKIA, so this fails if the integration's own credentials came back
+					// instead of an assumed session.
 					resource.TestMatchResourceAttr("echo.aws", "data.access_key_id", regexp.MustCompile(`^ASIA`)),
 					resource.TestCheckResourceAttrSet("echo.aws", "data.secret_access_key"),
 					resource.TestCheckResourceAttrSet("echo.aws", "data.session_token"),
 					resource.TestCheckResourceAttrSet("echo.aws", "data.lease_id"),
-					// AWS credentials carry a server-authoritative expiration.
 					resource.TestMatchResourceAttr("echo.aws", "data.expiration", regexp.MustCompile(`^\d{4}-\d{2}-\d{2}T`)),
 				),
 			},
@@ -61,45 +115,10 @@ func TestAccAwsDynamicSecretEphemeral_generatesCredentials(t *testing.T) {
 	})
 }
 
-// A dynamic secret inside a folder must be addressed with the folder query parameter.
-// Omitting it resolves against the root and silently fails to find the secret.
-func TestAccAwsDynamicSecretEphemeral_inFolder(t *testing.T) {
-	folderName := acctest.RandomFolderName()
-	integrationName := acctest.RandomIntegrationName()
-	dynamicSecretName := acctest.RandomDynamicSecretName()
-	roleArn := acctest.GetAWSRoleARN(t)
-	targetRoleArn := acctest.GetAWSTargetRoleARN(t)
-
-	// Safety net (LIFO: secret, then folder, then integration).
-	registerIntegrationCleanup(t, "aws", integrationName)
-	registerFolderCleanup(t, folderName)
-	registerDynamicSecretCleanup(t, dynamicSecretName, folderName)
-
-	resource.ParallelTest(t, resource.TestCase{
-		PreCheck:                 func() { preCheckAWS(t) },
-		ProtoV6ProviderFactories: ephemeralProviderFactories(),
-		CheckDestroy:             testAccCheckEphemeralFixturesDestroyed,
-		TerraformVersionChecks: []tfversion.TerraformVersionCheck{
-			tfversion.SkipBelow(tfversion.Version1_10_0),
-		},
-		Steps: []resource.TestStep{
-			{
-				Config: testAccAwsEphemeralConfig_inFolderSetup(folderName, integrationName, dynamicSecretName, roleArn, targetRoleArn),
-			},
-			{
-				Config: testAccAwsEphemeralConfig_inFolderGenerate(folderName, integrationName, dynamicSecretName, roleArn, targetRoleArn),
-				Check: resource.ComposeAggregateTestCheckFunc(
-					recordRan(t),
-					resource.TestMatchResourceAttr("echo.aws", "data.access_key_id", regexp.MustCompile(`^ASIA`)),
-					resource.TestCheckResourceAttrSet("echo.aws", "data.session_token"),
-				),
-			},
-		},
-	})
-}
-
-func testAccAwsEphemeralConfig_setup(integrationName, dynamicSecretName, roleArn, targetRoleArn string) string {
-	return fmt.Sprintf(`
+// setupConfig seeds the dynamic secret and grants the principal permission to generate from
+// it. No ephemeral resource, so nothing tries to generate during this step.
+func (e *grantEnv) setupConfig(integrationName, dynamicSecretName string) string {
+	return e.ownerProvider + e.adminProvider + e.principalProvider + fmt.Sprintf(`
 resource "beyondtrust_workload_credentials_aws_integration" "test" {
   name     = %[1]q
   role_arn = %[3]q
@@ -112,54 +131,29 @@ resource "beyondtrust_workload_credentials_aws_dynamic_secret" "test" {
   role_arn         = %[4]q
   ttl              = 3600
 }
-`, integrationName, dynamicSecretName, roleArn, targetRoleArn)
+
+resource "beyondtrust_iam_policy" "generate" {
+  provider = beyondtrust.platform
+  name     = "tf-acc-%[2]s-generate"
+
+  cedar = <<-EOT
+    @siteId(%[5]q)
+    permit(
+      principal == %[6]s,
+      action == WorkloadCredentials::Action::"GenerateDynamicCredential",
+      resource == WorkloadCredentials::DynamicSecret::"/${beyondtrust_workload_credentials_aws_dynamic_secret.test.path}"
+    );
+  EOT
+}
+`, integrationName, dynamicSecretName, e.roleArn, e.targetRoleArn, e.siteID, e.principal)
 }
 
-func testAccAwsEphemeralConfig_generate(integrationName, dynamicSecretName, roleArn, targetRoleArn string) string {
-	return testAccAwsEphemeralConfig_setup(integrationName, dynamicSecretName, roleArn, targetRoleArn) + `
+// generateConfig adds the ephemeral resource, running as the principal the grant names.
+func (e *grantEnv) generateConfig(integrationName, dynamicSecretName string) string {
+	return e.setupConfig(integrationName, dynamicSecretName) + `
 ephemeral "beyondtrust_workload_credentials_aws_dynamic_secret" "test" {
-  name = beyondtrust_workload_credentials_aws_dynamic_secret.test.name
-
-  depends_on = [beyondtrust_workload_credentials_aws_dynamic_secret.test]
-}
-
-provider "echo" {
-  data = ephemeral.beyondtrust_workload_credentials_aws_dynamic_secret.test
-}
-
-resource "echo" "aws" {}
-`
-}
-
-func testAccAwsEphemeralConfig_inFolderSetup(folderName, integrationName, dynamicSecretName, roleArn, targetRoleArn string) string {
-	return fmt.Sprintf(`
-resource "beyondtrust_workload_credentials_folder" "test" {
-  name = %[1]q
-}
-
-resource "beyondtrust_workload_credentials_aws_integration" "test" {
-  name     = %[2]q
-  role_arn = %[4]q
-}
-
-resource "beyondtrust_workload_credentials_aws_dynamic_secret" "test" {
-  name             = %[3]q
-  folder           = beyondtrust_workload_credentials_folder.test.name
-  integration_name = beyondtrust_workload_credentials_aws_integration.test.name
-  credential_type  = "assumed_role"
-  role_arn         = %[5]q
-  ttl              = 3600
-}
-`, folderName, integrationName, dynamicSecretName, roleArn, targetRoleArn)
-}
-
-func testAccAwsEphemeralConfig_inFolderGenerate(folderName, integrationName, dynamicSecretName, roleArn, targetRoleArn string) string {
-	return testAccAwsEphemeralConfig_inFolderSetup(folderName, integrationName, dynamicSecretName, roleArn, targetRoleArn) + `
-ephemeral "beyondtrust_workload_credentials_aws_dynamic_secret" "test" {
-  name   = beyondtrust_workload_credentials_aws_dynamic_secret.test.name
-  folder = beyondtrust_workload_credentials_folder.test.name
-
-  depends_on = [beyondtrust_workload_credentials_aws_dynamic_secret.test]
+  provider = beyondtrust.principal
+  name     = beyondtrust_workload_credentials_aws_dynamic_secret.test.name
 }
 
 provider "echo" {

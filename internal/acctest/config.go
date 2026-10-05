@@ -148,6 +148,17 @@ func (c *TestConfig) Validate() error {
 
 // ProviderConfig returns a Terraform provider configuration block using this config
 func (c *TestConfig) ProviderConfig() string {
+	return c.providerConfig("")
+}
+
+// AliasedProviderConfig is ProviderConfig under a provider alias, for a test that needs more
+// than one identity in a single configuration — a grant written as the admin while the
+// resource under test runs as the principal the grant names.
+func (c *TestConfig) AliasedProviderConfig(alias string) string {
+	return c.providerConfig(alias)
+}
+
+func (c *TestConfig) providerConfig(alias string) string {
 	config := fmt.Sprintf(`
 provider "beyondtrust" {
   api_url      = %q
@@ -155,8 +166,16 @@ provider "beyondtrust" {
   access_token = %q
 `, c.APIURL, c.SiteID, c.AccessToken)
 
+	if alias != "" {
+		config += fmt.Sprintf("  alias        = %q\n", alias)
+	}
+
 	if c.APIVersion != "" {
 		config += fmt.Sprintf("  api_version  = %q\n", c.APIVersion)
+	}
+
+	if c.ServiceName != "" {
+		config += fmt.Sprintf("  service_name = %q\n", c.ServiceName)
 	}
 
 	config += "}\n"
@@ -255,6 +274,20 @@ func NewTestClient() (*client.Client, error) {
 // NewPolicyOwnerTestClient creates the product-site client that seeds the binding tests'
 // fixtures, selecting its workload identity by service name when one is configured.
 func NewPolicyOwnerTestClient() (*client.Client, error) {
+	cfg, err := LoadPolicyOwnerTestConfig()
+	if err != nil {
+		return nil, err
+	}
+	return NewClientForConfig(cfg)
+}
+
+// LoadPolicyOwnerTestConfig loads the product-site identity that seeds fixtures.
+//
+// Separate from LoadTestConfig because BEYONDTRUST_SERVICE_NAME cannot serve both sites at
+// once: in the admin-site job it names the admin identity, which the provider and the admin
+// client need, while the fixture owner is a different identity on the product site. Unset
+// falls back to the default, which is right when one identity covers both.
+func LoadPolicyOwnerTestConfig() (*TestConfig, error) {
 	cfg, err := LoadTestConfig()
 	if err != nil {
 		return nil, fmt.Errorf("failed to load test config: %w", err)
@@ -262,7 +295,7 @@ func NewPolicyOwnerTestClient() (*client.Client, error) {
 	if name := os.Getenv(EnvTestPolicyOwnerServiceName); name != "" {
 		cfg.ServiceName = name
 	}
-	return NewClientForConfig(cfg)
+	return cfg, nil
 }
 
 // NewAdminTestClient creates a client against the org's admin site, where the IAM policy and

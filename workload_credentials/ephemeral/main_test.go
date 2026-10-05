@@ -74,38 +74,47 @@ func recordRan(t *testing.T) resource.TestCheckFunc {
 	}
 }
 
-// preCheckAWS mirrors acctest.PreCheckAWS but routes the skip through the accounting
-// above. The env var checked has to stay in step with the acctest helper.
-func preCheckAWS(t *testing.T) {
+// preCheckGrantedAWS gates the AWS tests, which grant themselves generation rather than
+// assuming the environment already has.
+//
+// Generation is gated on can_generate_dynamic_credential, which product admins hold
+// implicitly and CI does not. Granting it needs the admin identity to write the policy and
+// the principal identity to run the ephemeral resource the policy names — the same
+// combination the IAM policy binding tests need, which is why these share the admin-site
+// job. In the product-site job there are no admin credentials, so they skip and the
+// accounting records why.
+//
+// The env-var lists live in acctest so this and the direct prechecks cannot drift.
+func preCheckGrantedAWS(t *testing.T) {
 	t.Helper()
 	acctest.PreCheck(t)
 
-	if os.Getenv(acctest.EnvTestAWSRoleARN) == "" {
-		recordSkip(t, fmt.Sprintf("%s is not set", acctest.EnvTestAWSRoleARN))
+	if reason := acctest.AWSSkipReason(); reason != "" {
+		recordSkip(t, reason)
+		return
+	}
+	if reason := acctest.PolicyBindingSkipReason(); reason != "" {
+		recordSkip(t, reason)
 		return
 	}
 
 	recordPrechecked(t)
 }
 
-// preCheckAzure mirrors acctest.PreCheckAzure with the same accounting.
-func preCheckAzure(t *testing.T) {
+// preCheckGrantedAzure is preCheckGrantedAWS for Azure: same three identities, plus the
+// Azure fixtures. CI supplies no Azure credentials, so these skip everywhere today — the
+// grant is written in anyway so that adding those credentials does not reproduce the 403
+// the AWS tests hit.
+func preCheckGrantedAzure(t *testing.T) {
 	t.Helper()
 	acctest.PreCheck(t)
 
-	var missing []string
-	for _, env := range []string{
-		acctest.EnvTestAzureTenantID,
-		acctest.EnvTestAzureClientID,
-		acctest.EnvTestAzureClientSecret,
-		acctest.EnvTestAzureAppObjectID,
-	} {
-		if os.Getenv(env) == "" {
-			missing = append(missing, env)
-		}
+	if reason := acctest.AzureSkipReason(); reason != "" {
+		recordSkip(t, reason)
+		return
 	}
-	if len(missing) > 0 {
-		recordSkip(t, "missing Azure environment variables: "+strings.Join(missing, ", "))
+	if reason := acctest.PolicyBindingSkipReason(); reason != "" {
+		recordSkip(t, reason)
 		return
 	}
 

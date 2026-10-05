@@ -21,6 +21,9 @@ import (
 )
 
 func TestAccAzureDynamicSecretEphemeral_generatesAndRevokes(t *testing.T) {
+	preCheckGrantedAzure(t)
+
+	env := setupGrantEnv(t)
 	integrationName := acctest.RandomIntegrationName()
 	dynamicSecretName := acctest.RandomDynamicSecretName()
 	tenantID := os.Getenv(acctest.EnvTestAzureTenantID)
@@ -33,7 +36,7 @@ func TestAccAzureDynamicSecretEphemeral_generatesAndRevokes(t *testing.T) {
 	registerDynamicSecretCleanup(t, dynamicSecretName, "")
 
 	resource.ParallelTest(t, resource.TestCase{
-		PreCheck:                 func() { preCheckAzure(t) },
+		PreCheck:                 func() { preCheckGrantedAzure(t) },
 		ProtoV6ProviderFactories: ephemeralProviderFactories(),
 		CheckDestroy:             testAccCheckEphemeralFixturesDestroyed,
 		TerraformVersionChecks: []tfversion.TerraformVersionCheck{
@@ -41,13 +44,13 @@ func TestAccAzureDynamicSecretEphemeral_generatesAndRevokes(t *testing.T) {
 		},
 		Steps: []resource.TestStep{
 			{
-				Config: testAccAzureEphemeralConfig_setup(integrationName, tenantID, clientID, clientSecret, dynamicSecretName, appObjectID),
+				Config: env.azureSetupConfig(integrationName, tenantID, clientID, clientSecret, dynamicSecretName, appObjectID),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("beyondtrust_workload_credentials_azure_dynamic_secret.test", "name", dynamicSecretName),
 				),
 			},
 			{
-				Config: testAccAzureEphemeralConfig_generate(integrationName, tenantID, clientID, clientSecret, dynamicSecretName, appObjectID, true),
+				Config: env.azureGenerateConfig(integrationName, tenantID, clientID, clientSecret, dynamicSecretName, appObjectID, true),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					recordRan(t),
 					resource.TestCheckResourceAttrSet("echo.azure", "data.client_secret"),
@@ -68,6 +71,9 @@ func TestAccAzureDynamicSecretEphemeral_generatesAndRevokes(t *testing.T) {
 // that must keep using it after the apply. If it stopped suppressing the revoke, that
 // credential would be dead on arrival with nothing to indicate why.
 func TestAccAzureDynamicSecretEphemeral_revokeOnCloseDisabled(t *testing.T) {
+	preCheckGrantedAzure(t)
+
+	env := setupGrantEnv(t)
 	integrationName := acctest.RandomIntegrationName()
 	dynamicSecretName := acctest.RandomDynamicSecretName()
 	tenantID := os.Getenv(acctest.EnvTestAzureTenantID)
@@ -80,7 +86,7 @@ func TestAccAzureDynamicSecretEphemeral_revokeOnCloseDisabled(t *testing.T) {
 	registerDynamicSecretCleanup(t, dynamicSecretName, "")
 
 	resource.ParallelTest(t, resource.TestCase{
-		PreCheck:                 func() { preCheckAzure(t) },
+		PreCheck:                 func() { preCheckGrantedAzure(t) },
 		ProtoV6ProviderFactories: ephemeralProviderFactories(),
 		CheckDestroy:             testAccCheckEphemeralFixturesDestroyed,
 		TerraformVersionChecks: []tfversion.TerraformVersionCheck{
@@ -88,10 +94,10 @@ func TestAccAzureDynamicSecretEphemeral_revokeOnCloseDisabled(t *testing.T) {
 		},
 		Steps: []resource.TestStep{
 			{
-				Config: testAccAzureEphemeralConfig_setup(integrationName, tenantID, clientID, clientSecret, dynamicSecretName, appObjectID),
+				Config: env.azureSetupConfig(integrationName, tenantID, clientID, clientSecret, dynamicSecretName, appObjectID),
 			},
 			{
-				Config: testAccAzureEphemeralConfig_generate(integrationName, tenantID, clientID, clientSecret, dynamicSecretName, appObjectID, false),
+				Config: env.azureGenerateConfig(integrationName, tenantID, clientID, clientSecret, dynamicSecretName, appObjectID, false),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					recordRan(t),
 					resource.TestCheckResourceAttr("echo.azure", "data.revoke_on_close", "false"),
@@ -219,8 +225,8 @@ func requireLeaseStaysAbsent(c *btclient.Client, leaseID string) error {
 	}
 }
 
-func testAccAzureEphemeralConfig_setup(integrationName, tenantID, clientID, clientSecret, dynamicSecretName, appObjectID string) string {
-	return fmt.Sprintf(`
+func (e *grantEnv) azureSetupConfig(integrationName, tenantID, clientID, clientSecret, dynamicSecretName, appObjectID string) string {
+	return e.ownerProvider + e.adminProvider + e.principalProvider + fmt.Sprintf(`
 resource "beyondtrust_workload_credentials_azure_integration" "test" {
   name                  = %[1]q
   tenant_id             = %[2]q
@@ -236,16 +242,47 @@ resource "beyondtrust_workload_credentials_azure_dynamic_secret" "test" {
   application_object_id = %[6]q
   ttl                   = 3600
 }
-`, integrationName, tenantID, clientID, clientSecret, dynamicSecretName, appObjectID)
+
+resource "beyondtrust_iam_policy" "generate" {
+  provider = beyondtrust.platform
+  name     = "tf-acc-%[5]s-generate"
+
+  cedar = <<-EOT
+    @siteId(%[7]q)
+    permit(
+      principal == %[8]s,
+      action == WorkloadCredentials::Action::"GenerateDynamicCredential",
+      resource == WorkloadCredentials::DynamicSecret::"/${beyondtrust_workload_credentials_azure_dynamic_secret.test.path}"
+    );
+  EOT
 }
 
-func testAccAzureEphemeralConfig_generate(integrationName, tenantID, clientID, clientSecret, dynamicSecretName, appObjectID string, revokeOnClose bool) string {
-	return testAccAzureEphemeralConfig_setup(integrationName, tenantID, clientID, clientSecret, dynamicSecretName, appObjectID) + fmt.Sprintf(`
+# revoke_on_close defaults to true, and revocation is a separate permission resolving through
+# owner rather than operator. Without this grant the apply still passes and Close only warns,
+# while the password survives to its TTL — so the revocation assertions below would fail for a
+# reason that has nothing to do with the code under test.
+resource "beyondtrust_iam_policy" "revoke" {
+  provider = beyondtrust.platform
+  name     = "tf-acc-%[5]s-revoke"
+
+  cedar = <<-EOT
+    @siteId(%[7]q)
+    permit(
+      principal == %[8]s,
+      action == WorkloadCredentials::Action::"RevokeLease",
+      resource == WorkloadCredentials::DynamicSecret::"/${beyondtrust_workload_credentials_azure_dynamic_secret.test.path}"
+    );
+  EOT
+}
+`, integrationName, tenantID, clientID, clientSecret, dynamicSecretName, appObjectID, e.siteID, e.principal)
+}
+
+func (e *grantEnv) azureGenerateConfig(integrationName, tenantID, clientID, clientSecret, dynamicSecretName, appObjectID string, revokeOnClose bool) string {
+	return e.azureSetupConfig(integrationName, tenantID, clientID, clientSecret, dynamicSecretName, appObjectID) + fmt.Sprintf(`
 ephemeral "beyondtrust_workload_credentials_azure_dynamic_secret" "test" {
+  provider        = beyondtrust.principal
   name            = beyondtrust_workload_credentials_azure_dynamic_secret.test.name
   revoke_on_close = %[1]t
-
-  depends_on = [beyondtrust_workload_credentials_azure_dynamic_secret.test]
 }
 
 provider "echo" {
