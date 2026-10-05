@@ -72,16 +72,51 @@ export BEYONDTRUST_TEST_AZURE_APPLICATION_OBJECT_ID="$TARGET_OBJECT_ID"
 
 The integration service principal needs permission to manage passwords on the target app.
 
-### Option A: Ownership (Recommended — Least Privilege)
+### Option A: Ownership + Application.ReadWrite.OwnedBy (Recommended — Least Privilege)
 
-Make the integration service principal an owner of the target app. Owners can add/remove credentials without needing tenant-wide API permissions.
+Two things are needed together, and ownership on its own is not enough.
+
+BeyondTrust calls Microsoft Graph with an **app-only** token obtained via client credentials.
+Directory ownership does not authorize an app-only token to call `addPassword`; the service
+principal also needs a Graph application permission. `Application.ReadWrite.OwnedBy` is the
+least-privileged one that fits, and it is scoped *by* ownership — it only reaches apps the
+service principal owns. So you need both.
+
+Granting only ownership produces an integration that validates successfully and then fails at generation with `azure_permission_denied`, because integration validation only acquires a Graph token and never exercises a write.
 
 ```bash
-# Get the Object ID of the integration service principal
+# 1. Make the integration service principal an owner of the target app.
 INTEGRATION_SP_OBJECT_ID=$(az ad sp show --id "$INTEGRATION_APP_ID" --query id -o tsv)
-
-# Add it as an owner of the target app
 az ad app owner add --id "$TARGET_OBJECT_ID" --owner-object-id "$INTEGRATION_SP_OBJECT_ID"
+
+# 2. Grant it Application.ReadWrite.OwnedBy on Microsoft Graph.
+GRAPH_SP_ID=$(az ad sp show --id 00000003-0000-0000-c000-000000000000 --query id -o tsv)
+OWNED_BY_ROLE_ID=$(az ad sp show --id 00000003-0000-0000-c000-000000000000 \
+  --query "appRoles[?value=='Application.ReadWrite.OwnedBy'].id | [0]" -o tsv)
+
+az rest --method POST \
+  --uri "https://graph.microsoft.com/v1.0/servicePrincipals/$INTEGRATION_SP_OBJECT_ID/appRoleAssignments" \
+  --body "{
+    \"principalId\": \"$INTEGRATION_SP_OBJECT_ID\",
+    \"resourceId\": \"$GRAPH_SP_ID\",
+    \"appRoleId\": \"$OWNED_BY_ROLE_ID\"
+  }"
+```
+
+> **Note**: `--owner-object-id` takes the **service principal's** object id, not the app registration's. Passing the wrong one still succeeds and leaves generation failing.
+
+Assigning an app role requires admin consent. If you do not hold it, see [Who can grant this](#who-can-grant-this) below.
+
+Verify both halves:
+
+```bash
+# Expect the integration service principal in the owner list.
+az ad app owner list --id "$TARGET_OBJECT_ID" --query "[].{id:id,displayName:displayName}" -o table
+
+# Expect one assignment against Microsoft Graph. Empty means the role was never granted.
+az rest --method GET \
+  --uri "https://graph.microsoft.com/v1.0/servicePrincipals/$INTEGRATION_SP_OBJECT_ID/appRoleAssignments" \
+  --query "value[].{appRoleId:appRoleId,resource:resourceDisplayName}" -o table
 ```
 
 ### Option B: Application.ReadWrite.All (Broader Permission)
@@ -106,6 +141,23 @@ az rest --method POST \
 ```
 
 > **Note**: App role assignments (Option B) require admin consent and may take a few minutes to propagate.
+
+### Who can grant this
+
+Both options assign a Microsoft Graph application permission, which always requires tenant-wide admin consent. Assigning it needs one of these Entra ID directory roles:
+
+| Role | Can grant `Application.ReadWrite.OwnedBy`? |
+| --- | --- |
+| Global Administrator | Yes |
+| Privileged Role Administrator | Yes |
+| Cloud Application Administrator | Yes — the least-privileged role that suffices |
+| Application Administrator | Yes |
+
+Cloud Application Administrator and Application Administrator cannot consent to the most escalation-prone Graph permissions, notably `Application.ReadWrite.All` and `AppRoleAssignment.ReadWrite.All`. `Application.ReadWrite.OwnedBy` is not in that set, so either role is enough for Option A — which is another reason to prefer it over Option B.
+
+If you only need this done once, an administrator can do it in the portal without granting you a standing role: **Entra ID → App registrations → the integration app → API permissions → Add a permission → Microsoft Graph → Application permissions → Application.ReadWrite.OwnedBy → Add**, then **Grant admin consent**.
+
+Consent can take a few minutes to propagate; a generation attempt immediately afterwards may still fail.
 
 ## Step 4: Set Environment Variables
 
@@ -172,17 +224,27 @@ Both are UUIDs — double-check that `APPLICATION_OBJECT_ID` matches the `id` fi
 
 ### Permission Denied When Generating Passwords
 
-If dynamic secret creation fails with a permissions error:
+Generation failing with `azure_permission_denied` means Microsoft Graph returned 401 or 403 on the `addPassword` call. It is a Graph refusal, not a Workload Credentials authorization problem, so no policy or grant on the BeyondTrust side affects it.
 
-1. Confirm the integration SP is an owner of the target app:
+A healthy-looking integration proves nothing here: integration validation only acquires a Graph token, which succeeds with no application permissions at all. The first call that actually writes is generation.
+
+Check both halves of the grant:
+
+1. The integration service principal owns the target app. The id in the output must be the **service principal's** object id, not the app registration's:
    ```bash
-   az ad app owner list --id "$TARGET_OBJECT_ID" --query '[].displayName'
+   az ad app owner list --id "$TARGET_OBJECT_ID" --query "[].{id:id,displayName:displayName}" -o table
    ```
-2. If using Option B (App role assignment), confirm admin consent was granted:
+2. It holds a Graph application permission. Empty output means none was ever granted, which is the usual cause:
    ```bash
-   az ad sp show --id "$INTEGRATION_APP_ID" --query appRoles
+   INTEGRATION_SP_OBJECT_ID=$(az ad sp show --id "$INTEGRATION_APP_ID" --query id -o tsv)
+   az rest --method GET \
+     --uri "https://graph.microsoft.com/v1.0/servicePrincipals/$INTEGRATION_SP_OBJECT_ID/appRoleAssignments" \
+     --query "value[].{appRoleId:appRoleId,resource:resourceDisplayName}" -o table
    ```
-3. Allow up to 5 minutes for permission changes to propagate.
+   Note this is different from `az ad sp show --query appRoles`, which lists the roles an app *defines* rather than the ones it has been *granted*.
+3. Allow up to 5 minutes for admin consent to propagate.
+
+If step 2 comes back empty, grant `Application.ReadWrite.OwnedBy` as shown in [Option A](#option-a-ownership--applicationreadwriteownedby-recommended--least-privilege).
 
 ### Tests Skip Unexpectedly
 
