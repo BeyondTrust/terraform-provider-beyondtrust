@@ -140,8 +140,14 @@ func (e *AwsDynamicSecretEphemeral) Open(ctx context.Context, req ephemeral.Open
 		resp.Diagnostics.AddError(
 			"Error Generating AWS Credentials",
 			fmt.Sprintf("Could not generate credentials from dynamic secret '%s': %s\n\n"+
-				"If the dynamic secret is managed in this same configuration, add a depends_on referencing it: "+
-				"the ephemeral resource is otherwise opened during the plan, before the dynamic secret exists.",
+				"A 403 here can mean either outcome: the API reports a dynamic secret you cannot see "+
+				"as forbidden rather than missing. Check both.\n\n"+
+				"  - The dynamic secret must already exist when this runs. It is opened during the "+
+				"plan, so a configuration that creates it in the same apply fails here; apply the "+
+				"dynamic secret first. depends_on does not help, because the open happens before it "+
+				"takes effect.\n"+
+				"  - The caller needs the GenerateDynamicCredential permission on it. Product admins "+
+				"hold it already; anyone else needs a policy granting it.",
 				name, err.Error()),
 		)
 		return

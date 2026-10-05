@@ -9,17 +9,18 @@ resource "beyondtrust_workload_credentials_azure_dynamic_secret" "deploy" {
   ttl                   = 3600
 }
 
-# Mint a service principal password from that definition.
+# Mint from that definition.
 #
-# depends_on is required rather than decorative. Without it the ephemeral resource is
-# opened during the plan walk, before the dynamic secret exists, and the plan fails.
-# Referencing .name is not sufficient on its own: that value comes from configuration
-# and is therefore already known at plan time, so Terraform has no reason to wait.
+# The dynamic secret above must ALREADY EXIST before this runs. An ephemeral resource is
+# opened while the plan is built, so a single apply that both creates the definition and
+# generates from it fails: the generate call happens first and the secret is not there yet.
+# depends_on does not change that — the open precedes it.
+#
+# So in a configuration that manages the definition, apply it before adding this block.
+# Once the definition exists, every later apply is a single step.
 ephemeral "beyondtrust_workload_credentials_azure_dynamic_secret" "deploy" {
   name   = beyondtrust_workload_credentials_azure_dynamic_secret.deploy.name
   folder = beyondtrust_workload_credentials_azure_dynamic_secret.deploy.folder
-
-  depends_on = [beyondtrust_workload_credentials_azure_dynamic_secret.deploy]
 }
 
 # Ephemeral values may flow into provider configuration, write-only attributes, other
@@ -41,6 +42,4 @@ ephemeral "beyondtrust_workload_credentials_azure_dynamic_secret" "handoff" {
   name            = beyondtrust_workload_credentials_azure_dynamic_secret.deploy.name
   folder          = beyondtrust_workload_credentials_azure_dynamic_secret.deploy.folder
   revoke_on_close = false
-
-  depends_on = [beyondtrust_workload_credentials_azure_dynamic_secret.deploy]
 }
