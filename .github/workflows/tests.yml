@@ -92,8 +92,20 @@ jobs:
           BEYONDTRUST_TEST_AWS_ROLE_ARN: ${{ secrets.BEYONDTRUST_TEST_AWS_ROLE_ARN }}
           BEYONDTRUST_TEST_AWS_ROLE_ARN_2: ${{ secrets.BEYONDTRUST_TEST_AWS_ROLE_ARN_2 }}
           BEYONDTRUST_TEST_AWS_TARGET_ROLE_ARN: ${{ secrets.BEYONDTRUST_TEST_AWS_TARGET_ROLE_ARN }}
-          # Fail the job if the ephemeral suite verified nothing. CI reads exit codes, not
-          # logs, so a suite that skipped itself into a green is otherwise invisible here.
+          TF_ACC: "1"
+
+      # Re-run just the ephemeral suite with the "verified nothing" gate on. It cannot be
+      # set on the step above: `make test-acc` covers ./... including ./iam/..., whose
+      # TestMain honours the same variable, and this job supplies no admin credentials —
+      # so every iam test skips and the gate would fail the job on every run.
+      - name: Assert the dynamic credential suite actually ran
+        run: make test-acc-ephemeral
+        env:
+          BEYONDTRUST_ACCESS_TOKEN: ${{ steps.oidc.outputs.token }}
+          BEYONDTRUST_SITE_ID: ${{ secrets.BEYONDTRUST_SITE_ID }}
+          BEYONDTRUST_SERVICE_NAME: ${{ secrets.BEYONDTRUST_SERVICE_NAME }}
+          BEYONDTRUST_TEST_AWS_ROLE_ARN: ${{ secrets.BEYONDTRUST_TEST_AWS_ROLE_ARN }}
+          BEYONDTRUST_TEST_AWS_TARGET_ROLE_ARN: ${{ secrets.BEYONDTRUST_TEST_AWS_TARGET_ROLE_ARN }}
           BEYONDTRUST_TEST_REQUIRE_ACC: "1"
           TF_ACC: "1"
 

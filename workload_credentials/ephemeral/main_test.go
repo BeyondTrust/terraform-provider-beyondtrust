@@ -144,12 +144,38 @@ func TestMain(m *testing.M) {
 // unverifiedReason returns why the run failed to verify what it claims to, or "" when it
 // did. Silently swallowed tests are the case worth catching: a test whose credentials were
 // present but which never reached a step was gated by something other than configuration.
+// requiredSurface names the tests this gate exists for. The package also holds the
+// static-secret ephemeral tests, which need only base credentials and therefore always run;
+// counting them would let every dynamic-credential test skip while the gate still passed,
+// which is the exact failure it was added to catch.
+//
+// Matching AWS is enough to prove the surface was exercised. The Azure tests cover the only
+// Close and revocation paths, but CI supplies no Azure credentials, so requiring them would
+// fail every run; their coverage comes from the unit tests instead.
+const requiredSurface = "DynamicSecretEphemeral"
+
+// ranSurfaceLocked reports whether any test naming the given surface executed a step.
+// Caller holds skipMu.
+func ranSurfaceLocked(surface string) bool {
+	for name := range ranTests {
+		if strings.Contains(name, surface) {
+			return true
+		}
+	}
+
+	return false
+}
+
 func unverifiedReason() string {
 	skipMu.Lock()
 	defer skipMu.Unlock()
 
 	if len(ranTests) == 0 {
 		return "No test executed a single step."
+	}
+	if !ranSurfaceLocked(requiredSurface) {
+		return fmt.Sprintf("No %s test ran; only tests outside the surface this gate covers did.",
+			requiredSurface)
 	}
 	if swallowed := swallowedTestsLocked(); len(swallowed) > 0 {
 		return fmt.Sprintf("%d test(s) passed their precheck but never executed a step: %s.",
