@@ -56,6 +56,10 @@ type awsGeneratedSecret struct {
 	Expiration      string `json:"expiration"`
 }
 
+// leaseID satisfies the check in generateCredential that a response really carried a
+// credential rather than decoding into an empty struct.
+func (s awsGeneratedSecret) leaseID() string { return s.LeaseID }
+
 func (e *AwsDynamicSecretEphemeral) Metadata(ctx context.Context, req ephemeral.MetadataRequest, resp *ephemeral.MetadataResponse) {
 	resp.TypeName = req.ProviderTypeName + "_workload_credentials_aws_dynamic_secret"
 }
@@ -133,22 +137,18 @@ func (e *AwsDynamicSecretEphemeral) Open(ctx context.Context, req ephemeral.Open
 		return
 	}
 
+	if e.client == nil {
+		resp.Diagnostics.AddError(errUnconfiguredClient("beyondtrust_workload_credentials_aws_dynamic_secret"))
+		return
+	}
+
 	name := data.Name.ValueString()
 
 	secret, err := generateCredential[awsGeneratedSecret](ctx, e.client, name, data.Folder.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error Generating AWS Credentials",
-			fmt.Sprintf("Could not generate credentials from dynamic secret '%s': %s\n\n"+
-				"A 403 here can mean either outcome: the API reports a dynamic secret you cannot see "+
-				"as forbidden rather than missing. Check both.\n\n"+
-				"  - The dynamic secret must already exist when this runs. It is opened during the "+
-				"plan, so a configuration that creates it in the same apply fails here; apply the "+
-				"dynamic secret first. depends_on does not help, because the open happens before it "+
-				"takes effect.\n"+
-				"  - The caller needs the GenerateDynamicCredential permission on it. Product admins "+
-				"hold it already; anyone else needs a policy granting it.",
-				name, err.Error()),
+			generateFailureDetail(name, err),
 		)
 		return
 	}

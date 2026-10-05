@@ -142,9 +142,10 @@ func TestRevokeLease_Success(t *testing.T) {
 	assert.Equal(t, "/site/test-site/wlc/leases/id/lease-abc", gotPath)
 }
 
-// AWS leases answer 400 lease_not_revocable by design. That is the documented outcome
-// for a credential type that expires on its own, not a failure to report.
-func TestRevokeLease_NotRevocableIsSuccess(t *testing.T) {
+// Only the Azure resource implements Close, so this path is reached for a revocable
+// credential type. lease_not_revocable there means the password was not deleted and is
+// still live, which must surface rather than be swallowed as success.
+func TestRevokeLease_NotRevocableIsReported(t *testing.T) {
 	t.Parallel()
 
 	var calls atomic.Int32
@@ -154,7 +155,9 @@ func TestRevokeLease_NotRevocableIsSuccess(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	require.NoError(t, revokeLease(context.Background(), newTestClient(t, srv.URL), "lease-abc"))
+	err := revokeLease(context.Background(), newTestClient(t, srv.URL), "lease-abc")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "lease_not_revocable")
 	assert.Equal(t, int32(1), calls.Load(), "a non-revocable lease must not be retried")
 }
 
@@ -177,7 +180,10 @@ func TestRevokeLease_RetriesTransientNotFound(t *testing.T) {
 	assert.Equal(t, int32(3), calls.Load())
 }
 
-func TestRevokeLease_GivesUpOnPersistentNotFound(t *testing.T) {
+// A lease that is still absent after the retry budget is gone, which is the state a revoke
+// is trying to reach. Revocation is idempotent, so this is a success rather than a warning
+// about a credential that no longer exists.
+func TestRevokeLease_PersistentNotFoundIsSuccess(t *testing.T) {
 	t.Parallel()
 
 	var calls atomic.Int32
@@ -187,10 +193,8 @@ func TestRevokeLease_GivesUpOnPersistentNotFound(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	err := revokeLease(context.Background(), newTestClient(t, srv.URL), "lease-abc")
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "lease_not_found")
-	assert.Greater(t, calls.Load(), int32(1), "a transient status should have been retried at least once")
+	require.NoError(t, revokeLease(context.Background(), newTestClient(t, srv.URL), "lease-abc"))
+	assert.Greater(t, calls.Load(), int32(1), "a transient status should have been retried first")
 }
 
 // A 403 is ambiguous between the durability window and a principal that simply lacks
@@ -263,11 +267,54 @@ func TestRevokeWithTimeout_RunsOnCancelledContext(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	e := &AzureDynamicSecretEphemeral{client: newTestClient(t, srv.URL)}
+	c := newTestClient(t, srv.URL)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 
-	require.NoError(t, e.revokeWithTimeout(ctx, "lease-abc"))
+	require.NoError(t, revokeWithTimeout(ctx, c, "lease-abc"))
 	assert.Equal(t, int32(1), calls.Load(), "a cancelled caller context must not skip the revoke")
+}
+
+// A response that decodes cleanly but carries no credential must fail rather than succeed
+// with empty values. Unknown fields are discarded and a 204 is never parsed, so neither
+// produces a JSON error — and for Azure an empty lease id would make Close silently skip a
+// password that is still live on the app registration.
+func TestGenerateCredential_RejectsResponseWithoutCredential(t *testing.T) {
+	t.Parallel()
+
+	for name, body := range map[string]string{
+		"unwrapped secret":  `{"leaseId":"l","accessKeyId":"A"}`,
+		"empty envelope":    `{"secret":{}}`,
+		"renamed lease key": `{"secret":{"lease_id":"l","accessKeyId":"A"}}`,
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusCreated)
+				_, _ = w.Write([]byte(body))
+			}))
+			defer srv.Close()
+
+			_, err := generateCredential[awsGeneratedSecret](context.Background(), newTestClient(t, srv.URL), "s", "")
+			require.Error(t, err)
+			assert.ErrorIs(t, err, ErrMalformedGenerateResponse)
+		})
+	}
+}
+
+// A 204 decodes to nothing at all, which must not read as a successful generation.
+func TestGenerateCredential_RejectsNoContent(t *testing.T) {
+	t.Parallel()
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer srv.Close()
+
+	_, err := generateCredential[azureGeneratedSecret](context.Background(), newTestClient(t, srv.URL), "s", "")
+	require.Error(t, err)
+	assert.ErrorIs(t, err, ErrMalformedGenerateResponse)
 }

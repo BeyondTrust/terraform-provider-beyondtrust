@@ -33,7 +33,6 @@ provider "aws" {
   token      = ephemeral.beyondtrust_workload_credentials_aws_dynamic_secret.deploy.session_token
 }
 
-# Metadata is safe to output. The credentials themselves are not.
-output "session_expires_at" {
-  value = ephemeral.beyondtrust_workload_credentials_aws_dynamic_secret.deploy.expiration
-}
+# No output of any attribute here: everything an ephemeral resource exposes is itself
+# ephemeral, expiration and lease_id included, and the root module cannot publish an
+# ephemeral value even as sensitive. Read lease metadata from the API instead.

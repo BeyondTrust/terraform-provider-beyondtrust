@@ -63,6 +63,10 @@ type azureGeneratedSecret struct {
 	KeyID          string `json:"keyId"`
 }
 
+// leaseID satisfies the check in generateCredential that a response really carried a
+// credential rather than decoding into an empty struct.
+func (s azureGeneratedSecret) leaseID() string { return s.LeaseID }
+
 func (e *AzureDynamicSecretEphemeral) Metadata(ctx context.Context, req ephemeral.MetadataRequest, resp *ephemeral.MetadataResponse) {
 	resp.TypeName = req.ProviderTypeName + "_workload_credentials_azure_dynamic_secret"
 }
@@ -147,6 +151,11 @@ func (e *AzureDynamicSecretEphemeral) Open(ctx context.Context, req ephemeral.Op
 		return
 	}
 
+	if e.client == nil {
+		resp.Diagnostics.AddError(errUnconfiguredClient("beyondtrust_workload_credentials_azure_dynamic_secret"))
+		return
+	}
+
 	// Ephemeral schemas have no Default, so the default is applied here. An unknown
 	// value resolves to true as well: erring towards revoking is the safe direction.
 	revokeOnClose := data.RevokeOnClose.IsNull() || data.RevokeOnClose.IsUnknown() || data.RevokeOnClose.ValueBool()
@@ -158,16 +167,7 @@ func (e *AzureDynamicSecretEphemeral) Open(ctx context.Context, req ephemeral.Op
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error Generating Azure Credentials",
-			fmt.Sprintf("Could not generate credentials from dynamic secret '%s': %s\n\n"+
-				"A 403 here can mean either outcome: the API reports a dynamic secret you cannot see "+
-				"as forbidden rather than missing. Check both.\n\n"+
-				"  - The dynamic secret must already exist when this runs. It is opened during the "+
-				"plan, so a configuration that creates it in the same apply fails here; apply the "+
-				"dynamic secret first. depends_on does not help, because the open happens before it "+
-				"takes effect.\n"+
-				"  - The caller needs the GenerateDynamicCredential permission on it. Product admins "+
-				"hold it already; anyone else needs a policy granting it.",
-				name, err.Error()),
+			generateFailureDetail(name, err),
 		)
 		return
 	}
@@ -185,7 +185,7 @@ func (e *AzureDynamicSecretEphemeral) Open(ctx context.Context, req ephemeral.Op
 		if !resp.Diagnostics.HasError() || !revokeOnClose {
 			return
 		}
-		if err := e.revokeWithTimeout(ctx, secret.LeaseID); err != nil {
+		if err := revokeWithTimeout(ctx, e.client, secret.LeaseID); err != nil {
 			resp.Diagnostics.AddWarning(
 				"Azure Credential Not Revoked",
 				fmt.Sprintf("Generating credentials from '%s' failed after the credential had already been created, "+
@@ -249,7 +249,7 @@ func (e *AzureDynamicSecretEphemeral) Close(ctx context.Context, req ephemeral.C
 
 	// Diagnostics from Close are warnings without exception. An error here would fail
 	// the whole Terraform operation over cleanup, long after the real work succeeded.
-	if err := e.revokeWithTimeout(ctx, state.LeaseID); err != nil {
+	if err := revokeWithTimeout(ctx, e.client, state.LeaseID); err != nil {
 		resp.Diagnostics.AddWarning(
 			"Azure Credential Not Revoked",
 			fmt.Sprintf("Could not revoke lease '%s': %s\n\nThe credential remains valid until the dynamic secret's TTL "+
@@ -257,16 +257,4 @@ func (e *AzureDynamicSecretEphemeral) Close(ctx context.Context, req ephemeral.C
 				state.LeaseID, err.Error()),
 		)
 	}
-}
-
-// revokeWithTimeout runs a revoke on a context detached from the caller's.
-//
-// Close can be reached during a graceful shutdown with an already-cancelled context,
-// and cleanup that gives up the moment the user presses Ctrl-C is cleanup that does not
-// happen when it matters most. The timeout keeps that from becoming an unbounded wait.
-func (e *AzureDynamicSecretEphemeral) revokeWithTimeout(ctx context.Context, leaseID string) error {
-	revokeCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), closeTimeout)
-	defer cancel()
-
-	return revokeLease(revokeCtx, e.client, leaseID)
 }

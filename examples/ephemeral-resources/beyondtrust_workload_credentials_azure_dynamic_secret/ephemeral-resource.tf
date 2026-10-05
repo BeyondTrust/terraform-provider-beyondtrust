@@ -34,12 +34,9 @@ provider "azurerm" {
   tenant_id     = ephemeral.beyondtrust_workload_credentials_azure_dynamic_secret.deploy.tenant_id
 }
 
-# By default the generated password is deleted from the target application as soon as
-# Terraform finishes with it. Disable that only when the credential is handed to a
-# system that must keep using it after the apply completes — it then stays valid until
-# the dynamic secret's TTL elapses.
-ephemeral "beyondtrust_workload_credentials_azure_dynamic_secret" "handoff" {
-  name            = beyondtrust_workload_credentials_azure_dynamic_secret.deploy.name
-  folder          = beyondtrust_workload_credentials_azure_dynamic_secret.deploy.folder
-  revoke_on_close = false
-}
+# `revoke_on_close` defaults to true, deleting the password as soon as Terraform is done
+# with it. Set it to false only when handing the credential to a system that must keep
+# using it after the apply — and note that every generated password then stays on the
+# app registration until its TTL elapses, against a registration that caps how many it
+# can hold. It is deliberately not shown here, because an example that mints an
+# unrevoked credential is one people copy by accident.

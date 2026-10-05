@@ -63,14 +63,15 @@ func registerIntegrationCleanup(t *testing.T, provider, name string) {
 
 func registerDynamicSecretCleanup(t *testing.T, name, folder string) {
 	t.Helper()
-	registerCleanup(t, "dynamic secret", "/dynamic/"+name, folderQuery(folder))
+	registerCleanup(t, "dynamic secret", "/dynamic/"+name, deleteQuery(folder))
 }
 
 func registerFolderCleanup(t *testing.T, name string) {
 	t.Helper()
-	registerCleanup(t, "folder", "/folders/"+name, nil)
+	registerCleanup(t, "folder", "/folders/"+name, deleteQuery(""))
 }
 
+// folderQuery scopes a request to a folder. Used for reads, where only the location matters.
 func folderQuery(folder string) url.Values {
 	if folder == "" {
 		return nil
@@ -78,6 +79,23 @@ func folderQuery(folder string) url.Values {
 
 	query := url.Values{}
 	query.Set("folder", folder)
+
+	return query
+}
+
+// deleteQuery is folderQuery plus permanent=true, which every teardown delete needs.
+//
+// The provider's own Delete sets it (see buildQueryParameters in the resources package), as
+// do the equivalent helpers there. Without it the API soft-deletes: the fixture lands in the
+// recycle bin still holding its path, the parent folder cannot be removed while it does, and
+// the next run collides with something that is supposedly gone. Since this net only runs when
+// Terraform's own destroy did not, inheriting the softer behaviour would defeat its purpose.
+func deleteQuery(folder string) url.Values {
+	query := folderQuery(folder)
+	if query == nil {
+		query = url.Values{}
+	}
+	query.Set("permanent", "true")
 
 	return query
 }
