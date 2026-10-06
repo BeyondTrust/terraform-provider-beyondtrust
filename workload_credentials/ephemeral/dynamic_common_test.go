@@ -5,6 +5,7 @@ package ephemeral
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"sync/atomic"
@@ -317,4 +318,50 @@ func TestGenerateCredential_RejectsNoContent(t *testing.T) {
 	_, err := generateCredential[azureGeneratedSecret](context.Background(), newTestClient(t, srv.URL), "s", "")
 	require.Error(t, err)
 	assert.ErrorIs(t, err, ErrMalformedGenerateResponse)
+}
+
+// The two causes a refusal might have are only indistinguishable for a 403 or 404. Printing
+// that advice under a 500 sends the reader hunting a permission problem that is not there,
+// which is what an earlier version of this message did.
+func TestGenerateFailureDetail_AdviceMatchesStatus(t *testing.T) {
+	t.Parallel()
+
+	for name, tc := range map[string]struct {
+		err          error
+		wantSubstr   []string
+		notWantSubst []string
+	}{
+		"forbidden": {
+			err:          &client.APIError{StatusCode: http.StatusForbidden, Code: "forbidden", Message: "nope", TraceID: "tr-1"},
+			wantSubstr:   []string{"GenerateDynamicCredential", "depends_on does not help", "API error code: forbidden", "Trace ID: tr-1"},
+			notWantSubst: []string{"server-side failure"},
+		},
+		"not found": {
+			err:        &client.APIError{StatusCode: http.StatusNotFound, Code: "dynamic_secret_not_found", Message: "gone"},
+			wantSubstr: []string{"GenerateDynamicCredential"},
+		},
+		"internal error": {
+			err:          &client.APIError{StatusCode: http.StatusInternalServerError, Code: "internal_error", Message: "boom", TraceID: "tr-2"},
+			wantSubstr:   []string{"server-side failure", "Trace ID: tr-2"},
+			notWantSubst: []string{"GenerateDynamicCredential", "depends_on"},
+		},
+		"non-api error": {
+			err:          errors.New("dial tcp: refused"),
+			wantSubstr:   []string{"dial tcp: refused"},
+			notWantSubst: []string{"GenerateDynamicCredential", "server-side failure"},
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			got := generateFailureDetail("my-secret", tc.err)
+			assert.Contains(t, got, "my-secret")
+			for _, want := range tc.wantSubstr {
+				assert.Contains(t, got, want)
+			}
+			for _, unwanted := range tc.notWantSubst {
+				assert.NotContains(t, got, unwanted)
+			}
+		})
+	}
 }

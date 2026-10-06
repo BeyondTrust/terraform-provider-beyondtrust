@@ -199,18 +199,41 @@ func revokeWithTimeout(ctx context.Context, c *client.Client, leaseID string) er
 
 // generateFailureDetail builds the diagnostic for a failed generate.
 //
-// A 403 is genuinely ambiguous here, so the message names both causes rather than guessing:
-// the API reports a dynamic secret the caller cannot see as forbidden rather than missing.
+// The advice is conditional on the status, because the two likely causes of a refusal do not
+// apply to every failure. Printing the 403 guidance under a 500 sends the reader looking for
+// a permission problem that is not there — which is exactly what an earlier version did.
 func generateFailureDetail(name string, err error) string {
-	return fmt.Sprintf("Could not generate credentials from dynamic secret '%s': %s\n\n"+
-		"A 403 here can mean either outcome: the API reports a dynamic secret you cannot see "+
-		"as forbidden rather than missing. Check both.\n\n"+
-		"  - The dynamic secret must already exist when this runs. It is opened during the "+
-		"plan, so a configuration that creates it in the same apply fails here; apply the "+
-		"dynamic secret first. depends_on does not help, because the open happens before it "+
-		"takes effect.\n"+
-		"  - The caller needs the GenerateDynamicCredential permission on it. Product admins "+
-		"hold it already; anyone else needs a policy granting it.", name, err.Error())
+	var apiErr *client.APIError
+	if !errors.As(err, &apiErr) {
+		return fmt.Sprintf("Could not generate credentials from dynamic secret '%s': %s", name, err)
+	}
+
+	detail := fmt.Sprintf("Could not generate credentials from dynamic secret '%s': %s", name, apiErr.Message)
+
+	switch {
+	case apiErr.StatusCode == http.StatusForbidden || apiErr.IsNotFound():
+		// Only here are the two causes genuinely indistinguishable: the API reports a
+		// dynamic secret the caller cannot see as forbidden rather than missing.
+		detail += "\n\nThis can mean either of two things, which the status does not separate:\n\n" +
+			"  - The dynamic secret must already exist when this runs. It is opened while the " +
+			"plan is built, so a configuration that creates it in the same apply fails here; " +
+			"apply the dynamic secret first. depends_on does not help, because the open " +
+			"happens before it takes effect.\n" +
+			"  - The caller needs the GenerateDynamicCredential permission on it. Product " +
+			"admins hold it already; anyone else needs a policy granting it."
+	case apiErr.IsServerError():
+		detail += "\n\nThis is a server-side failure rather than anything wrong with the " +
+			"configuration. Quote the trace id below when reporting it."
+	}
+
+	if apiErr.Code != "" {
+		detail += "\n\nAPI error code: " + apiErr.Code
+	}
+	if apiErr.TraceID != "" {
+		detail += "\nTrace ID: " + apiErr.TraceID
+	}
+
+	return detail
 }
 
 // errUnconfiguredClient is the diagnostic for an Open reached without Configure having
