@@ -37,6 +37,7 @@ type grantEnv struct {
 	siteID            string
 	roleArn           string
 	targetRoleArn     string
+	fixtureRoot       string
 }
 
 func setupGrantEnv(t *testing.T) *grantEnv {
@@ -63,7 +64,18 @@ func setupGrantEnv(t *testing.T) *grantEnv {
 		siteID:            acctest.PolicyTargetSiteID(),
 		roleArn:           os.Getenv(acctest.EnvTestAWSRoleARN),
 		targetRoleArn:     os.Getenv(acctest.EnvTestAWSTargetRoleARN),
+		fixtureRoot:       acctest.PolicyFixtureRoot(),
 	}
+}
+
+// folderArg renders a folder argument for the fixture root, or nothing when it is unset —
+// which is the right behaviour for a personal token that already holds product admin.
+func (e *grantEnv) folderArg() string {
+	if e.fixtureRoot == "" {
+		return ""
+	}
+
+	return fmt.Sprintf("  folder           = %q\n", e.fixtureRoot)
 }
 
 func TestAccAwsDynamicSecretEphemeral_generatesWithGrant(t *testing.T) {
@@ -74,7 +86,7 @@ func TestAccAwsDynamicSecretEphemeral_generatesWithGrant(t *testing.T) {
 	dynamicSecretName := acctest.RandomDynamicSecretName()
 
 	registerIntegrationCleanup(t, "aws", integrationName)
-	registerDynamicSecretCleanup(t, dynamicSecretName, "")
+	registerDynamicSecretCleanup(t, dynamicSecretName, env.fixtureRoot)
 
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck:                 func() { preCheckGrantedAWS(t) },
@@ -126,7 +138,7 @@ resource "beyondtrust_workload_credentials_aws_integration" "test" {
 
 resource "beyondtrust_workload_credentials_aws_dynamic_secret" "test" {
   name             = %[2]q
-  integration_name = beyondtrust_workload_credentials_aws_integration.test.name
+%[7]s  integration_name = beyondtrust_workload_credentials_aws_integration.test.name
   credential_type  = "assumed_role"
   role_arn         = %[4]q
   ttl              = 3600
@@ -145,7 +157,7 @@ resource "beyondtrust_iam_policy" "generate" {
     );
   EOT
 }
-`, integrationName, dynamicSecretName, e.roleArn, e.targetRoleArn, e.siteID, e.principal)
+`, integrationName, dynamicSecretName, e.roleArn, e.targetRoleArn, e.siteID, e.principal, e.folderArg())
 }
 
 // generateConfig adds the ephemeral resource, running as the principal the grant names.
@@ -154,6 +166,7 @@ func (e *grantEnv) generateConfig(integrationName, dynamicSecretName string) str
 ephemeral "beyondtrust_workload_credentials_aws_dynamic_secret" "test" {
   provider = beyondtrust.principal
   name     = beyondtrust_workload_credentials_aws_dynamic_secret.test.name
+  folder   = beyondtrust_workload_credentials_aws_dynamic_secret.test.folder
 }
 
 provider "echo" {

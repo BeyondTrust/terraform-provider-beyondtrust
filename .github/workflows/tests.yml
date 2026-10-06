@@ -189,6 +189,10 @@ jobs:
           BEYONDTRUST_TEST_POLICY_PRINCIPAL: ${{ secrets.BEYONDTRUST_TEST_POLICY_PRINCIPAL }}
           BEYONDTRUST_TEST_POLICY_PRINCIPAL_SERVICE_NAME: ${{ secrets.BEYONDTRUST_TEST_POLICY_PRINCIPAL_SERVICE_NAME }}
           BEYONDTRUST_TEST_POLICY_OWNER_SERVICE_NAME: ${{ secrets.BEYONDTRUST_TEST_POLICY_OWNER_SERVICE_NAME }}
+          # The folder the owner identity owns. The dynamic secret is seeded inside it for
+          # the same reason the policy tests seed theirs there: that identity holds no
+          # product-level permissions, so a secret at the product root is refused.
+          BEYONDTRUST_TEST_POLICY_FIXTURE_ROOT: ${{ vars.BEYONDTRUST_TEST_POLICY_FIXTURE_ROOT }}
           BEYONDTRUST_TEST_AWS_ROLE_ARN: ${{ secrets.BEYONDTRUST_TEST_AWS_ROLE_ARN }}
           BEYONDTRUST_TEST_AWS_TARGET_ROLE_ARN: ${{ secrets.BEYONDTRUST_TEST_AWS_TARGET_ROLE_ARN }}
           # Mapped ahead of the secrets existing in this environment. They are defined on
