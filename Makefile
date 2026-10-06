@@ -185,9 +185,14 @@ test-acc-admin:
 	@TF_ACC=1 TFENV_TERRAFORM_VERSION=$(TERRAFORM_VERSION) go test -v -timeout=30m -tags acceptance -run TestAccWorkloadIdentity ./auth/...
 
 ## test-acc-ephemeral: Run dynamic credential ephemeral acceptance tests only
+#
+# Scoped by name rather than by package: the ephemeral package also holds the static secret
+# tests, which seed fixtures at the product root. The identity this target runs as in CI is
+# the admin-site one, created with no product permissions, so those fail here while passing
+# in the product-site job where they belong.
 test-acc-ephemeral:
 	@echo "Running dynamic credential ephemeral acceptance tests..."
-	@TF_ACC=1 TFENV_TERRAFORM_VERSION=$(TERRAFORM_VERSION) go test -v -timeout=30m -tags acceptance ./workload_credentials/ephemeral/...
+	@TF_ACC=1 TFENV_TERRAFORM_VERSION=$(TERRAFORM_VERSION) go test -v -timeout=30m -tags acceptance -run 'TestAcc(Aws|Azure)DynamicSecretEphemeral' ./workload_credentials/ephemeral/...
 
 ## test-acc-policy: Run every IAM policy acceptance test (lifecycle + binding)
 test-acc-policy:
