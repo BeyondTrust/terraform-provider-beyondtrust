@@ -33,7 +33,7 @@ func TestAccAzureDynamicSecretEphemeral_generatesAndRevokes(t *testing.T) {
 
 	// Safety net (LIFO: secret cleaned up before the integration it references).
 	registerIntegrationCleanup(t, "azure", integrationName)
-	registerDynamicSecretCleanup(t, dynamicSecretName, env.fixtureRoot)
+	registerDynamicSecretCleanup(t, dynamicSecretName, "")
 
 	// resource.Test, not ParallelTest, deliberately.
 	//
@@ -91,7 +91,7 @@ func TestAccAzureDynamicSecretEphemeral_revokeOnCloseDisabled(t *testing.T) {
 
 	// Safety net (LIFO: secret cleaned up before the integration it references).
 	registerIntegrationCleanup(t, "azure", integrationName)
-	registerDynamicSecretCleanup(t, dynamicSecretName, env.fixtureRoot)
+	registerDynamicSecretCleanup(t, dynamicSecretName, "")
 
 	// resource.Test, not ParallelTest, deliberately.
 	//
@@ -242,31 +242,25 @@ func requireLeaseStaysAbsent(c *btclient.Client, leaseID string) error {
 }
 
 func (e *grantEnv) azureSetupConfig(integrationName, tenantID, clientID, clientSecret, dynamicSecretName, appObjectID string) string {
-	return e.principalProvider + e.adminProvider + e.createIntegrationGrant(dynamicSecretName) + e.createSecretGrant(dynamicSecretName) + fmt.Sprintf(`
+	return e.adminProvider + fmt.Sprintf(`
 resource "beyondtrust_workload_credentials_azure_integration" "test" {
-  provider = beyondtrust.principal
   name                  = %[1]q
   tenant_id             = %[2]q
   client_id             = %[3]q
   client_secret         = %[4]q
   client_secret_version = 1
-
-  depends_on = [beyondtrust_iam_policy.create_integration]
 }
 
 resource "beyondtrust_workload_credentials_azure_dynamic_secret" "test" {
-  provider = beyondtrust.principal
   name                  = %[5]q
-  folder                = %[9]q
   integration_name      = beyondtrust_workload_credentials_azure_integration.test.name
   credential_type       = "service_principal_password"
   application_object_id = %[6]q
   ttl                   = 3600
-
-  depends_on = [beyondtrust_iam_policy.create_dynamic_secret]
 }
 
 resource "beyondtrust_iam_policy" "generate" {
+  provider = beyondtrust.platform
   name     = "tf-acc-%[5]s-generate"
 
   cedar = <<-EOT
@@ -280,10 +274,11 @@ resource "beyondtrust_iam_policy" "generate" {
 }
 
 # revoke_on_close defaults to true, and revocation resolves through owner rather than
-# operator. The principal owns the secret it created, so this grant is belt and braces for
-# the owner path — but an explicit grant is what the docs tell practitioners to write, and
-# asserting it here is what keeps that advice honest.
+# operator — which this caller has, as the secret's creator. The grant is written anyway
+# because it is what the docs tell practitioners to write, and asserting the revocation
+# below against an explicit grant is what keeps that advice honest.
 resource "beyondtrust_iam_policy" "revoke" {
+  provider = beyondtrust.platform
   name     = "tf-acc-%[5]s-revoke"
 
   cedar = <<-EOT
@@ -295,8 +290,9 @@ resource "beyondtrust_iam_policy" "revoke" {
     );
   EOT
 }
-`, integrationName, tenantID, clientID, clientSecret, dynamicSecretName, appObjectID, e.siteID, e.principal, e.fixtureRoot)
+`, integrationName, tenantID, clientID, clientSecret, dynamicSecretName, appObjectID, e.siteID, e.principal)
 }
+
 func (e *grantEnv) azureGenerateConfig(integrationName, tenantID, clientID, clientSecret, dynamicSecretName, appObjectID string, revokeOnClose bool) string {
 	return e.azureSetupConfig(integrationName, tenantID, clientID, clientSecret, dynamicSecretName, appObjectID) + fmt.Sprintf(`
 ephemeral "beyondtrust_workload_credentials_azure_dynamic_secret" "test" {

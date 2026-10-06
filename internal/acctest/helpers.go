@@ -148,6 +148,27 @@ func PolicyBindingSkipReason() string {
 	return ""
 }
 
+// GenerateGrantSkipReason returns why the dynamic credential tests cannot run, or "" when
+// they can: they need the admin site to author the grant and the Cedar entity of the
+// identity the grant is for.
+func GenerateGrantSkipReason() string {
+	if _, err := LoadAdminTestConfig(); err != nil {
+		return fmt.Sprintf("%v (set %s and %s)", err, EnvAdminSiteID, EnvAdminAccessToken)
+	}
+
+	principal := os.Getenv(EnvTestGeneratePrincipal)
+	if principal == "" {
+		return fmt.Sprintf("%s is not set (a Cedar entity, e.g. Pathfinder::Workload::Id::%q)",
+			EnvTestGeneratePrincipal, "<uuid>")
+	}
+	if !strings.Contains(principal, "::") || !strings.Contains(principal, `"`) {
+		return fmt.Sprintf("%s must be a whole Cedar entity such as Pathfinder::Workload::Id::%q, got %q",
+			EnvTestGeneratePrincipal, "<uuid>", principal)
+	}
+
+	return ""
+}
+
 // PolicyPrincipalSkipReason returns why the configured Cedar principal is unusable, or "".
 //
 // The value is a whole Cedar entity rather than a bare name, because a workload identity has no

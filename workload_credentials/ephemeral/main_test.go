@@ -77,12 +77,9 @@ func recordRan(t *testing.T) resource.TestCheckFunc {
 // preCheckGrantedAWS gates the AWS tests, which grant themselves generation rather than
 // assuming the environment already has.
 //
-// Generation is gated on can_generate_dynamic_credential, which product admins hold
-// implicitly and CI does not. Granting it needs the admin identity to write the policy and
-// the principal identity to run the ephemeral resource the policy names — the same
-// combination the IAM policy binding tests need, which is why these share the admin-site
-// job. In the product-site job there are no admin credentials, so they skip and the
-// accounting records why.
+// On top of the AWS fixtures they need the admin site, where the IAM policy API lives, and
+// the Cedar entity of the identity the grant is for. The product-site job supplies all
+// three; a job without admin credentials skips them and the accounting records why.
 //
 // The env-var lists live in acctest so this and the direct prechecks cannot drift.
 func preCheckGrantedAWS(t *testing.T) {
@@ -93,7 +90,7 @@ func preCheckGrantedAWS(t *testing.T) {
 		recordSkip(t, reason)
 		return
 	}
-	if reason := acctest.PolicyBindingSkipReason(); reason != "" {
+	if reason := acctest.GenerateGrantSkipReason(); reason != "" {
 		recordSkip(t, reason)
 		return
 	}
@@ -101,10 +98,8 @@ func preCheckGrantedAWS(t *testing.T) {
 	recordPrechecked(t)
 }
 
-// preCheckGrantedAzure is preCheckGrantedAWS for Azure: same three identities, plus the
-// Azure fixtures. CI supplies no Azure credentials, so these skip everywhere today — the
-// grant is written in anyway so that adding those credentials does not reproduce the 403
-// the AWS tests hit.
+// preCheckGrantedAzure is preCheckGrantedAWS for Azure: the same grant prerequisites, plus
+// the Azure fixtures.
 func preCheckGrantedAzure(t *testing.T) {
 	t.Helper()
 	acctest.PreCheck(t)
@@ -113,7 +108,7 @@ func preCheckGrantedAzure(t *testing.T) {
 		recordSkip(t, reason)
 		return
 	}
-	if reason := acctest.PolicyBindingSkipReason(); reason != "" {
+	if reason := acctest.GenerateGrantSkipReason(); reason != "" {
 		recordSkip(t, reason)
 		return
 	}

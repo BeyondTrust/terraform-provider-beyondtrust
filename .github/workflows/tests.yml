@@ -83,6 +83,17 @@ jobs:
             const token = await core.getIDToken('${{ secrets.BEYONDTRUST_SITE_ID }}')
             core.setOutput('token', token)
 
+      # The dynamic credential tests author their own Cedar grant, which lives on the admin
+      # site, so this job needs an admin-audience token alongside the product-site one it
+      # otherwise runs on. Same two-token shape the admin job uses, reversed.
+      - name: Get admin-site OIDC token
+        id: oidc-admin
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const token = await core.getIDToken('${{ secrets.BEYONDTRUST_ADMIN_SITE_ID }}')
+            core.setOutput('token', token)
+
       - name: Run acceptance tests
         run: make test-acc
         env:
@@ -92,6 +103,28 @@ jobs:
           BEYONDTRUST_TEST_AWS_ROLE_ARN: ${{ secrets.BEYONDTRUST_TEST_AWS_ROLE_ARN }}
           BEYONDTRUST_TEST_AWS_ROLE_ARN_2: ${{ secrets.BEYONDTRUST_TEST_AWS_ROLE_ARN_2 }}
           BEYONDTRUST_TEST_AWS_TARGET_ROLE_ARN: ${{ secrets.BEYONDTRUST_TEST_AWS_TARGET_ROLE_ARN }}
+          TF_ACC: "1"
+
+      # Run separately so BEYONDTRUST_TEST_REQUIRE_ACC reaches only the suite whose TestMain
+      # honours it: make test-acc covers ./... including ./iam/..., which has the same gate
+      # and skips in this job for want of its own credentials.
+      - name: Run dynamic credential ephemeral acceptance tests
+        run: make test-acc-ephemeral
+        env:
+          BEYONDTRUST_ACCESS_TOKEN: ${{ steps.oidc.outputs.token }}
+          BEYONDTRUST_SITE_ID: ${{ secrets.BEYONDTRUST_SITE_ID }}
+          BEYONDTRUST_SERVICE_NAME: ${{ secrets.BEYONDTRUST_SERVICE_NAME }}
+          BEYONDTRUST_ADMIN_SITE_ID: ${{ secrets.BEYONDTRUST_ADMIN_SITE_ID }}
+          BEYONDTRUST_ADMIN_ACCESS_TOKEN: ${{ steps.oidc-admin.outputs.token }}
+          # The Cedar entity of the identity above, which the generate grant names.
+          BEYONDTRUST_TEST_GENERATE_PRINCIPAL: ${{ secrets.BEYONDTRUST_TEST_GENERATE_PRINCIPAL }}
+          BEYONDTRUST_TEST_AWS_ROLE_ARN: ${{ secrets.BEYONDTRUST_TEST_AWS_ROLE_ARN }}
+          BEYONDTRUST_TEST_AWS_TARGET_ROLE_ARN: ${{ secrets.BEYONDTRUST_TEST_AWS_TARGET_ROLE_ARN }}
+          BEYONDTRUST_TEST_AZURE_TENANT_ID: ${{ secrets.BEYONDTRUST_TEST_AZURE_TENANT_ID }}
+          BEYONDTRUST_TEST_AZURE_CLIENT_ID: ${{ secrets.BEYONDTRUST_TEST_AZURE_CLIENT_ID }}
+          BEYONDTRUST_TEST_AZURE_CLIENT_SECRET: ${{ secrets.BEYONDTRUST_TEST_AZURE_CLIENT_SECRET }}
+          BEYONDTRUST_TEST_AZURE_APPLICATION_OBJECT_ID: ${{ secrets.BEYONDTRUST_TEST_AZURE_APPLICATION_OBJECT_ID }}
+          BEYONDTRUST_TEST_REQUIRE_ACC: "1"
           TF_ACC: "1"
 
 
@@ -173,34 +206,3 @@ jobs:
           BEYONDTRUST_TEST_REQUIRE_ACC: "1"
           TF_ACC: "1"
 
-      # Dynamic credential generation is gated on can_generate_dynamic_credential, which
-      # product admins hold implicitly and CI does not. These tests grant it to themselves,
-      # which needs the admin identity to write the policy and the principal identity to run
-      # the ephemeral resource — the same identities the step above uses, and the reason this
-      # suite lives here rather than in the product-site job.
-      - name: Run dynamic credential ephemeral acceptance tests
-        run: make test-acc-ephemeral
-        env:
-          BEYONDTRUST_ADMIN_SITE_ID: ${{ secrets.BEYONDTRUST_ADMIN_SITE_ID }}
-          BEYONDTRUST_ADMIN_ACCESS_TOKEN: ${{ steps.oidc.outputs.token }}
-          BEYONDTRUST_SITE_ID: ${{ secrets.BEYONDTRUST_SITE_ID }}
-          BEYONDTRUST_ACCESS_TOKEN: ${{ steps.oidc-product.outputs.token }}
-          BEYONDTRUST_SERVICE_NAME: ${{ secrets.BEYONDTRUST_SERVICE_NAME }}
-          BEYONDTRUST_TEST_POLICY_PRINCIPAL: ${{ secrets.BEYONDTRUST_TEST_POLICY_PRINCIPAL }}
-          BEYONDTRUST_TEST_POLICY_PRINCIPAL_SERVICE_NAME: ${{ secrets.BEYONDTRUST_TEST_POLICY_PRINCIPAL_SERVICE_NAME }}
-          # The folder the dynamic secret is seeded into, and the scope of the grant that
-          # lets the principal create it there. Folder-scoped because this caller cannot
-          # write Product-scoped grants.
-          BEYONDTRUST_TEST_POLICY_FIXTURE_ROOT: ${{ vars.BEYONDTRUST_TEST_POLICY_FIXTURE_ROOT }}
-          BEYONDTRUST_TEST_AWS_ROLE_ARN: ${{ secrets.BEYONDTRUST_TEST_AWS_ROLE_ARN }}
-          BEYONDTRUST_TEST_AWS_TARGET_ROLE_ARN: ${{ secrets.BEYONDTRUST_TEST_AWS_TARGET_ROLE_ARN }}
-          # Mapped ahead of the secrets existing in this environment. They are defined on
-          # acceptance-tests, and environment secrets do not cross environments, so until
-          # they are added here the Azure tests skip — which the suite reports rather than
-          # passing over. Adding them then needs no change to this file.
-          BEYONDTRUST_TEST_AZURE_TENANT_ID: ${{ secrets.BEYONDTRUST_TEST_AZURE_TENANT_ID }}
-          BEYONDTRUST_TEST_AZURE_CLIENT_ID: ${{ secrets.BEYONDTRUST_TEST_AZURE_CLIENT_ID }}
-          BEYONDTRUST_TEST_AZURE_CLIENT_SECRET: ${{ secrets.BEYONDTRUST_TEST_AZURE_CLIENT_SECRET }}
-          BEYONDTRUST_TEST_AZURE_APPLICATION_OBJECT_ID: ${{ secrets.BEYONDTRUST_TEST_AZURE_APPLICATION_OBJECT_ID }}
-          BEYONDTRUST_TEST_REQUIRE_ACC: "1"
-          TF_ACC: "1"

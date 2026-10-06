@@ -17,26 +17,26 @@ import (
 )
 
 // Generation is gated on can_generate_dynamic_credential, which resolves through the
-// operator role. Product admins hold it implicitly; CI does not, so these tests grant it to
-// themselves rather than assuming the environment already has.
+// operator role. The identity these tests run as does not hold it — creating a dynamic
+// secret makes it the owner, and ownership deliberately does not confer generating from it —
+// so the tests grant it to themselves rather than assuming the environment already has.
 //
-// That needs two identities in one configuration — the admin that writes the grant, and the
-// principal the grant names, which creates the fixtures and generates from them — so these
-// run in the admin-site job beside the IAM policy tests that need the same thing. In the
-// product-site job they skip for want of admin credentials.
+// Writing that grant needs the admin site, where the IAM policy API lives, so the suite
+// needs an admin-audience token alongside the product-site one it runs on. Fixtures are
+// created by the default provider, the identity every other product-site test uses, because
+// it can already create integrations and dynamic secrets.
 //
-// Every permission the suite needs is granted below rather than assumed of the environment,
-// so a reader can see the whole set without consulting the test site.
+// Only the generate grant is written here. The create permissions are not, because that
+// identity demonstrably has them: the integration and dynamic secret resource tests create
+// both, at the product root, in the same job.
 
 // grantEnv holds the identities and fixtures a granted-generation test needs.
 type grantEnv struct {
-	principalProvider string
-	adminProvider     string
-	principal         string
-	siteID            string
-	fixtureRoot       string
-	roleArn           string
-	targetRoleArn     string
+	adminProvider string
+	principal     string
+	siteID        string
+	roleArn       string
+	targetRoleArn string
 }
 
 func setupGrantEnv(t *testing.T) *grantEnv {
@@ -46,75 +46,16 @@ func setupGrantEnv(t *testing.T) *grantEnv {
 	if err != nil {
 		t.Fatalf("loading admin config: %v", err)
 	}
-	principalCfg, err := acctest.LoadPrincipalTestConfig()
-	if err != nil {
-		t.Fatalf("loading principal config: %v", err)
-	}
 
 	return &grantEnv{
-		// The principal is the default provider: it creates the fixtures and generates from
-		// them, so everything under test runs as the identity the grants name.
-		principalProvider: principalCfg.AliasedProviderConfig("principal"),
-		adminProvider:     adminCfg.ProviderConfig(),
-		principal:         os.Getenv(acctest.EnvTestPolicyPrincipal),
-		siteID:            acctest.PolicyTargetSiteID(),
-		fixtureRoot:       acctest.PolicyFixtureRoot(),
-		roleArn:           os.Getenv(acctest.EnvTestAWSRoleARN),
-		targetRoleArn:     os.Getenv(acctest.EnvTestAWSTargetRoleARN),
+		// Aliased, so the default provider stays the product-site one configured from the
+		// environment — the same configuration every other test in this job runs on.
+		adminProvider: adminCfg.AliasedProviderConfig("platform"),
+		principal:     os.Getenv(acctest.EnvTestGeneratePrincipal),
+		siteID:        acctest.PolicyTargetSiteID(),
+		roleArn:       os.Getenv(acctest.EnvTestAWSRoleARN),
+		targetRoleArn: os.Getenv(acctest.EnvTestAWSTargetRoleARN),
 	}
-}
-
-// createSecretGrant lets the principal create a dynamic secret inside the fixture root.
-//
-// Folder-scoped rather than Product-scoped on purpose: CreateDynamicSecret accepts either,
-// and only the Folder form can be written by this caller. It also keeps the grant narrow —
-// the principal gains nothing outside the folder the suite already seeds into.
-func (e *grantEnv) createSecretGrant(name string) string {
-	return fmt.Sprintf(`
-resource "beyondtrust_iam_policy" "create_dynamic_secret" {
-  name     = "tf-acc-%[3]s-create-ds"
-
-  cedar = <<-EOT
-    @siteId(%[1]q)
-    permit(
-      principal == %[2]s,
-      action == WorkloadCredentials::Action::"CreateDynamicSecret",
-      resource == WorkloadCredentials::Folder::"/%[4]s"
-    );
-  EOT
-}
-`, e.siteID, e.principal, name, e.fixtureRoot)
-}
-
-// createIntegrationGrant lets the principal create an integration.
-//
-// Product-scoped because that is the only scope CreateIntegration has in the Cedar schema —
-// an integration has no folder to be contained by, so there is no narrower form available.
-//
-// Note the resource form: `resource is WorkloadCredentials::Product`, with no id. A product
-// grant is the one case the parser requires `is` rather than `==`, because the product is
-// taken from the request context — the @siteId annotation — so a policy cannot target a
-// product other than its own. The id form is rejected outright:
-//
-//	a product grant must use 'resource is WorkloadCredentials::Product'
-//	(the product comes from context), not '== Product::"id"'
-//
-// Which also means there is no product id to get right here, prefixed or otherwise.
-func (e *grantEnv) createIntegrationGrant(name string) string {
-	return fmt.Sprintf(`
-resource "beyondtrust_iam_policy" "create_integration" {
-  name = "tf-acc-%[3]s-create-int"
-
-  cedar = <<-EOT
-    @siteId(%[1]q)
-    permit(
-      principal == %[2]s,
-      action == WorkloadCredentials::Action::"CreateIntegration",
-      resource is WorkloadCredentials::Product
-    );
-  EOT
-}
-`, e.siteID, e.principal, name)
 }
 
 func TestAccAwsDynamicSecretEphemeral_generatesWithGrant(t *testing.T) {
@@ -125,7 +66,7 @@ func TestAccAwsDynamicSecretEphemeral_generatesWithGrant(t *testing.T) {
 	dynamicSecretName := acctest.RandomDynamicSecretName()
 
 	registerIntegrationCleanup(t, "aws", integrationName)
-	registerDynamicSecretCleanup(t, dynamicSecretName, env.fixtureRoot)
+	registerDynamicSecretCleanup(t, dynamicSecretName, "")
 
 	// resource.Test, not ParallelTest, deliberately.
 	//
@@ -174,35 +115,29 @@ func TestAccAwsDynamicSecretEphemeral_generatesWithGrant(t *testing.T) {
 	})
 }
 
-// setupConfig creates the fixtures as the principal and grants it what the API will ask for.
+// setupConfig creates the fixtures and grants the identity permission to generate.
 func (e *grantEnv) setupConfig(integrationName, dynamicSecretName string) string {
-	return e.principalProvider + e.adminProvider + e.createIntegrationGrant(dynamicSecretName) + e.createSecretGrant(dynamicSecretName) + fmt.Sprintf(`
+	return e.adminProvider + fmt.Sprintf(`
 resource "beyondtrust_workload_credentials_aws_integration" "test" {
-  provider = beyondtrust.principal
   name     = %[1]q
   role_arn = %[3]q
-
-  depends_on = [beyondtrust_iam_policy.create_integration]
 }
 
 resource "beyondtrust_workload_credentials_aws_dynamic_secret" "test" {
-  provider = beyondtrust.principal
   name             = %[2]q
-  folder           = %[7]q
   integration_name = beyondtrust_workload_credentials_aws_integration.test.name
   credential_type  = "assumed_role"
   role_arn         = %[4]q
   ttl              = 3600
-
-  # The provider waits for a grant to bind before returning, so depending on the policy is
-  # what makes this ordering real rather than hopeful.
-  depends_on = [beyondtrust_iam_policy.create_dynamic_secret]
 }
 
-# Creating a dynamic secret makes the principal its owner, which deliberately does NOT
+# Creating a dynamic secret makes this identity its owner, which deliberately does NOT
 # confer generation: that resolves through operator, not owner. So this grant is load
-# bearing, and the test would fail without it even though the principal owns the secret.
+# bearing, and the test would fail without it even though the caller owns the secret.
+#
+# Written against the admin site, where the IAM policy API lives, hence the alias.
 resource "beyondtrust_iam_policy" "generate" {
+  provider = beyondtrust.platform
   name     = "tf-acc-%[2]s-generate"
 
   cedar = <<-EOT
@@ -214,17 +149,15 @@ resource "beyondtrust_iam_policy" "generate" {
     );
   EOT
 }
-`, integrationName, dynamicSecretName, e.roleArn, e.targetRoleArn, e.siteID, e.principal, e.fixtureRoot)
+`, integrationName, dynamicSecretName, e.roleArn, e.targetRoleArn, e.siteID, e.principal)
 }
 
-// generateConfig adds the ephemeral resource, which runs as the default provider — the same
-// principal every grant above names.
+// generateConfig adds the ephemeral resource, which runs as the default provider — the
+// identity the grant above names.
 func (e *grantEnv) generateConfig(integrationName, dynamicSecretName string) string {
 	return e.setupConfig(integrationName, dynamicSecretName) + `
 ephemeral "beyondtrust_workload_credentials_aws_dynamic_secret" "test" {
-  provider = beyondtrust.principal
-  name   = beyondtrust_workload_credentials_aws_dynamic_secret.test.name
-  folder = beyondtrust_workload_credentials_aws_dynamic_secret.test.folder
+  name = beyondtrust_workload_credentials_aws_dynamic_secret.test.name
 }
 
 provider "echo" {
