@@ -296,9 +296,7 @@ resource "beyondtrust_iam_policy" "revoke" {
 func (e *grantEnv) azureGenerateConfig(integrationName, tenantID, clientID, clientSecret, dynamicSecretName, appObjectID string, revokeOnClose bool) string {
 	return e.azureSetupConfig(integrationName, tenantID, clientID, clientSecret, dynamicSecretName, appObjectID) + fmt.Sprintf(`
 ephemeral "beyondtrust_workload_credentials_azure_dynamic_secret" "test" {
-  provider = beyondtrust.principal
   name            = beyondtrust_workload_credentials_azure_dynamic_secret.test.name
-  folder          = beyondtrust_workload_credentials_azure_dynamic_secret.test.folder
   revoke_on_close = %[1]t
 }
 
