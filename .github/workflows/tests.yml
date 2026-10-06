@@ -140,7 +140,6 @@ jobs:
           BEYONDTRUST_TEST_REQUIRE_ACC: "1"
           TF_ACC: "1"
 
-
   acceptance-tests-admin:
     name: Acceptance Tests (admin site)
     runs-on: ubuntu-latest
@@ -218,4 +217,3 @@ jobs:
           BEYONDTRUST_TEST_POLICY_FIXTURE_ROOT: ${{ vars.BEYONDTRUST_TEST_POLICY_FIXTURE_ROOT }}
           BEYONDTRUST_TEST_REQUIRE_ACC: "1"
           TF_ACC: "1"
-
