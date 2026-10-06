@@ -33,7 +33,7 @@ func TestAccAzureDynamicSecretEphemeral_generatesAndRevokes(t *testing.T) {
 
 	// Safety net (LIFO: secret cleaned up before the integration it references).
 	registerIntegrationCleanup(t, "azure", integrationName)
-	registerDynamicSecretCleanup(t, dynamicSecretName, "")
+	registerDynamicSecretCleanup(t, dynamicSecretName, env.fixtureRoot)
 
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck:                 func() { preCheckGrantedAzure(t) },
@@ -83,7 +83,7 @@ func TestAccAzureDynamicSecretEphemeral_revokeOnCloseDisabled(t *testing.T) {
 
 	// Safety net (LIFO: secret cleaned up before the integration it references).
 	registerIntegrationCleanup(t, "azure", integrationName)
-	registerDynamicSecretCleanup(t, dynamicSecretName, "")
+	registerDynamicSecretCleanup(t, dynamicSecretName, env.fixtureRoot)
 
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck:                 func() { preCheckGrantedAzure(t) },
@@ -226,22 +226,18 @@ func requireLeaseStaysAbsent(c *btclient.Client, leaseID string) error {
 }
 
 func (e *grantEnv) azureSetupConfig(integrationName, tenantID, clientID, clientSecret, dynamicSecretName, appObjectID string) string {
-	return e.principalProvider + e.adminProvider +
-		e.productGrant("create_integration", "CreateIntegration", dynamicSecretName) +
-		e.productGrant("create_dynamic_secret", "CreateDynamicSecret", dynamicSecretName) +
-		fmt.Sprintf(`
+	return e.principalProvider + e.adminProvider + e.createSecretGrant(dynamicSecretName) + fmt.Sprintf(`
 resource "beyondtrust_workload_credentials_azure_integration" "test" {
   name                  = %[1]q
   tenant_id             = %[2]q
   client_id             = %[3]q
   client_secret         = %[4]q
   client_secret_version = 1
-
-  depends_on = [beyondtrust_iam_policy.create_integration]
 }
 
 resource "beyondtrust_workload_credentials_azure_dynamic_secret" "test" {
   name                  = %[5]q
+  folder                = %[9]q
   integration_name      = beyondtrust_workload_credentials_azure_integration.test.name
   credential_type       = "service_principal_password"
   application_object_id = %[6]q
@@ -281,12 +277,13 @@ resource "beyondtrust_iam_policy" "revoke" {
     );
   EOT
 }
-`, integrationName, tenantID, clientID, clientSecret, dynamicSecretName, appObjectID, e.siteID, e.principal)
+`, integrationName, tenantID, clientID, clientSecret, dynamicSecretName, appObjectID, e.siteID, e.principal, e.fixtureRoot)
 }
 func (e *grantEnv) azureGenerateConfig(integrationName, tenantID, clientID, clientSecret, dynamicSecretName, appObjectID string, revokeOnClose bool) string {
 	return e.azureSetupConfig(integrationName, tenantID, clientID, clientSecret, dynamicSecretName, appObjectID) + fmt.Sprintf(`
 ephemeral "beyondtrust_workload_credentials_azure_dynamic_secret" "test" {
   name            = beyondtrust_workload_credentials_azure_dynamic_secret.test.name
+  folder          = beyondtrust_workload_credentials_azure_dynamic_secret.test.folder
   revoke_on_close = %[1]t
 }
 
