@@ -3,12 +3,15 @@
 package ephemeral_test
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
@@ -17,6 +20,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-testing/echoprovider"
 
 	"github.com/beyondtrust/terraform-provider-beyondtrust/internal/acctest"
+	"github.com/beyondtrust/terraform-provider-beyondtrust/internal/client"
 )
 
 // A skipped acceptance test reports the same green as a passing one. That matters more
@@ -273,4 +277,81 @@ func ephemeralProviderFactories() map[string]func() (tfprotov6.ProviderServer, e
 	factories["echo"] = echoprovider.NewProviderServer()
 
 	return factories
+}
+
+// --- grants via the admin API, not via a second Terraform provider -------------------------
+//
+// These tests originally wrote their Cedar grant as a beyondtrust_iam_policy resource on an
+// aliased provider pointed at the admin site. That put two OIDC-authenticated providers in
+// one Terraform process — the only place in the repo that does — and Terraform configures
+// providers concurrently, so two exchanges for the same OIDC subject with different
+// audiences hit the gateway at the same instant. The suite then failed intermittently with
+// 401 "OIDC workload exchange denied" across five CI runs while every other suite passed,
+// and nothing that left the two providers in place (fresh tokens, reordering, serialising)
+// changed it.
+//
+// The IAM policy binding tests never hit this because they reach the second site through a
+// raw client, sequentially. This does the same. Terraform keeps one provider per process;
+// the grant is written and awaited out of band before the step that depends on it.
+
+const (
+	grantStatusActive  = "ACTIVE"
+	grantBindTimeout   = 3 * time.Minute
+	envGrantBindTimout = "BEYONDTRUST_TEST_POLICY_BIND_TIMEOUT"
+)
+
+// grantPolicy is the IAM policy API's read shape; only status is consulted.
+type grantPolicy struct {
+	Name   string `json:"name"`
+	Status string `json:"status"`
+}
+
+// grantViaAdmin writes a Cedar policy on the admin site and blocks until it is ACTIVE, so a
+// step that depends on the grant cannot outrun it. The policy is removed when the test ends.
+//
+// A grant the service accepts but never binds parks in WAITING_FOR_RESOURCE and reports no
+// error, so waiting on status is the only way to know the permission is in effect.
+func grantViaAdmin(t *testing.T, name, cedar string) {
+	t.Helper()
+
+	admin, err := acctest.NewAdminTestClient()
+	if err != nil {
+		t.Fatalf("admin client: %v", err)
+	}
+
+	ctx := context.Background()
+	path := admin.BuildIAMPath("/policies/" + name)
+	body := client.RawBody{ContentType: "text/plain", Data: []byte(cedar)}
+
+	var written grantPolicy
+	if err := admin.Put(ctx, path, nil, body, &written); err != nil {
+		t.Fatalf("writing grant %q: %v", name, err)
+	}
+	t.Cleanup(func() {
+		if err := admin.Delete(context.Background(), path, nil); err != nil {
+			t.Logf("Cleanup: could not delete grant %q: %v", name, err)
+		}
+	})
+
+	timeout := grantBindTimeout
+	if raw := os.Getenv(envGrantBindTimout); raw != "" {
+		if secs, err := strconv.Atoi(raw); err == nil && secs > 0 {
+			timeout = time.Duration(secs) * time.Second
+		}
+	}
+	deadline := time.Now().Add(timeout)
+	for {
+		var current grantPolicy
+		if err := admin.Get(ctx, path, nil, &current); err != nil {
+			t.Fatalf("reading grant %q: %v", name, err)
+		}
+		if current.Status == grantStatusActive {
+			return
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("grant %q did not become ACTIVE within %s (last status %q); it was accepted but "+
+				"the service did not finish binding it", name, timeout, current.Status)
+		}
+		time.Sleep(2 * time.Second)
+	}
 }

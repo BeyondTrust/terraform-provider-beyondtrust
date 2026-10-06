@@ -32,7 +32,6 @@ import (
 
 // grantEnv holds the identities and fixtures a granted-generation test needs.
 type grantEnv struct {
-	adminProvider string
 	principal     string
 	siteID        string
 	roleArn       string
@@ -42,20 +41,24 @@ type grantEnv struct {
 func setupGrantEnv(t *testing.T) *grantEnv {
 	t.Helper()
 
-	adminCfg, err := acctest.LoadAdminTestConfig()
-	if err != nil {
-		t.Fatalf("loading admin config: %v", err)
-	}
-
 	return &grantEnv{
-		// Aliased, so the default provider stays the product-site one configured from the
-		// environment — the same configuration every other test in this job runs on.
-		adminProvider: adminCfg.AliasedProviderConfig("platform"),
 		principal:     os.Getenv(acctest.EnvTestGeneratePrincipal),
 		siteID:        acctest.PolicyTargetSiteID(),
 		roleArn:       os.Getenv(acctest.EnvTestAWSRoleARN),
 		targetRoleArn: os.Getenv(acctest.EnvTestAWSTargetRoleARN),
 	}
+}
+
+// generateCedar grants the principal GenerateDynamicCredential on one dynamic secret. The
+// secret sits at the product root, so its path is its name.
+func (e *grantEnv) generateCedar(dynamicSecretName string) string {
+	return fmt.Sprintf(`@siteId(%q)
+permit(
+  principal == %s,
+  action == WorkloadCredentials::Action::"GenerateDynamicCredential",
+  resource == WorkloadCredentials::DynamicSecret::"/%s"
+);
+`, e.siteID, e.principal, dynamicSecretName)
 }
 
 func TestAccAwsDynamicSecretEphemeral_generatesWithGrant(t *testing.T) {
@@ -91,14 +94,16 @@ func TestAccAwsDynamicSecretEphemeral_generatesWithGrant(t *testing.T) {
 				Config: env.setupConfig(integrationName, dynamicSecretName),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("beyondtrust_workload_credentials_aws_dynamic_secret.test", "name", dynamicSecretName),
-					// The provider waits for a grant to bind and reports one that has not as a
-					// warning rather than an error, so the status is the only thing separating
-					// a live grant from an inert one.
-					resource.TestCheckResourceAttr("beyondtrust_iam_policy.generate", "status", "ACTIVE"),
 				),
 			},
-			// Step 2: generate, as the principal the grant names.
+			// Step 2: grant generation, then generate. The grant is written through the admin
+			// API and awaited ACTIVE here, before the plan that opens the ephemeral resource —
+			// not as a resource in the configuration. See main_test.go for why there is no
+			// second provider.
 			{
+				PreConfig: func() {
+					grantViaAdmin(t, "tf-acc-"+dynamicSecretName+"-generate", env.generateCedar(dynamicSecretName))
+				},
 				Config: env.generateConfig(integrationName, dynamicSecretName),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					// STS session keys carry an ASIA prefix where long-lived IAM keys carry
@@ -115,9 +120,9 @@ func TestAccAwsDynamicSecretEphemeral_generatesWithGrant(t *testing.T) {
 	})
 }
 
-// setupConfig creates the fixtures and grants the identity permission to generate.
+// setupConfig creates the fixtures. Just those: the grant is not a resource here.
 func (e *grantEnv) setupConfig(integrationName, dynamicSecretName string) string {
-	return e.adminProvider + fmt.Sprintf(`
+	return fmt.Sprintf(`
 resource "beyondtrust_workload_credentials_aws_integration" "test" {
   name     = %[1]q
   role_arn = %[3]q
@@ -130,26 +135,7 @@ resource "beyondtrust_workload_credentials_aws_dynamic_secret" "test" {
   role_arn         = %[4]q
   ttl              = 3600
 }
-
-# Creating a dynamic secret makes this identity its owner, which deliberately does NOT
-# confer generation: that resolves through operator, not owner. So this grant is load
-# bearing, and the test would fail without it even though the caller owns the secret.
-#
-# Written against the admin site, where the IAM policy API lives, hence the alias.
-resource "beyondtrust_iam_policy" "generate" {
-  provider = beyondtrust.platform
-  name     = "tf-acc-%[2]s-generate"
-
-  cedar = <<-EOT
-    @siteId(%[5]q)
-    permit(
-      principal == %[6]s,
-      action == WorkloadCredentials::Action::"GenerateDynamicCredential",
-      resource == WorkloadCredentials::DynamicSecret::"/${beyondtrust_workload_credentials_aws_dynamic_secret.test.path}"
-    );
-  EOT
-}
-`, integrationName, dynamicSecretName, e.roleArn, e.targetRoleArn, e.siteID, e.principal)
+`, integrationName, dynamicSecretName, e.roleArn, e.targetRoleArn)
 }
 
 // generateConfig adds the ephemeral resource, which runs as the default provider — the

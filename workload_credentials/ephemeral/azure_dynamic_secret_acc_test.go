@@ -58,6 +58,10 @@ func TestAccAzureDynamicSecretEphemeral_generatesAndRevokes(t *testing.T) {
 				),
 			},
 			{
+				PreConfig: func() {
+					grantViaAdmin(t, "tf-acc-"+dynamicSecretName+"-generate", env.generateCedar(dynamicSecretName))
+					grantViaAdmin(t, "tf-acc-"+dynamicSecretName+"-revoke", env.revokeCedar(dynamicSecretName))
+				},
 				Config: env.azureGenerateConfig(integrationName, tenantID, clientID, clientSecret, dynamicSecretName, appObjectID, true),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					recordRan(t),
@@ -113,6 +117,10 @@ func TestAccAzureDynamicSecretEphemeral_revokeOnCloseDisabled(t *testing.T) {
 				Config: env.azureSetupConfig(integrationName, tenantID, clientID, clientSecret, dynamicSecretName, appObjectID),
 			},
 			{
+				PreConfig: func() {
+					grantViaAdmin(t, "tf-acc-"+dynamicSecretName+"-generate", env.generateCedar(dynamicSecretName))
+					grantViaAdmin(t, "tf-acc-"+dynamicSecretName+"-revoke", env.revokeCedar(dynamicSecretName))
+				},
 				Config: env.azureGenerateConfig(integrationName, tenantID, clientID, clientSecret, dynamicSecretName, appObjectID, false),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					recordRan(t),
@@ -241,8 +249,20 @@ func requireLeaseStaysAbsent(c *btclient.Client, leaseID string) error {
 	}
 }
 
+// revokeCedar grants the principal RevokeLease on one dynamic secret. revoke_on_close
+// defaults to true, and without this Close only warns while the password lives to its TTL.
+func (e *grantEnv) revokeCedar(dynamicSecretName string) string {
+	return fmt.Sprintf(`@siteId(%q)
+permit(
+  principal == %s,
+  action == WorkloadCredentials::Action::"RevokeLease",
+  resource == WorkloadCredentials::DynamicSecret::"/%s"
+);
+`, e.siteID, e.principal, dynamicSecretName)
+}
+
 func (e *grantEnv) azureSetupConfig(integrationName, tenantID, clientID, clientSecret, dynamicSecretName, appObjectID string) string {
-	return e.adminProvider + fmt.Sprintf(`
+	return fmt.Sprintf(`
 resource "beyondtrust_workload_credentials_azure_integration" "test" {
   name                  = %[1]q
   tenant_id             = %[2]q
@@ -258,39 +278,7 @@ resource "beyondtrust_workload_credentials_azure_dynamic_secret" "test" {
   application_object_id = %[6]q
   ttl                   = 3600
 }
-
-resource "beyondtrust_iam_policy" "generate" {
-  provider = beyondtrust.platform
-  name     = "tf-acc-%[5]s-generate"
-
-  cedar = <<-EOT
-    @siteId(%[7]q)
-    permit(
-      principal == %[8]s,
-      action == WorkloadCredentials::Action::"GenerateDynamicCredential",
-      resource == WorkloadCredentials::DynamicSecret::"/${beyondtrust_workload_credentials_azure_dynamic_secret.test.path}"
-    );
-  EOT
-}
-
-# revoke_on_close defaults to true, and revocation resolves through owner rather than
-# operator — which this caller has, as the secret's creator. The grant is written anyway
-# because it is what the docs tell practitioners to write, and asserting the revocation
-# below against an explicit grant is what keeps that advice honest.
-resource "beyondtrust_iam_policy" "revoke" {
-  provider = beyondtrust.platform
-  name     = "tf-acc-%[5]s-revoke"
-
-  cedar = <<-EOT
-    @siteId(%[7]q)
-    permit(
-      principal == %[8]s,
-      action == WorkloadCredentials::Action::"RevokeLease",
-      resource == WorkloadCredentials::DynamicSecret::"/${beyondtrust_workload_credentials_azure_dynamic_secret.test.path}"
-    );
-  EOT
-}
-`, integrationName, tenantID, clientID, clientSecret, dynamicSecretName, appObjectID, e.siteID, e.principal)
+`, integrationName, tenantID, clientID, clientSecret, dynamicSecretName, appObjectID)
 }
 
 func (e *grantEnv) azureGenerateConfig(integrationName, tenantID, clientID, clientSecret, dynamicSecretName, appObjectID string, revokeOnClose bool) string {
