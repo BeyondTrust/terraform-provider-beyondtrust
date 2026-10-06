@@ -59,8 +59,8 @@ func TestAccAzureDynamicSecretEphemeral_generatesAndRevokes(t *testing.T) {
 			},
 			{
 				PreConfig: func() {
-					grantViaAdmin(t, "tf-acc-"+dynamicSecretName+"-generate", env.generateCedar(dynamicSecretName))
-					grantViaAdmin(t, "tf-acc-"+dynamicSecretName+"-revoke", env.revokeCedar(dynamicSecretName))
+					grantViaAdmin(t, dynamicSecretName+"-generate", env.generateCedar(dynamicSecretName))
+					grantViaAdmin(t, dynamicSecretName+"-revoke", env.revokeCedar(dynamicSecretName))
 				},
 				Config: env.azureGenerateConfig(integrationName, tenantID, clientID, clientSecret, dynamicSecretName, appObjectID, true),
 				Check: resource.ComposeAggregateTestCheckFunc(
@@ -118,8 +118,8 @@ func TestAccAzureDynamicSecretEphemeral_revokeOnCloseDisabled(t *testing.T) {
 			},
 			{
 				PreConfig: func() {
-					grantViaAdmin(t, "tf-acc-"+dynamicSecretName+"-generate", env.generateCedar(dynamicSecretName))
-					grantViaAdmin(t, "tf-acc-"+dynamicSecretName+"-revoke", env.revokeCedar(dynamicSecretName))
+					grantViaAdmin(t, dynamicSecretName+"-generate", env.generateCedar(dynamicSecretName))
+					grantViaAdmin(t, dynamicSecretName+"-revoke", env.revokeCedar(dynamicSecretName))
 				},
 				Config: env.azureGenerateConfig(integrationName, tenantID, clientID, clientSecret, dynamicSecretName, appObjectID, false),
 				Check: resource.ComposeAggregateTestCheckFunc(

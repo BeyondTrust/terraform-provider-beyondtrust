@@ -93,14 +93,14 @@ jobs:
             const token = await core.getIDToken('${{ secrets.BEYONDTRUST_ADMIN_SITE_ID }}')
             core.setOutput('token', token)
 
-      # Runs before make test-acc, not after.
-      #
-      # The 401 "OIDC workload exchange denied" these tests kept hitting tracks position in
-      # the job rather than token age: the first test got its writes through and the ones
-      # after it were refused immediately, while make test-acc — many more calls on the same
-      # identity — passed whenever it ran first. A fresh token minted just beforehand made no
-      # difference. That points at a per-identity exchange budget the preceding step
-      # exhausts, so this suite goes first.
+      # The edge resolves an OIDC exchange by (site id in the URL path, X-BT-Service-Name) — a
+      # DynamoDB GetItem on that pair, then a check of the token's claims against that identity's
+      # trust conditions. Both have to line up for the one client here that talks to the admin
+      # site. The lookup: this job's BEYONDTRUST_SERVICE_NAME names the product-site identity,
+      # so the admin-site call needs BEYONDTRUST_ADMIN_SERVICE_NAME, the admin identity's name.
+      # The conditions: the admin identity's trust config must accept a sub claim from THIS
+      # environment (...:environment:acceptance-tests), not only acceptance-tests-admin. A miss
+      # on either step returns the same generic 401 "OIDC workload exchange denied".
       #
       # Separate from make test-acc regardless, so BEYONDTRUST_TEST_REQUIRE_ACC reaches only
       # the suite whose TestMain honours it: make test-acc covers ./... including ./iam/...,
@@ -113,6 +113,7 @@ jobs:
           BEYONDTRUST_SERVICE_NAME: ${{ secrets.BEYONDTRUST_SERVICE_NAME }}
           BEYONDTRUST_ADMIN_SITE_ID: ${{ secrets.BEYONDTRUST_ADMIN_SITE_ID }}
           BEYONDTRUST_ADMIN_ACCESS_TOKEN: ${{ steps.oidc-admin.outputs.token }}
+          BEYONDTRUST_ADMIN_SERVICE_NAME: ${{ secrets.BEYONDTRUST_ADMIN_SERVICE_NAME }}
           # The Cedar entity of the identity above, which the generate grant names.
           BEYONDTRUST_TEST_GENERATE_PRINCIPAL: ${{ secrets.BEYONDTRUST_TEST_GENERATE_PRINCIPAL }}
           BEYONDTRUST_TEST_AWS_ROLE_ARN: ${{ secrets.BEYONDTRUST_TEST_AWS_ROLE_ARN }}

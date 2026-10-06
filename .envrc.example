@@ -21,6 +21,11 @@ export BEYONDTRUST_SITE_ID="your-site-uuid"
 # scoped to a single site). When unset, the workload-identity acceptance tests are skipped.
 export BEYONDTRUST_ADMIN_SITE_ID="your-admin-site-uuid"
 export BEYONDTRUST_ADMIN_ACCESS_TOKEN="your-admin-site-access-token"
+# Only needed when BEYONDTRUST_SERVICE_NAME names a product-site workload identity and the same
+# run must also call the admin site (the dynamic credential acceptance tests write a Cedar grant
+# there). The edge keys an OIDC exchange on (URL site id, X-BT-Service-Name), so one name cannot
+# serve both sites. Unset falls back to BEYONDTRUST_SERVICE_NAME. Irrelevant for PATs.
+# export BEYONDTRUST_ADMIN_SERVICE_NAME="terraform-provider-acctest-admin"
 
 # Optional. Sent as X-BT-Service-Name; required when authenticating via workload identity
 # federation (e.g. GitHub OIDC) rather than a personal access token.

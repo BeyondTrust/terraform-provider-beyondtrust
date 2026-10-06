@@ -62,6 +62,23 @@ const (
 	// name picks which registration it resolves to.
 	EnvTestPolicyPrincipalServiceName = "BEYONDTRUST_TEST_POLICY_PRINCIPAL_SERVICE_NAME"
 
+	// EnvAdminServiceName names the admin-site workload identity for a job whose
+	// BEYONDTRUST_SERVICE_NAME names a product-site one.
+	//
+	// The edge resolves an OIDC exchange by (site id in the URL path, X-BT-Service-Name): a
+	// DynamoDB GetItem on exactly that pair, and nothing else. So one service name cannot
+	// authenticate against two sites. The admin-site job already copes with the mirror case —
+	// BEYONDTRUST_SERVICE_NAME is the admin identity there, and the product side is reached
+	// with EnvTestPolicyOwnerServiceName / EnvTestPolicyPrincipalServiceName. The product-site
+	// job needs the same escape hatch in the other direction when it writes a grant.
+	//
+	// Naming the identity is half of it. The edge then checks the token's claims against that
+	// identity's trust conditions, so the admin identity must also trust the environment the
+	// product-site job runs in (its sub condition), or the exchange is denied all the same.
+	//
+	// Unset falls back to BEYONDTRUST_SERVICE_NAME, which is right in the admin-site job.
+	EnvAdminServiceName = "BEYONDTRUST_ADMIN_SERVICE_NAME"
+
 	// EnvTestPolicyOwnerServiceName selects the workload identity that seeds the binding tests'
 	// fixtures. It exists because BEYONDTRUST_SERVICE_NAME cannot serve both sites at once: in
 	// the policy job that variable names the admin-site identity, which the provider and the
@@ -196,12 +213,20 @@ provider "beyondtrust" {
 // credentials, so they require BEYONDTRUST_ADMIN_SITE_ID and BEYONDTRUST_ADMIN_ACCESS_TOKEN.
 // The base/normal-site site id and token are not used (only the shared API URL/version are).
 func LoadAdminTestConfig() (*TestConfig, error) {
+	// The admin identity's own service name when the job's default names a product identity.
+	// See EnvAdminServiceName: the edge keys the exchange on (URL site, service name), so the
+	// wrong name here is "no trust record found", reported as a generic 401.
+	serviceName := os.Getenv(EnvAdminServiceName)
+	if serviceName == "" {
+		serviceName = os.Getenv(constants.EnvServiceName)
+	}
+
 	cfg := &TestConfig{
 		APIURL:      os.Getenv(constants.EnvAPIURL),
 		SiteID:      os.Getenv(EnvAdminSiteID),
 		AccessToken: os.Getenv(EnvAdminAccessToken),
 		APIVersion:  os.Getenv(constants.EnvAPIVersion),
-		ServiceName: os.Getenv(constants.EnvServiceName),
+		ServiceName: serviceName,
 	}
 	if cfg.APIVersion == "" {
 		cfg.APIVersion = client.DefaultAPIVersion

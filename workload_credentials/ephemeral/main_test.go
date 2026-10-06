@@ -281,18 +281,21 @@ func ephemeralProviderFactories() map[string]func() (tfprotov6.ProviderServer, e
 
 // --- grants via the admin API, not via a second Terraform provider -------------------------
 //
-// These tests originally wrote their Cedar grant as a beyondtrust_iam_policy resource on an
-// aliased provider pointed at the admin site. That put two OIDC-authenticated providers in
-// one Terraform process — the only place in the repo that does — and Terraform configures
-// providers concurrently, so two exchanges for the same OIDC subject with different
-// audiences hit the gateway at the same instant. The suite then failed intermittently with
-// 401 "OIDC workload exchange denied" across five CI runs while every other suite passed,
-// and nothing that left the two providers in place (fresh tokens, reordering, serialising)
-// changed it.
+// These tests write their Cedar grant through a raw admin-site client rather than as a
+// beyondtrust_iam_policy resource on an aliased provider. Two reasons.
 //
-// The IAM policy binding tests never hit this because they reach the second site through a
-// raw client, sequentially. This does the same. Terraform keeps one provider per process;
-// the grant is written and awaited out of band before the step that depends on it.
+// The one that matters is how the edge authenticates an OIDC caller: it resolves the exchange
+// by (site id in the URL path, X-BT-Service-Name), a DynamoDB GetItem on exactly that pair.
+// A single service name therefore cannot reach two sites, and a Terraform provider block can
+// only carry one. A raw client built from LoadAdminTestConfig can carry the admin identity's
+// own name (BEYONDTRUST_ADMIN_SERVICE_NAME) while the provider keeps the product one. The IAM
+// policy binding tests do the same for the opposite direction. The name only finds the record;
+// the edge then checks the token's claims against that identity's trust conditions, so the
+// admin identity must also trust the environment this job runs in.
+//
+// The other is ordering: an ephemeral resource is opened while the plan is built, so the grant
+// has to exist before that plan runs. Writing it in PreConfig and awaiting ACTIVE there is the
+// only place that is guaranteed.
 
 const (
 	grantStatusActive  = "ACTIVE"

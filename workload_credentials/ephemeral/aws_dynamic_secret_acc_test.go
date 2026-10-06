@@ -102,7 +102,7 @@ func TestAccAwsDynamicSecretEphemeral_generatesWithGrant(t *testing.T) {
 			// second provider.
 			{
 				PreConfig: func() {
-					grantViaAdmin(t, "tf-acc-"+dynamicSecretName+"-generate", env.generateCedar(dynamicSecretName))
+					grantViaAdmin(t, dynamicSecretName+"-generate", env.generateCedar(dynamicSecretName))
 				},
 				Config: env.generateConfig(integrationName, dynamicSecretName),
 				Check: resource.ComposeAggregateTestCheckFunc(

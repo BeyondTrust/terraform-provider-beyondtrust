@@ -4,7 +4,9 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/beyondtrust/terraform-provider-beyondtrust/internal/constants"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // TestRandomGeneration validates random string and integer generation.
@@ -119,5 +121,30 @@ func TestRandomAWS(t *testing.T) {
 		assert.Equal(t, "test", result["Environment"])
 		assert.Equal(t, "terraform", result["ManagedBy"])
 		assert.Equal(t, 8, len(result["TestRun"]), "TestRun should be 8 characters")
+	})
+}
+
+// The edge keys an OIDC exchange on (URL site id, X-BT-Service-Name), so the admin client must
+// be able to carry the admin identity's name even when the job's default names a product one.
+// A silent regression here reappears as a generic 401 "no trust record" that took six CI runs
+// to attribute, so the precedence is pinned.
+func TestLoadAdminTestConfig_ServiceNamePrecedence(t *testing.T) {
+	t.Setenv(EnvAdminSiteID, "admin-site")
+	t.Setenv(EnvAdminAccessToken, "tok")
+
+	t.Run("admin override wins over the job default", func(t *testing.T) {
+		t.Setenv(constants.EnvServiceName, "product-identity")
+		t.Setenv(EnvAdminServiceName, "admin-identity")
+		cfg, err := LoadAdminTestConfig()
+		require.NoError(t, err)
+		assert.Equal(t, "admin-identity", cfg.ServiceName)
+	})
+
+	t.Run("falls back to the job default when unset", func(t *testing.T) {
+		t.Setenv(constants.EnvServiceName, "admin-identity-in-admin-job")
+		t.Setenv(EnvAdminServiceName, "")
+		cfg, err := LoadAdminTestConfig()
+		require.NoError(t, err)
+		assert.Equal(t, "admin-identity-in-admin-job", cfg.ServiceName)
 	})
 }
