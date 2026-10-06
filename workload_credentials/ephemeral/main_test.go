@@ -82,8 +82,9 @@ func recordRan(t *testing.T) resource.TestCheckFunc {
 // assuming the environment already has.
 //
 // On top of the AWS fixtures they need the admin site, where the IAM policy API lives, and
-// the Cedar entity of the identity the grant is for. The admin-site job supplies all
-// three; a job without admin credentials skips them and the accounting records why.
+// a way to name the identity the grant is for: a service name to resolve, or the entity
+// itself. The admin-site job supplies all three; a job without admin credentials skips
+// them and the accounting records why.
 //
 // The env-var lists live in acctest so this and the direct prechecks cannot drift.
 func preCheckGrantedAWS(t *testing.T) {

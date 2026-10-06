@@ -1,9 +1,14 @@
 package acctest
 
 import (
+	"context"
+	"io"
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 
+	"github.com/beyondtrust/terraform-provider-beyondtrust/internal/client"
 	"github.com/beyondtrust/terraform-provider-beyondtrust/internal/constants"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -146,5 +151,57 @@ func TestLoadAdminTestConfig_ServiceNamePrecedence(t *testing.T) {
 		cfg, err := LoadAdminTestConfig()
 		require.NoError(t, err)
 		assert.Equal(t, "admin-identity-in-admin-job", cfg.ServiceName)
+	})
+}
+
+func TestResolveGeneratePrincipal(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/site/admin-site/platform/auth/workload-identities" {
+			http.NotFound(w, r)
+			return
+		}
+		_, _ = io.WriteString(w, `{"issuers":[
+			{"identityId":"11111111-1111-1111-1111-111111111111","serviceName":"Other-Identity"},
+			{"identityId":"22222222-2222-2222-2222-222222222222","serviceName":"Fixture-Owner"}
+		],"totalCount":2}`)
+	}))
+	defer srv.Close()
+
+	admin, err := client.NewClient(&client.Config{
+		BaseURL: srv.URL, SiteID: "admin-site", AccessToken: "tok", APIVersion: "2026-04-28", Timeout: "30s",
+	})
+	require.NoError(t, err)
+	ctx := context.Background()
+
+	t.Run("explicit entity wins without a lookup", func(t *testing.T) {
+		t.Setenv(EnvTestGeneratePrincipal, `Pathfinder::User::Email::"x@example.com"`)
+		t.Setenv(constants.EnvServiceName, "fixture-owner")
+		got, err := ResolveGeneratePrincipal(ctx, admin)
+		require.NoError(t, err)
+		assert.Equal(t, `Pathfinder::User::Email::"x@example.com"`, got)
+	})
+
+	t.Run("resolves the service name without regard to case", func(t *testing.T) {
+		t.Setenv(EnvTestGeneratePrincipal, "")
+		t.Setenv(constants.EnvServiceName, "fixture-owner")
+		got, err := ResolveGeneratePrincipal(ctx, admin)
+		require.NoError(t, err)
+		assert.Equal(t, `Pathfinder::Workload::Id::"22222222-2222-2222-2222-222222222222"`, got)
+	})
+
+	t.Run("an unknown service name is an error that names it", func(t *testing.T) {
+		t.Setenv(EnvTestGeneratePrincipal, "")
+		t.Setenv(constants.EnvServiceName, "nobody")
+		_, err := ResolveGeneratePrincipal(ctx, admin)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), `"nobody"`)
+	})
+
+	t.Run("nothing to resolve from is an error that names the override", func(t *testing.T) {
+		t.Setenv(EnvTestGeneratePrincipal, "")
+		t.Setenv(constants.EnvServiceName, "")
+		_, err := ResolveGeneratePrincipal(ctx, admin)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), EnvTestGeneratePrincipal)
 	})
 }

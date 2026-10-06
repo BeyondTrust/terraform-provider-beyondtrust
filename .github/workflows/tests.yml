@@ -178,8 +178,10 @@ jobs:
       # token's claims against that identity's trust conditions, and the admin identity trusts
       # only this environment. The product-site identity that seeds the policy tests' fixtures
       # federates from here too, so it is the provider identity: the tests grant it the create
-      # and generate permissions they need through the admin API and remove them afterwards.
-      # BEYONDTRUST_SERVICE_NAME is the provider's, so the admin client gets its own variable.
+      # and generate permissions they need through the admin API and remove them afterwards,
+      # resolving its Cedar entity from its service name through the admin site rather than
+      # carrying it as a secret. BEYONDTRUST_SERVICE_NAME is the provider's, so the admin
+      # client gets its own variable.
       #
       # Separate from make test-acc so BEYONDTRUST_TEST_REQUIRE_ACC reaches only the suite
       # whose TestMain honours it.
@@ -192,8 +194,6 @@ jobs:
           BEYONDTRUST_ADMIN_SITE_ID: ${{ secrets.BEYONDTRUST_ADMIN_SITE_ID }}
           BEYONDTRUST_ADMIN_ACCESS_TOKEN: ${{ steps.oidc.outputs.token }}
           BEYONDTRUST_ADMIN_SERVICE_NAME: ${{ secrets.BEYONDTRUST_SERVICE_NAME }}
-          # The Cedar entity of the provider identity above, which every grant names.
-          BEYONDTRUST_TEST_GENERATE_PRINCIPAL: ${{ secrets.BEYONDTRUST_TEST_GENERATE_PRINCIPAL }}
           BEYONDTRUST_TEST_AWS_ROLE_ARN: ${{ secrets.BEYONDTRUST_TEST_AWS_ROLE_ARN }}
           BEYONDTRUST_TEST_AWS_TARGET_ROLE_ARN: ${{ secrets.BEYONDTRUST_TEST_AWS_TARGET_ROLE_ARN }}
           BEYONDTRUST_TEST_AZURE_TENANT_ID: ${{ secrets.BEYONDTRUST_TEST_AZURE_TENANT_ID }}

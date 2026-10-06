@@ -51,6 +51,11 @@ export BEYONDTRUST_ADMIN_ACCESS_TOKEN="your-admin-site-access-token"
 # The identity that seeds the fixtures. Only needed when one identity cannot cover both sites —
 # BEYONDTRUST_SERVICE_NAME names the admin-site one, so the product-site owner needs its own.
 # export BEYONDTRUST_TEST_POLICY_OWNER_SERVICE_NAME="tf-acc-owner"
+
+# Optional. The Cedar entity the dynamic credential ephemeral tests grant generation to. When
+# BEYONDTRUST_SERVICE_NAME is set it is resolved from that name through the admin site; set this
+# only for PAT runs, which have no service name to resolve.
+# export BEYONDTRUST_TEST_GENERATE_PRINCIPAL='Pathfinder::Workload::Id::"00000000-0000-0000-0000-000000000000"'
 #
 # The folder that identity owns, which each run's fixtures are created inside. Needed whenever the
 # seeding identity is not a product admin — a freshly created workload identity never is. Grant it

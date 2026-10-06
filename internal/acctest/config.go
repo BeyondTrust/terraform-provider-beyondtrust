@@ -90,13 +90,15 @@ const (
 
 	EnvTestPolicySiteID = "BEYONDTRUST_TEST_POLICY_SITE_ID"
 
-	// EnvTestGeneratePrincipal is the Cedar entity of the identity the product-site tests run
-	// as, written whole for the same reason as EnvTestPolicyPrincipal.
+	// EnvTestGeneratePrincipal overrides the Cedar entity of the identity the dynamic
+	// credential tests run as, written whole for the same reason as EnvTestPolicyPrincipal.
 	//
-	// The dynamic credential tests need it because generation is gated on
-	// can_generate_dynamic_credential, which resolves through the operator role and which
-	// this identity does not hold — creating a dynamic secret does not confer generating
-	// from it. The tests grant it to themselves, and a grant has to name a principal.
+	// Those tests grant themselves generation, because can_generate_dynamic_credential
+	// resolves through the operator role and creating a dynamic secret does not confer it,
+	// and a grant has to name a principal. When the provider identity is selected by
+	// BEYONDTRUST_SERVICE_NAME, as in CI, ResolveGeneratePrincipal derives the entity from
+	// that name through the admin site and this is not needed. It exists for runs that
+	// authenticate with a personal access token and so have no service name to resolve.
 	EnvTestGeneratePrincipal = "BEYONDTRUST_TEST_GENERATE_PRINCIPAL"
 
 	// EnvTestPolicyFixtureRoot is an existing folder the seeding identity owns, which the tests

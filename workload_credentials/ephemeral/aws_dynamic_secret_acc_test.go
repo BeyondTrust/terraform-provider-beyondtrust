@@ -4,6 +4,7 @@
 package ephemeral_test
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"regexp"
@@ -40,8 +41,17 @@ type grantEnv struct {
 func setupGrantEnv(t *testing.T) *grantEnv {
 	t.Helper()
 
+	admin, err := acctest.NewAdminTestClient()
+	if err != nil {
+		t.Fatalf("admin client: %v", err)
+	}
+	principal, err := acctest.ResolveGeneratePrincipal(context.Background(), admin)
+	if err != nil {
+		t.Fatalf("resolving the principal the grants name: %v", err)
+	}
+
 	return &grantEnv{
-		principal:     os.Getenv(acctest.EnvTestGeneratePrincipal),
+		principal:     principal,
 		siteID:        acctest.PolicyTargetSiteID(),
 		roleArn:       os.Getenv(acctest.EnvTestAWSRoleARN),
 		targetRoleArn: os.Getenv(acctest.EnvTestAWSTargetRoleARN),
