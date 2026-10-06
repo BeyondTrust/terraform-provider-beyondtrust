@@ -91,12 +91,15 @@ resource "beyondtrust_iam_policy" "create_dynamic_secret" {
 // Product-scoped because that is the only scope CreateIntegration has in the Cedar schema —
 // an integration has no folder to be contained by, so there is no narrower form available.
 //
-// The id carries the wlc_ prefix because that is the object the authorization check names.
-// A grant written against the bare site id binds to product:<siteId>, which nothing checks,
-// and still reports ACTIVE — so getting this wrong looks like success. The error that
-// motivated it read:
+// Note the resource form: `resource is WorkloadCredentials::Product`, with no id. A product
+// grant is the one case the parser requires `is` rather than `==`, because the product is
+// taken from the request context — the @siteId annotation — so a policy cannot target a
+// product other than its own. The id form is rejected outright:
 //
-//	identity:<principal> does not have 'can_create_integration' permission on product:wlc_<siteId>
+//	a product grant must use 'resource is WorkloadCredentials::Product'
+//	(the product comes from context), not '== Product::"id"'
+//
+// Which also means there is no product id to get right here, prefixed or otherwise.
 func (e *grantEnv) createIntegrationGrant(name string) string {
 	return fmt.Sprintf(`
 resource "beyondtrust_iam_policy" "create_integration" {
@@ -107,7 +110,7 @@ resource "beyondtrust_iam_policy" "create_integration" {
     permit(
       principal == %[2]s,
       action == WorkloadCredentials::Action::"CreateIntegration",
-      resource == WorkloadCredentials::Product::"wlc_%[1]s"
+      resource is WorkloadCredentials::Product
     );
   EOT
 }
