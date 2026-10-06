@@ -33,7 +33,7 @@ func TestAccAzureDynamicSecretEphemeral_generatesAndRevokes(t *testing.T) {
 
 	// Safety net (LIFO: secret cleaned up before the integration it references).
 	registerIntegrationCleanup(t, "azure", integrationName)
-	registerDynamicSecretCleanup(t, dynamicSecretName, env.fixtureRoot)
+	registerDynamicSecretCleanup(t, dynamicSecretName, "")
 
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck:                 func() { preCheckGrantedAzure(t) },
@@ -83,7 +83,7 @@ func TestAccAzureDynamicSecretEphemeral_revokeOnCloseDisabled(t *testing.T) {
 
 	// Safety net (LIFO: secret cleaned up before the integration it references).
 	registerIntegrationCleanup(t, "azure", integrationName)
-	registerDynamicSecretCleanup(t, dynamicSecretName, env.fixtureRoot)
+	registerDynamicSecretCleanup(t, dynamicSecretName, "")
 
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck:                 func() { preCheckGrantedAzure(t) },
@@ -225,31 +225,29 @@ func requireLeaseStaysAbsent(c *btclient.Client, leaseID string) error {
 	}
 }
 
-// azureFolderArg is folderArg at the Azure block's wider alignment.
-func (e *grantEnv) azureFolderArg() string {
-	if e.fixtureRoot == "" {
-		return ""
-	}
-
-	return fmt.Sprintf("  folder                = %q\n", e.fixtureRoot)
-}
-
 func (e *grantEnv) azureSetupConfig(integrationName, tenantID, clientID, clientSecret, dynamicSecretName, appObjectID string) string {
-	return e.ownerProvider + e.adminProvider + e.principalProvider + fmt.Sprintf(`
+	return e.principalProvider + e.adminProvider +
+		e.productGrant("create_integration", "CreateIntegration", dynamicSecretName) +
+		e.productGrant("create_dynamic_secret", "CreateDynamicSecret", dynamicSecretName) +
+		fmt.Sprintf(`
 resource "beyondtrust_workload_credentials_azure_integration" "test" {
   name                  = %[1]q
   tenant_id             = %[2]q
   client_id             = %[3]q
   client_secret         = %[4]q
   client_secret_version = 1
+
+  depends_on = [beyondtrust_iam_policy.create_integration]
 }
 
 resource "beyondtrust_workload_credentials_azure_dynamic_secret" "test" {
   name                  = %[5]q
-%[9]s  integration_name      = beyondtrust_workload_credentials_azure_integration.test.name
+  integration_name      = beyondtrust_workload_credentials_azure_integration.test.name
   credential_type       = "service_principal_password"
   application_object_id = %[6]q
   ttl                   = 3600
+
+  depends_on = [beyondtrust_iam_policy.create_dynamic_secret]
 }
 
 resource "beyondtrust_iam_policy" "generate" {
@@ -266,10 +264,10 @@ resource "beyondtrust_iam_policy" "generate" {
   EOT
 }
 
-# revoke_on_close defaults to true, and revocation is a separate permission resolving through
-# owner rather than operator. Without this grant the apply still passes and Close only warns,
-# while the password survives to its TTL — so the revocation assertions below would fail for a
-# reason that has nothing to do with the code under test.
+# revoke_on_close defaults to true, and revocation resolves through owner rather than
+# operator. The principal owns the secret it created, so this grant is belt and braces for
+# the owner path — but an explicit grant is what the docs tell practitioners to write, and
+# asserting it here is what keeps that advice honest.
 resource "beyondtrust_iam_policy" "revoke" {
   provider = beyondtrust.platform
   name     = "tf-acc-%[5]s-revoke"
@@ -283,15 +281,12 @@ resource "beyondtrust_iam_policy" "revoke" {
     );
   EOT
 }
-`, integrationName, tenantID, clientID, clientSecret, dynamicSecretName, appObjectID, e.siteID, e.principal, e.azureFolderArg())
+`, integrationName, tenantID, clientID, clientSecret, dynamicSecretName, appObjectID, e.siteID, e.principal)
 }
-
 func (e *grantEnv) azureGenerateConfig(integrationName, tenantID, clientID, clientSecret, dynamicSecretName, appObjectID string, revokeOnClose bool) string {
 	return e.azureSetupConfig(integrationName, tenantID, clientID, clientSecret, dynamicSecretName, appObjectID) + fmt.Sprintf(`
 ephemeral "beyondtrust_workload_credentials_azure_dynamic_secret" "test" {
-  provider        = beyondtrust.principal
   name            = beyondtrust_workload_credentials_azure_dynamic_secret.test.name
-  folder          = beyondtrust_workload_credentials_azure_dynamic_secret.test.folder
   revoke_on_close = %[1]t
 }
 

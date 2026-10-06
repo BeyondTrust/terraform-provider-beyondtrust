@@ -30,23 +30,17 @@ import (
 
 // grantEnv holds the identities a granted-generation test needs.
 type grantEnv struct {
-	ownerProvider     string
-	adminProvider     string
 	principalProvider string
+	adminProvider     string
 	principal         string
 	siteID            string
 	roleArn           string
 	targetRoleArn     string
-	fixtureRoot       string
 }
 
 func setupGrantEnv(t *testing.T) *grantEnv {
 	t.Helper()
 
-	ownerCfg, err := acctest.LoadPolicyOwnerTestConfig()
-	if err != nil {
-		t.Fatalf("loading fixture owner config: %v", err)
-	}
 	adminCfg, err := acctest.LoadAdminTestConfig()
 	if err != nil {
 		t.Fatalf("loading admin config: %v", err)
@@ -57,25 +51,39 @@ func setupGrantEnv(t *testing.T) *grantEnv {
 	}
 
 	return &grantEnv{
-		ownerProvider:     ownerCfg.ProviderConfig(),
+		// The principal is the default provider: it creates the fixtures and generates from
+		// them, so everything the test does runs as the identity the grants name.
+		principalProvider: principalCfg.ProviderConfig(),
 		adminProvider:     adminCfg.AliasedProviderConfig("platform"),
-		principalProvider: principalCfg.AliasedProviderConfig("principal"),
 		principal:         os.Getenv(acctest.EnvTestPolicyPrincipal),
 		siteID:            acctest.PolicyTargetSiteID(),
 		roleArn:           os.Getenv(acctest.EnvTestAWSRoleARN),
 		targetRoleArn:     os.Getenv(acctest.EnvTestAWSTargetRoleARN),
-		fixtureRoot:       acctest.PolicyFixtureRoot(),
 	}
 }
 
-// folderArg renders a folder argument for the fixture root, or nothing when it is unset —
-// which is the right behaviour for a personal token that already holds product admin.
-func (e *grantEnv) folderArg() string {
-	if e.fixtureRoot == "" {
-		return ""
-	}
+// productGrant renders a policy granting the principal a product-scoped action.
+//
+// Creating an integration is product-scoped and has no folder to be contained by, so it
+// cannot be reached by a folder grant the way secrets can. Granting it here rather than
+// relying on a standing policy keeps the suite self-describing: everything it needs is
+// visible in the configuration it applies.
+func (e *grantEnv) productGrant(label, action, name string) string {
+	return fmt.Sprintf(`
+resource "beyondtrust_iam_policy" %[1]q {
+  provider = beyondtrust.platform
+  name     = "tf-acc-%[4]s-%[1]s"
 
-	return fmt.Sprintf("  folder           = %q\n", e.fixtureRoot)
+  cedar = <<-EOT
+    @siteId(%[2]q)
+    permit(
+      principal == %[3]s,
+      action == WorkloadCredentials::Action::%[5]q,
+      resource == WorkloadCredentials::Product::%[2]q
+    );
+  EOT
+}
+`, label, e.siteID, e.principal, name, action)
 }
 
 func TestAccAwsDynamicSecretEphemeral_generatesWithGrant(t *testing.T) {
@@ -86,7 +94,7 @@ func TestAccAwsDynamicSecretEphemeral_generatesWithGrant(t *testing.T) {
 	dynamicSecretName := acctest.RandomDynamicSecretName()
 
 	registerIntegrationCleanup(t, "aws", integrationName)
-	registerDynamicSecretCleanup(t, dynamicSecretName, env.fixtureRoot)
+	registerDynamicSecretCleanup(t, dynamicSecretName, "")
 
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck:                 func() { preCheckGrantedAWS(t) },
@@ -127,23 +135,36 @@ func TestAccAwsDynamicSecretEphemeral_generatesWithGrant(t *testing.T) {
 	})
 }
 
-// setupConfig seeds the dynamic secret and grants the principal permission to generate from
-// it. No ephemeral resource, so nothing tries to generate during this step.
+// setupConfig grants the principal everything it needs, then creates the fixtures as that
+// principal. No ephemeral resource yet: it is opened while the plan is built, so a plan
+// holding it too would call generate before the secret and the grant exist.
 func (e *grantEnv) setupConfig(integrationName, dynamicSecretName string) string {
-	return e.ownerProvider + e.adminProvider + e.principalProvider + fmt.Sprintf(`
+	return e.principalProvider + e.adminProvider +
+		e.productGrant("create_integration", "CreateIntegration", dynamicSecretName) +
+		e.productGrant("create_dynamic_secret", "CreateDynamicSecret", dynamicSecretName) +
+		fmt.Sprintf(`
 resource "beyondtrust_workload_credentials_aws_integration" "test" {
   name     = %[1]q
   role_arn = %[3]q
+
+  # The provider waits for a grant to bind before returning, so depending on the policy is
+  # what makes this ordering real rather than hopeful.
+  depends_on = [beyondtrust_iam_policy.create_integration]
 }
 
 resource "beyondtrust_workload_credentials_aws_dynamic_secret" "test" {
   name             = %[2]q
-%[7]s  integration_name = beyondtrust_workload_credentials_aws_integration.test.name
+  integration_name = beyondtrust_workload_credentials_aws_integration.test.name
   credential_type  = "assumed_role"
   role_arn         = %[4]q
   ttl              = 3600
+
+  depends_on = [beyondtrust_iam_policy.create_dynamic_secret]
 }
 
+# Creating a dynamic secret makes the principal its owner, which deliberately does NOT
+# confer generation: that resolves through operator, not owner. So this grant is load
+# bearing, and the test would fail without it even though the principal owns the secret.
 resource "beyondtrust_iam_policy" "generate" {
   provider = beyondtrust.platform
   name     = "tf-acc-%[2]s-generate"
@@ -157,16 +178,15 @@ resource "beyondtrust_iam_policy" "generate" {
     );
   EOT
 }
-`, integrationName, dynamicSecretName, e.roleArn, e.targetRoleArn, e.siteID, e.principal, e.folderArg())
+`, integrationName, dynamicSecretName, e.roleArn, e.targetRoleArn, e.siteID, e.principal)
 }
 
-// generateConfig adds the ephemeral resource, running as the principal the grant names.
+// generateConfig adds the ephemeral resource, which runs as the default provider — the same
+// principal every grant above names.
 func (e *grantEnv) generateConfig(integrationName, dynamicSecretName string) string {
 	return e.setupConfig(integrationName, dynamicSecretName) + `
 ephemeral "beyondtrust_workload_credentials_aws_dynamic_secret" "test" {
-  provider = beyondtrust.principal
-  name     = beyondtrust_workload_credentials_aws_dynamic_secret.test.name
-  folder   = beyondtrust_workload_credentials_aws_dynamic_secret.test.folder
+  name = beyondtrust_workload_credentials_aws_dynamic_secret.test.name
 }
 
 provider "echo" {
