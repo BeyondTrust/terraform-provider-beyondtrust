@@ -58,8 +58,8 @@ func setupGrantEnv(t *testing.T) *grantEnv {
 	return &grantEnv{
 		// The principal is the default provider: it creates the fixtures and generates from
 		// them, so everything under test runs as the identity the grants name.
-		principalProvider: principalCfg.ProviderConfig(),
-		adminProvider:     adminCfg.AliasedProviderConfig("platform"),
+		principalProvider: principalCfg.AliasedProviderConfig("principal"),
+		adminProvider:     adminCfg.ProviderConfig(),
 		principal:         os.Getenv(acctest.EnvTestPolicyPrincipal),
 		siteID:            acctest.PolicyTargetSiteID(),
 		fixtureRoot:       acctest.PolicyFixtureRoot(),
@@ -76,7 +76,6 @@ func setupGrantEnv(t *testing.T) *grantEnv {
 func (e *grantEnv) createSecretGrant(name string) string {
 	return fmt.Sprintf(`
 resource "beyondtrust_iam_policy" "create_dynamic_secret" {
-  provider = beyondtrust.platform
   name     = "tf-acc-%[3]s-create-ds"
 
   cedar = <<-EOT
@@ -146,11 +145,13 @@ func (e *grantEnv) setupConfig(integrationName, dynamicSecretName string) string
 # No depends_on, and no grant written for this: can_create_integration is a standing grant
 # on the test site, for the reason given at the top of this file.
 resource "beyondtrust_workload_credentials_aws_integration" "test" {
+  provider = beyondtrust.principal
   name     = %[1]q
   role_arn = %[3]q
 }
 
 resource "beyondtrust_workload_credentials_aws_dynamic_secret" "test" {
+  provider = beyondtrust.principal
   name             = %[2]q
   folder           = %[7]q
   integration_name = beyondtrust_workload_credentials_aws_integration.test.name
@@ -167,7 +168,6 @@ resource "beyondtrust_workload_credentials_aws_dynamic_secret" "test" {
 # confer generation: that resolves through operator, not owner. So this grant is load
 # bearing, and the test would fail without it even though the principal owns the secret.
 resource "beyondtrust_iam_policy" "generate" {
-  provider = beyondtrust.platform
   name     = "tf-acc-%[2]s-generate"
 
   cedar = <<-EOT
@@ -187,6 +187,7 @@ resource "beyondtrust_iam_policy" "generate" {
 func (e *grantEnv) generateConfig(integrationName, dynamicSecretName string) string {
 	return e.setupConfig(integrationName, dynamicSecretName) + `
 ephemeral "beyondtrust_workload_credentials_aws_dynamic_secret" "test" {
+  provider = beyondtrust.principal
   name   = beyondtrust_workload_credentials_aws_dynamic_secret.test.name
   folder = beyondtrust_workload_credentials_aws_dynamic_secret.test.folder
 }

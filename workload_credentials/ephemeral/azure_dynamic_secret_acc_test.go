@@ -228,6 +228,7 @@ func requireLeaseStaysAbsent(c *btclient.Client, leaseID string) error {
 func (e *grantEnv) azureSetupConfig(integrationName, tenantID, clientID, clientSecret, dynamicSecretName, appObjectID string) string {
 	return e.principalProvider + e.adminProvider + e.createSecretGrant(dynamicSecretName) + fmt.Sprintf(`
 resource "beyondtrust_workload_credentials_azure_integration" "test" {
+  provider = beyondtrust.principal
   name                  = %[1]q
   tenant_id             = %[2]q
   client_id             = %[3]q
@@ -236,6 +237,7 @@ resource "beyondtrust_workload_credentials_azure_integration" "test" {
 }
 
 resource "beyondtrust_workload_credentials_azure_dynamic_secret" "test" {
+  provider = beyondtrust.principal
   name                  = %[5]q
   folder                = %[9]q
   integration_name      = beyondtrust_workload_credentials_azure_integration.test.name
@@ -247,7 +249,6 @@ resource "beyondtrust_workload_credentials_azure_dynamic_secret" "test" {
 }
 
 resource "beyondtrust_iam_policy" "generate" {
-  provider = beyondtrust.platform
   name     = "tf-acc-%[5]s-generate"
 
   cedar = <<-EOT
@@ -265,7 +266,6 @@ resource "beyondtrust_iam_policy" "generate" {
 # the owner path — but an explicit grant is what the docs tell practitioners to write, and
 # asserting it here is what keeps that advice honest.
 resource "beyondtrust_iam_policy" "revoke" {
-  provider = beyondtrust.platform
   name     = "tf-acc-%[5]s-revoke"
 
   cedar = <<-EOT
@@ -282,6 +282,7 @@ resource "beyondtrust_iam_policy" "revoke" {
 func (e *grantEnv) azureGenerateConfig(integrationName, tenantID, clientID, clientSecret, dynamicSecretName, appObjectID string, revokeOnClose bool) string {
 	return e.azureSetupConfig(integrationName, tenantID, clientID, clientSecret, dynamicSecretName, appObjectID) + fmt.Sprintf(`
 ephemeral "beyondtrust_workload_credentials_azure_dynamic_secret" "test" {
+  provider = beyondtrust.principal
   name            = beyondtrust_workload_credentials_azure_dynamic_secret.test.name
   folder          = beyondtrust_workload_credentials_azure_dynamic_secret.test.folder
   revoke_on_close = %[1]t
