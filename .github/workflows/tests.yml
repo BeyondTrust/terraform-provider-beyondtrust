@@ -83,31 +83,6 @@ jobs:
             const token = await core.getIDToken('${{ secrets.BEYONDTRUST_SITE_ID }}')
             core.setOutput('token', token)
 
-      - name: Run acceptance tests
-        run: make test-acc
-        env:
-          BEYONDTRUST_ACCESS_TOKEN: ${{ steps.oidc.outputs.token }}
-          BEYONDTRUST_SITE_ID: ${{ secrets.BEYONDTRUST_SITE_ID }}
-          BEYONDTRUST_SERVICE_NAME: ${{ secrets.BEYONDTRUST_SERVICE_NAME }}
-          BEYONDTRUST_TEST_AWS_ROLE_ARN: ${{ secrets.BEYONDTRUST_TEST_AWS_ROLE_ARN }}
-          BEYONDTRUST_TEST_AWS_ROLE_ARN_2: ${{ secrets.BEYONDTRUST_TEST_AWS_ROLE_ARN_2 }}
-          BEYONDTRUST_TEST_AWS_TARGET_ROLE_ARN: ${{ secrets.BEYONDTRUST_TEST_AWS_TARGET_ROLE_ARN }}
-          TF_ACC: "1"
-
-      # Fresh tokens, minted here rather than reused from the job's first step.
-      #
-      # An OIDC token is short lived and make test-acc above takes minutes, so the token
-      # minted at job start has gone stale by now. That produced 401 "OIDC workload exchange
-      # denied" part-way through a test — the apply succeeded and the refresh seconds later
-      # did not — which reads like a permissions problem and is not one.
-      - name: Get fresh product-site OIDC token
-        id: oidc-fresh
-        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
-        with:
-          script: |
-            const token = await core.getIDToken('${{ secrets.BEYONDTRUST_SITE_ID }}')
-            core.setOutput('token', token)
-
       # The grant these tests author lives on the admin site, so they need an admin-audience
       # token alongside the product-site one they run on.
       - name: Get admin-site OIDC token
@@ -118,13 +93,22 @@ jobs:
             const token = await core.getIDToken('${{ secrets.BEYONDTRUST_ADMIN_SITE_ID }}')
             core.setOutput('token', token)
 
-      # Run separately so BEYONDTRUST_TEST_REQUIRE_ACC reaches only the suite whose TestMain
-      # honours it: make test-acc covers ./... including ./iam/..., which has the same gate
-      # and skips in this job for want of its own credentials.
+      # Runs before make test-acc, not after.
+      #
+      # The 401 "OIDC workload exchange denied" these tests kept hitting tracks position in
+      # the job rather than token age: the first test got its writes through and the ones
+      # after it were refused immediately, while make test-acc — many more calls on the same
+      # identity — passed whenever it ran first. A fresh token minted just beforehand made no
+      # difference. That points at a per-identity exchange budget the preceding step
+      # exhausts, so this suite goes first.
+      #
+      # Separate from make test-acc regardless, so BEYONDTRUST_TEST_REQUIRE_ACC reaches only
+      # the suite whose TestMain honours it: make test-acc covers ./... including ./iam/...,
+      # which has the same gate and skips here for want of its own credentials.
       - name: Run dynamic credential ephemeral acceptance tests
         run: make test-acc-ephemeral
         env:
-          BEYONDTRUST_ACCESS_TOKEN: ${{ steps.oidc-fresh.outputs.token }}
+          BEYONDTRUST_ACCESS_TOKEN: ${{ steps.oidc.outputs.token }}
           BEYONDTRUST_SITE_ID: ${{ secrets.BEYONDTRUST_SITE_ID }}
           BEYONDTRUST_SERVICE_NAME: ${{ secrets.BEYONDTRUST_SERVICE_NAME }}
           BEYONDTRUST_ADMIN_SITE_ID: ${{ secrets.BEYONDTRUST_ADMIN_SITE_ID }}
@@ -138,6 +122,17 @@ jobs:
           BEYONDTRUST_TEST_AZURE_CLIENT_SECRET: ${{ secrets.BEYONDTRUST_TEST_AZURE_CLIENT_SECRET }}
           BEYONDTRUST_TEST_AZURE_APPLICATION_OBJECT_ID: ${{ secrets.BEYONDTRUST_TEST_AZURE_APPLICATION_OBJECT_ID }}
           BEYONDTRUST_TEST_REQUIRE_ACC: "1"
+          TF_ACC: "1"
+
+      - name: Run acceptance tests
+        run: make test-acc
+        env:
+          BEYONDTRUST_ACCESS_TOKEN: ${{ steps.oidc.outputs.token }}
+          BEYONDTRUST_SITE_ID: ${{ secrets.BEYONDTRUST_SITE_ID }}
+          BEYONDTRUST_SERVICE_NAME: ${{ secrets.BEYONDTRUST_SERVICE_NAME }}
+          BEYONDTRUST_TEST_AWS_ROLE_ARN: ${{ secrets.BEYONDTRUST_TEST_AWS_ROLE_ARN }}
+          BEYONDTRUST_TEST_AWS_ROLE_ARN_2: ${{ secrets.BEYONDTRUST_TEST_AWS_ROLE_ARN_2 }}
+          BEYONDTRUST_TEST_AWS_TARGET_ROLE_ARN: ${{ secrets.BEYONDTRUST_TEST_AWS_TARGET_ROLE_ARN }}
           TF_ACC: "1"
 
   acceptance-tests-admin:
