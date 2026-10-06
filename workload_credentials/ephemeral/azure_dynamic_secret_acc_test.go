@@ -226,7 +226,7 @@ func requireLeaseStaysAbsent(c *btclient.Client, leaseID string) error {
 }
 
 func (e *grantEnv) azureSetupConfig(integrationName, tenantID, clientID, clientSecret, dynamicSecretName, appObjectID string) string {
-	return e.principalProvider + e.adminProvider + e.createSecretGrant(dynamicSecretName) + fmt.Sprintf(`
+	return e.principalProvider + e.adminProvider + e.createIntegrationGrant(dynamicSecretName) + e.createSecretGrant(dynamicSecretName) + fmt.Sprintf(`
 resource "beyondtrust_workload_credentials_azure_integration" "test" {
   provider = beyondtrust.principal
   name                  = %[1]q
@@ -234,6 +234,8 @@ resource "beyondtrust_workload_credentials_azure_integration" "test" {
   client_id             = %[3]q
   client_secret         = %[4]q
   client_secret_version = 1
+
+  depends_on = [beyondtrust_iam_policy.create_integration]
 }
 
 resource "beyondtrust_workload_credentials_azure_dynamic_secret" "test" {

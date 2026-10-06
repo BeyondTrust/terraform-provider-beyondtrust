@@ -25,12 +25,8 @@ import (
 // run in the admin-site job beside the IAM policy tests that need the same thing. In the
 // product-site job they skip for want of admin credentials.
 //
-// What the suite cannot grant itself is can_create_integration. That action exists only at
-// Product scope in the Cedar schema, and this caller is not permitted to write Product-scoped
-// grants: attempting it fails with "forbidden: caller cannot perform this action" while
-// Folder-scoped grants from the same identity succeed. So it is a standing grant on the test
-// site, and the one prerequisite this file cannot describe in Terraform. Everything else is
-// Folder- or resource-scoped and written below.
+// Every permission the suite needs is granted below rather than assumed of the environment,
+// so a reader can see the whole set without consulting the test site.
 
 // grantEnv holds the identities and fixtures a granted-generation test needs.
 type grantEnv struct {
@@ -90,6 +86,34 @@ resource "beyondtrust_iam_policy" "create_dynamic_secret" {
 `, e.siteID, e.principal, name, e.fixtureRoot)
 }
 
+// createIntegrationGrant lets the principal create an integration.
+//
+// Product-scoped because that is the only scope CreateIntegration has in the Cedar schema —
+// an integration has no folder to be contained by, so there is no narrower form available.
+//
+// The id carries the wlc_ prefix because that is the object the authorization check names.
+// A grant written against the bare site id binds to product:<siteId>, which nothing checks,
+// and still reports ACTIVE — so getting this wrong looks like success. The error that
+// motivated it read:
+//
+//	identity:<principal> does not have 'can_create_integration' permission on product:wlc_<siteId>
+func (e *grantEnv) createIntegrationGrant(name string) string {
+	return fmt.Sprintf(`
+resource "beyondtrust_iam_policy" "create_integration" {
+  name = "tf-acc-%[3]s-create-int"
+
+  cedar = <<-EOT
+    @siteId(%[1]q)
+    permit(
+      principal == %[2]s,
+      action == WorkloadCredentials::Action::"CreateIntegration",
+      resource == WorkloadCredentials::Product::"wlc_%[1]s"
+    );
+  EOT
+}
+`, e.siteID, e.principal, name)
+}
+
 func TestAccAwsDynamicSecretEphemeral_generatesWithGrant(t *testing.T) {
 	preCheckGrantedAWS(t)
 
@@ -141,13 +165,13 @@ func TestAccAwsDynamicSecretEphemeral_generatesWithGrant(t *testing.T) {
 
 // setupConfig creates the fixtures as the principal and grants it what the API will ask for.
 func (e *grantEnv) setupConfig(integrationName, dynamicSecretName string) string {
-	return e.principalProvider + e.adminProvider + e.createSecretGrant(dynamicSecretName) + fmt.Sprintf(`
-# No depends_on, and no grant written for this: can_create_integration is a standing grant
-# on the test site, for the reason given at the top of this file.
+	return e.principalProvider + e.adminProvider + e.createIntegrationGrant(dynamicSecretName) + e.createSecretGrant(dynamicSecretName) + fmt.Sprintf(`
 resource "beyondtrust_workload_credentials_aws_integration" "test" {
   provider = beyondtrust.principal
   name     = %[1]q
   role_arn = %[3]q
+
+  depends_on = [beyondtrust_iam_policy.create_integration]
 }
 
 resource "beyondtrust_workload_credentials_aws_dynamic_secret" "test" {
