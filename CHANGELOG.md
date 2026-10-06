@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.4.1](https://github.com/BeyondTrust/terraform-provider-beyondtrust/compare/v1.4.0...v1.4.1) (2026-09-29)
+
+
+### Bug Fixes
+
+* Rename `secrets` to `wlc` ([#117](https://github.com/BeyondTrust/terraform-provider-beyondtrust/issues/117)) ([2120792](https://github.com/BeyondTrust/terraform-provider-beyondtrust/commit/212079284c020ab5c001faafeb3bb50e0158a684))
+
 ## [1.4.0](https://github.com/BeyondTrust/terraform-provider-beyondtrust/compare/v1.3.1...v1.4.0) (2026-09-24)
 
 
