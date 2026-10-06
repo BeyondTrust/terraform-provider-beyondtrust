@@ -52,7 +52,8 @@ func TestAccAzureDynamicSecretEphemeral_generatesAndRevokes(t *testing.T) {
 		},
 		Steps: []resource.TestStep{
 			{
-				Config: env.azureSetupConfig(integrationName, tenantID, clientID, clientSecret, dynamicSecretName, appObjectID),
+				PreConfig: func() { env.grantFixtureCreation(t, dynamicSecretName) },
+				Config:    env.azureSetupConfig(integrationName, tenantID, clientID, clientSecret, dynamicSecretName, appObjectID),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("beyondtrust_workload_credentials_azure_dynamic_secret.test", "name", dynamicSecretName),
 				),
@@ -114,7 +115,8 @@ func TestAccAzureDynamicSecretEphemeral_revokeOnCloseDisabled(t *testing.T) {
 		},
 		Steps: []resource.TestStep{
 			{
-				Config: env.azureSetupConfig(integrationName, tenantID, clientID, clientSecret, dynamicSecretName, appObjectID),
+				PreConfig: func() { env.grantFixtureCreation(t, dynamicSecretName) },
+				Config:    env.azureSetupConfig(integrationName, tenantID, clientID, clientSecret, dynamicSecretName, appObjectID),
 			},
 			{
 				PreConfig: func() {

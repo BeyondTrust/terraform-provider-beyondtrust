@@ -22,13 +22,12 @@ import (
 // so the tests grant it to themselves rather than assuming the environment already has.
 //
 // Writing that grant needs the admin site, where the IAM policy API lives, so the suite
-// needs an admin-audience token alongside the product-site one it runs on. Fixtures are
-// created by the default provider, the identity every other product-site test uses, because
-// it can already create integrations and dynamic secrets.
-//
-// Only the generate grant is written here. The create permissions are not, because that
-// identity demonstrably has them: the integration and dynamic secret resource tests create
-// both, at the product root, in the same job.
+// runs in the admin-site job, the only environment the admin identity federates from (see
+// main_test.go). The default provider there is the product-site identity that seeds the IAM
+// binding tests' fixtures: a workload identity created with no product permissions. So the
+// create permissions are granted here too, at Product scope, because an integration can
+// only be created there and the dynamic secret sits beside it at the root. Every grant is
+// written through the admin API before the step that needs it and removed when the test ends.
 
 // grantEnv holds the identities and fixtures a granted-generation test needs.
 type grantEnv struct {
@@ -61,6 +60,38 @@ permit(
 `, e.siteID, e.principal, dynamicSecretName)
 }
 
+// createIntegrationCedar grants the principal CreateIntegration. Integrations live at the
+// product root, so the only scope the action accepts is the Product itself.
+func (e *grantEnv) createIntegrationCedar() string {
+	return fmt.Sprintf(`@siteId(%q)
+permit(
+  principal == %s,
+  action == WorkloadCredentials::Action::"CreateIntegration",
+  resource is WorkloadCredentials::Product
+);
+`, e.siteID, e.principal)
+}
+
+// createDynamicSecretCedar grants the principal CreateDynamicSecret at the product root,
+// where the fixture is created so that its Cedar path is just its name.
+func (e *grantEnv) createDynamicSecretCedar() string {
+	return fmt.Sprintf(`@siteId(%q)
+permit(
+  principal == %s,
+  action == WorkloadCredentials::Action::"CreateDynamicSecret",
+  resource is WorkloadCredentials::Product
+);
+`, e.siteID, e.principal)
+}
+
+// grantFixtureCreation writes the two grants the fixture step needs and waits for both to be
+// ACTIVE. Named after the dynamic secret so concurrent runs cannot collide on policy names.
+func (e *grantEnv) grantFixtureCreation(t *testing.T, dynamicSecretName string) {
+	t.Helper()
+	grantViaAdmin(t, dynamicSecretName+"-create-integration", e.createIntegrationCedar())
+	grantViaAdmin(t, dynamicSecretName+"-create-dynamic-secret", e.createDynamicSecretCedar())
+}
+
 func TestAccAwsDynamicSecretEphemeral_generatesWithGrant(t *testing.T) {
 	preCheckGrantedAWS(t)
 
@@ -86,12 +117,13 @@ func TestAccAwsDynamicSecretEphemeral_generatesWithGrant(t *testing.T) {
 			tfversion.SkipBelow(tfversion.Version1_10_0),
 		},
 		Steps: []resource.TestStep{
-			// Step 1: the fixtures and the grants, with no ephemeral resource present. Both
-			// must exist before anything generates: an ephemeral resource is opened while the
-			// plan is built, so a plan holding all of it would call generate before the secret
-			// and the grant it depends on exist.
+			// Step 1: the fixtures, with no ephemeral resource present. They must exist before
+			// anything generates: an ephemeral resource is opened while the plan is built, so a
+			// plan holding all of it would call generate before the secret and the grant it
+			// depends on exist. The create grants go in first, for the identity explained above.
 			{
-				Config: env.setupConfig(integrationName, dynamicSecretName),
+				PreConfig: func() { env.grantFixtureCreation(t, dynamicSecretName) },
+				Config:    env.setupConfig(integrationName, dynamicSecretName),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("beyondtrust_workload_credentials_aws_dynamic_secret.test", "name", dynamicSecretName),
 				),

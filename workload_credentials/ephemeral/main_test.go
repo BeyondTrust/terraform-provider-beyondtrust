@@ -82,7 +82,7 @@ func recordRan(t *testing.T) resource.TestCheckFunc {
 // assuming the environment already has.
 //
 // On top of the AWS fixtures they need the admin site, where the IAM policy API lives, and
-// the Cedar entity of the identity the grant is for. The product-site job supplies all
+// the Cedar entity of the identity the grant is for. The admin-site job supplies all
 // three; a job without admin credentials skips them and the accounting records why.
 //
 // The env-var lists live in acctest so this and the direct prechecks cannot drift.
@@ -281,17 +281,19 @@ func ephemeralProviderFactories() map[string]func() (tfprotov6.ProviderServer, e
 
 // --- grants via the admin API, not via a second Terraform provider -------------------------
 //
-// These tests write their Cedar grant through a raw admin-site client rather than as a
-// beyondtrust_iam_policy resource on an aliased provider. Two reasons.
+// These tests write their Cedar grants through a raw admin-site client rather than as
+// beyondtrust_iam_policy resources on an aliased provider. Two reasons.
 //
 // The one that matters is how the edge authenticates an OIDC caller: it resolves the exchange
-// by (site id in the URL path, X-BT-Service-Name), a DynamoDB GetItem on exactly that pair.
-// A single service name therefore cannot reach two sites, and a Terraform provider block can
-// only carry one. A raw client built from LoadAdminTestConfig can carry the admin identity's
-// own name (BEYONDTRUST_ADMIN_SERVICE_NAME) while the provider keeps the product one. The IAM
-// policy binding tests do the same for the opposite direction. The name only finds the record;
-// the edge then checks the token's claims against that identity's trust conditions, so the
-// admin identity must also trust the environment this job runs in.
+// by (site id in the URL path, X-BT-Service-Name), a DynamoDB GetItem on exactly that pair,
+// then checks the token's claims against that identity's trust conditions. A single service
+// name therefore cannot reach two sites, and a Terraform provider block can only carry one.
+// A raw client built from LoadAdminTestConfig carries the admin identity's own name
+// (BEYONDTRUST_ADMIN_SERVICE_NAME) while the provider keeps the product-site one. And since
+// every CI identity trusts exactly one GitHub environment, the suite runs in the job whose
+// environment the admin identity trusts, the admin-site job, with the product-site identity
+// that seeds the IAM binding tests' fixtures as its provider. The IAM policy binding tests do
+// the same for the opposite direction.
 //
 // The other is ordering: an ephemeral resource is opened while the plan is built, so the grant
 // has to exist before that plan runs. Writing it in PreConfig and awaiting ACTIVE there is the

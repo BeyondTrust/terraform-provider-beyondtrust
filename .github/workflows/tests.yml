@@ -83,48 +83,6 @@ jobs:
             const token = await core.getIDToken('${{ secrets.BEYONDTRUST_SITE_ID }}')
             core.setOutput('token', token)
 
-      # The grant these tests author lives on the admin site, so they need an admin-audience
-      # token alongside the product-site one they run on.
-      - name: Get admin-site OIDC token
-        id: oidc-admin
-        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
-        with:
-          script: |
-            const token = await core.getIDToken('${{ secrets.BEYONDTRUST_ADMIN_SITE_ID }}')
-            core.setOutput('token', token)
-
-      # The edge resolves an OIDC exchange by (site id in the URL path, X-BT-Service-Name) — a
-      # DynamoDB GetItem on that pair, then a check of the token's claims against that identity's
-      # trust conditions. Both have to line up for the one client here that talks to the admin
-      # site. The lookup: this job's BEYONDTRUST_SERVICE_NAME names the product-site identity,
-      # so the admin-site call needs BEYONDTRUST_ADMIN_SERVICE_NAME, the admin identity's name.
-      # The conditions: the admin identity's trust config must accept a sub claim from THIS
-      # environment (...:environment:acceptance-tests), not only acceptance-tests-admin. A miss
-      # on either step returns the same generic 401 "OIDC workload exchange denied".
-      #
-      # Separate from make test-acc regardless, so BEYONDTRUST_TEST_REQUIRE_ACC reaches only
-      # the suite whose TestMain honours it: make test-acc covers ./... including ./iam/...,
-      # which has the same gate and skips here for want of its own credentials.
-      - name: Run dynamic credential ephemeral acceptance tests
-        run: make test-acc-ephemeral
-        env:
-          BEYONDTRUST_ACCESS_TOKEN: ${{ steps.oidc.outputs.token }}
-          BEYONDTRUST_SITE_ID: ${{ secrets.BEYONDTRUST_SITE_ID }}
-          BEYONDTRUST_SERVICE_NAME: ${{ secrets.BEYONDTRUST_SERVICE_NAME }}
-          BEYONDTRUST_ADMIN_SITE_ID: ${{ secrets.BEYONDTRUST_ADMIN_SITE_ID }}
-          BEYONDTRUST_ADMIN_ACCESS_TOKEN: ${{ steps.oidc-admin.outputs.token }}
-          BEYONDTRUST_ADMIN_SERVICE_NAME: ${{ secrets.BEYONDTRUST_ADMIN_SERVICE_NAME }}
-          # The Cedar entity of the identity above, which the generate grant names.
-          BEYONDTRUST_TEST_GENERATE_PRINCIPAL: ${{ secrets.BEYONDTRUST_TEST_GENERATE_PRINCIPAL }}
-          BEYONDTRUST_TEST_AWS_ROLE_ARN: ${{ secrets.BEYONDTRUST_TEST_AWS_ROLE_ARN }}
-          BEYONDTRUST_TEST_AWS_TARGET_ROLE_ARN: ${{ secrets.BEYONDTRUST_TEST_AWS_TARGET_ROLE_ARN }}
-          BEYONDTRUST_TEST_AZURE_TENANT_ID: ${{ secrets.BEYONDTRUST_TEST_AZURE_TENANT_ID }}
-          BEYONDTRUST_TEST_AZURE_CLIENT_ID: ${{ secrets.BEYONDTRUST_TEST_AZURE_CLIENT_ID }}
-          BEYONDTRUST_TEST_AZURE_CLIENT_SECRET: ${{ secrets.BEYONDTRUST_TEST_AZURE_CLIENT_SECRET }}
-          BEYONDTRUST_TEST_AZURE_APPLICATION_OBJECT_ID: ${{ secrets.BEYONDTRUST_TEST_AZURE_APPLICATION_OBJECT_ID }}
-          BEYONDTRUST_TEST_REQUIRE_ACC: "1"
-          TF_ACC: "1"
-
       - name: Run acceptance tests
         run: make test-acc
         env:
@@ -211,5 +169,36 @@ jobs:
           # created with no product permissions, so without this the fixtures land at the product
           # root and are refused. See iam/README.md for the one-time grant.
           BEYONDTRUST_TEST_POLICY_FIXTURE_ROOT: ${{ vars.BEYONDTRUST_TEST_POLICY_FIXTURE_ROOT }}
+          BEYONDTRUST_TEST_REQUIRE_ACC: "1"
+          TF_ACC: "1"
+
+      # The dynamic credential ephemeral tests belong here for the same reason the policy
+      # tests do: their generate grant is authored on the admin site. The edge resolves an
+      # OIDC exchange by (site id in the URL path, X-BT-Service-Name) and then checks the
+      # token's claims against that identity's trust conditions, and the admin identity trusts
+      # only this environment. The product-site identity that seeds the policy tests' fixtures
+      # federates from here too, so it is the provider identity: the tests grant it the create
+      # and generate permissions they need through the admin API and remove them afterwards.
+      # BEYONDTRUST_SERVICE_NAME is the provider's, so the admin client gets its own variable.
+      #
+      # Separate from make test-acc so BEYONDTRUST_TEST_REQUIRE_ACC reaches only the suite
+      # whose TestMain honours it.
+      - name: Run dynamic credential ephemeral acceptance tests
+        run: make test-acc-ephemeral
+        env:
+          BEYONDTRUST_ACCESS_TOKEN: ${{ steps.oidc-product.outputs.token }}
+          BEYONDTRUST_SITE_ID: ${{ secrets.BEYONDTRUST_SITE_ID }}
+          BEYONDTRUST_SERVICE_NAME: ${{ secrets.BEYONDTRUST_TEST_POLICY_OWNER_SERVICE_NAME }}
+          BEYONDTRUST_ADMIN_SITE_ID: ${{ secrets.BEYONDTRUST_ADMIN_SITE_ID }}
+          BEYONDTRUST_ADMIN_ACCESS_TOKEN: ${{ steps.oidc.outputs.token }}
+          BEYONDTRUST_ADMIN_SERVICE_NAME: ${{ secrets.BEYONDTRUST_SERVICE_NAME }}
+          # The Cedar entity of the provider identity above, which every grant names.
+          BEYONDTRUST_TEST_GENERATE_PRINCIPAL: ${{ secrets.BEYONDTRUST_TEST_GENERATE_PRINCIPAL }}
+          BEYONDTRUST_TEST_AWS_ROLE_ARN: ${{ secrets.BEYONDTRUST_TEST_AWS_ROLE_ARN }}
+          BEYONDTRUST_TEST_AWS_TARGET_ROLE_ARN: ${{ secrets.BEYONDTRUST_TEST_AWS_TARGET_ROLE_ARN }}
+          BEYONDTRUST_TEST_AZURE_TENANT_ID: ${{ secrets.BEYONDTRUST_TEST_AZURE_TENANT_ID }}
+          BEYONDTRUST_TEST_AZURE_CLIENT_ID: ${{ secrets.BEYONDTRUST_TEST_AZURE_CLIENT_ID }}
+          BEYONDTRUST_TEST_AZURE_CLIENT_SECRET: ${{ secrets.BEYONDTRUST_TEST_AZURE_CLIENT_SECRET }}
+          BEYONDTRUST_TEST_AZURE_APPLICATION_OBJECT_ID: ${{ secrets.BEYONDTRUST_TEST_AZURE_APPLICATION_OBJECT_ID }}
           BEYONDTRUST_TEST_REQUIRE_ACC: "1"
           TF_ACC: "1"

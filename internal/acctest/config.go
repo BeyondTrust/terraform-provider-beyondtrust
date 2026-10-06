@@ -62,21 +62,23 @@ const (
 	// name picks which registration it resolves to.
 	EnvTestPolicyPrincipalServiceName = "BEYONDTRUST_TEST_POLICY_PRINCIPAL_SERVICE_NAME"
 
-	// EnvAdminServiceName names the admin-site workload identity for a job whose
+	// EnvAdminServiceName names the admin-site workload identity for a step whose
 	// BEYONDTRUST_SERVICE_NAME names a product-site one.
 	//
 	// The edge resolves an OIDC exchange by (site id in the URL path, X-BT-Service-Name): a
-	// DynamoDB GetItem on exactly that pair, and nothing else. So one service name cannot
-	// authenticate against two sites. The admin-site job already copes with the mirror case —
-	// BEYONDTRUST_SERVICE_NAME is the admin identity there, and the product side is reached
-	// with EnvTestPolicyOwnerServiceName / EnvTestPolicyPrincipalServiceName. The product-site
-	// job needs the same escape hatch in the other direction when it writes a grant.
+	// DynamoDB GetItem on exactly that pair. So one service name cannot authenticate against
+	// two sites. The policy tests cope with this one way round: BEYONDTRUST_SERVICE_NAME is
+	// the admin identity, and the product side is reached with EnvTestPolicyOwnerServiceName /
+	// EnvTestPolicyPrincipalServiceName. The dynamic credential ephemeral tests need it the
+	// other way round. The Terraform provider under test must be the product-site identity,
+	// which only BEYONDTRUST_SERVICE_NAME can select, so the admin client that writes their
+	// grants gets its own variable.
 	//
 	// Naming the identity is half of it. The edge then checks the token's claims against that
-	// identity's trust conditions, so the admin identity must also trust the environment the
-	// product-site job runs in (its sub condition), or the exchange is denied all the same.
+	// identity's trust conditions, and each CI identity trusts exactly one GitHub environment.
+	// That is why those tests run in the admin-site job rather than the product-site one.
 	//
-	// Unset falls back to BEYONDTRUST_SERVICE_NAME, which is right in the admin-site job.
+	// Unset falls back to BEYONDTRUST_SERVICE_NAME, which is right when one identity serves.
 	EnvAdminServiceName = "BEYONDTRUST_ADMIN_SERVICE_NAME"
 
 	// EnvTestPolicyOwnerServiceName selects the workload identity that seeds the binding tests'
