@@ -171,6 +171,7 @@ jobs:
           # root and are refused. See iam/README.md for the one-time grant.
           BEYONDTRUST_TEST_POLICY_FIXTURE_ROOT: ${{ vars.BEYONDTRUST_TEST_POLICY_FIXTURE_ROOT }}
           BEYONDTRUST_TEST_REQUIRE_ACC: "1"
+          TF_ACC: "1"
 
       # Dynamic credential generation is gated on can_generate_dynamic_credential, which
       # product admins hold implicitly and CI does not. These tests grant it to themselves,
@@ -191,5 +192,4 @@ jobs:
           BEYONDTRUST_TEST_AWS_ROLE_ARN: ${{ secrets.BEYONDTRUST_TEST_AWS_ROLE_ARN }}
           BEYONDTRUST_TEST_AWS_TARGET_ROLE_ARN: ${{ secrets.BEYONDTRUST_TEST_AWS_TARGET_ROLE_ARN }}
           BEYONDTRUST_TEST_REQUIRE_ACC: "1"
-          TF_ACC: "1"
           TF_ACC: "1"
