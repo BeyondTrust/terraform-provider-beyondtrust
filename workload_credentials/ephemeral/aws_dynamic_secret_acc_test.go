@@ -127,7 +127,15 @@ func TestAccAwsDynamicSecretEphemeral_generatesWithGrant(t *testing.T) {
 	registerIntegrationCleanup(t, "aws", integrationName)
 	registerDynamicSecretCleanup(t, dynamicSecretName, env.fixtureRoot)
 
-	resource.ParallelTest(t, resource.TestCase{
+	// resource.Test, not ParallelTest, deliberately.
+	//
+	// Each of these configures two identities — the admin that authors the grants and the
+	// principal that uses them — and every provider configuration costs an OIDC exchange.
+	// Run in parallel, the three tests produced transient 403s on the admin's policy reads
+	// and 401 "OIDC workload exchange denied" on the principal's writes, varying between
+	// tests within a single run while the same code succeeded elsewhere in it. Serialising
+	// trades a little wall clock for a suite whose failures mean something.
+	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { preCheckGrantedAWS(t) },
 		ProtoV6ProviderFactories: ephemeralProviderFactories(),
 		TerraformVersionChecks: []tfversion.TerraformVersionCheck{
