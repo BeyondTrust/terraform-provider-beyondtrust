@@ -177,7 +177,7 @@ jobs:
       # OIDC exchange by (site id in the URL path, X-BT-Service-Name) and then checks the
       # token's claims against that identity's trust conditions, and the admin identity trusts
       # only this environment. The product-site identity that seeds the policy tests' fixtures
-      # federates from here too, so it is the provider identity: the tests grant it the create
+      # federates from here too, so it is the provider identity: the tests grant it the fixture
       # and generate permissions they need through the admin API and remove them afterwards,
       # resolving its Cedar entity from its service name through the admin site rather than
       # carrying it as a secret. BEYONDTRUST_SERVICE_NAME is the provider's, so the admin

@@ -26,9 +26,9 @@ import (
 // runs in the admin-site job, the only environment the admin identity federates from (see
 // main_test.go). The default provider there is the product-site identity that seeds the IAM
 // binding tests' fixtures: a workload identity created with no product permissions. So the
-// create permissions are granted here too, at Product scope, because an integration can
-// only be created there and the dynamic secret sits beside it at the root. Every grant is
-// written through the admin API before the step that needs it and removed when the test ends.
+// permissions the fixtures need are granted here too, at Product scope (fixtureCedar says
+// why that scope). Every grant is written through the admin API before the step that needs
+// it and removed when the test ends.
 
 // grantEnv holds the identities and fixtures a granted-generation test needs.
 type grantEnv struct {
@@ -70,36 +70,37 @@ permit(
 `, e.siteID, e.principal, dynamicSecretName)
 }
 
-// createIntegrationCedar grants the principal CreateIntegration. Integrations live at the
-// product root, so the only scope the action accepts is the Product itself.
-func (e *grantEnv) createIntegrationCedar() string {
+// fixtureCedar grants the principal what the fixture step needs, in one policy at Product
+// scope: creating the integration and dynamic secret, reading them back on refresh, and
+// removing them on destroy. Create actions are checked on the parent, which for a resource at
+// the root is the product; the rest are checked on the resources themselves, and a
+// product-scoped grant covers every resource in the product, including ones that do not exist
+// yet. That last point is why this is not an Owner grant on the two resource paths: a grant on
+// a path that does not exist yet binds only after the resource is created, by a background
+// pipeline, and Terraform reads the integration back the moment the apply ends.
+func (e *grantEnv) fixtureCedar() string {
 	return fmt.Sprintf(`@siteId(%q)
 permit(
   principal == %s,
-  action == WorkloadCredentials::Action::"CreateIntegration",
+  action in [
+    WorkloadCredentials::Action::"CreateIntegration",
+    WorkloadCredentials::Action::"ReadIntegration",
+    WorkloadCredentials::Action::"DeleteIntegration",
+    WorkloadCredentials::Action::"CreateDynamicSecret",
+    WorkloadCredentials::Action::"ReadDynamicSecret",
+    WorkloadCredentials::Action::"DeleteDynamicSecret",
+    WorkloadCredentials::Action::"DestroyDynamicSecret"
+  ],
   resource is WorkloadCredentials::Product
 );
 `, e.siteID, e.principal)
 }
 
-// createDynamicSecretCedar grants the principal CreateDynamicSecret at the product root,
-// where the fixture is created so that its Cedar path is just its name.
-func (e *grantEnv) createDynamicSecretCedar() string {
-	return fmt.Sprintf(`@siteId(%q)
-permit(
-  principal == %s,
-  action == WorkloadCredentials::Action::"CreateDynamicSecret",
-  resource is WorkloadCredentials::Product
-);
-`, e.siteID, e.principal)
-}
-
-// grantFixtureCreation writes the two grants the fixture step needs and waits for both to be
-// ACTIVE. Named after the dynamic secret so concurrent runs cannot collide on policy names.
-func (e *grantEnv) grantFixtureCreation(t *testing.T, dynamicSecretName string) {
+// grantFixtureAccess writes fixtureCedar and waits for it to be ACTIVE. Named after the
+// dynamic secret so concurrent runs cannot collide on policy names.
+func (e *grantEnv) grantFixtureAccess(t *testing.T, dynamicSecretName string) {
 	t.Helper()
-	grantViaAdmin(t, dynamicSecretName+"-create-integration", e.createIntegrationCedar())
-	grantViaAdmin(t, dynamicSecretName+"-create-dynamic-secret", e.createDynamicSecretCedar())
+	grantViaAdmin(t, dynamicSecretName+"-fixtures", e.fixtureCedar())
 }
 
 func TestAccAwsDynamicSecretEphemeral_generatesWithGrant(t *testing.T) {
@@ -130,9 +131,9 @@ func TestAccAwsDynamicSecretEphemeral_generatesWithGrant(t *testing.T) {
 			// Step 1: the fixtures, with no ephemeral resource present. They must exist before
 			// anything generates: an ephemeral resource is opened while the plan is built, so a
 			// plan holding all of it would call generate before the secret and the grant it
-			// depends on exist. The create grants go in first, for the identity explained above.
+			// depends on exist. The fixture grant goes in first, for the identity explained above.
 			{
-				PreConfig: func() { env.grantFixtureCreation(t, dynamicSecretName) },
+				PreConfig: func() { env.grantFixtureAccess(t, dynamicSecretName) },
 				Config:    env.setupConfig(integrationName, dynamicSecretName),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("beyondtrust_workload_credentials_aws_dynamic_secret.test", "name", dynamicSecretName),

@@ -52,7 +52,7 @@ func TestAccAzureDynamicSecretEphemeral_generatesAndRevokes(t *testing.T) {
 		},
 		Steps: []resource.TestStep{
 			{
-				PreConfig: func() { env.grantFixtureCreation(t, dynamicSecretName) },
+				PreConfig: func() { env.grantFixtureAccess(t, dynamicSecretName) },
 				Config:    env.azureSetupConfig(integrationName, tenantID, clientID, clientSecret, dynamicSecretName, appObjectID),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("beyondtrust_workload_credentials_azure_dynamic_secret.test", "name", dynamicSecretName),
@@ -115,7 +115,7 @@ func TestAccAzureDynamicSecretEphemeral_revokeOnCloseDisabled(t *testing.T) {
 		},
 		Steps: []resource.TestStep{
 			{
-				PreConfig: func() { env.grantFixtureCreation(t, dynamicSecretName) },
+				PreConfig: func() { env.grantFixtureAccess(t, dynamicSecretName) },
 				Config:    env.azureSetupConfig(integrationName, tenantID, clientID, clientSecret, dynamicSecretName, appObjectID),
 			},
 			{
@@ -251,13 +251,14 @@ func requireLeaseStaysAbsent(c *btclient.Client, leaseID string) error {
 	}
 }
 
-// revokeCedar grants the principal RevokeLease on one dynamic secret. revoke_on_close
-// defaults to true, and without this Close only warns while the password lives to its TTL.
+// revokeCedar grants the principal RevokeLease and ReadLease on one dynamic secret.
+// revoke_on_close defaults to true, and without RevokeLease Close only warns while the
+// password lives to its TTL. ReadLease is what the checks below use to see whether it did.
 func (e *grantEnv) revokeCedar(dynamicSecretName string) string {
 	return fmt.Sprintf(`@siteId(%q)
 permit(
   principal == %s,
-  action == WorkloadCredentials::Action::"RevokeLease",
+  action in [WorkloadCredentials::Action::"RevokeLease", WorkloadCredentials::Action::"ReadLease"],
   resource == WorkloadCredentials::DynamicSecret::"/%s"
 );
 `, e.siteID, e.principal, dynamicSecretName)
