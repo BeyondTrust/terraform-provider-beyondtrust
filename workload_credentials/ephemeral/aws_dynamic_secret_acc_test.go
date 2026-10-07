@@ -14,28 +14,48 @@ import (
 	"github.com/hashicorp/terraform-plugin-testing/tfversion"
 
 	"github.com/beyondtrust/terraform-provider-beyondtrust/internal/acctest"
+	btclient "github.com/beyondtrust/terraform-provider-beyondtrust/internal/client"
 	_ "github.com/beyondtrust/terraform-provider-beyondtrust/internal/provider" // Import to trigger init()
+	"github.com/beyondtrust/terraform-provider-beyondtrust/workload_credentials/resources"
 )
 
 // Generation is gated on can_generate_dynamic_credential, which resolves through the
-// operator role. The identity these tests run as does not hold it — creating a dynamic
-// secret makes it the owner, and ownership deliberately does not confer generating from it —
-// so the tests grant it to themselves rather than assuming the environment already has.
+// operator role. The identity these tests run as does not hold it, and neither owning a
+// dynamic secret nor having created one confers it, so the tests grant it to themselves
+// rather than assuming the environment already has.
 //
-// Writing that grant needs the admin site, where the IAM policy API lives, so the suite
-// runs in the admin-site job, the only environment the admin identity federates from (see
+// Writing that grant needs the admin site, where the IAM policy API lives, so the suite runs
+// in the admin-site job, the only environment the admin identity federates from (see
 // main_test.go). The default provider there is the product-site identity that seeds the IAM
-// binding tests' fixtures: a workload identity created with no product permissions. So the
-// permissions the fixtures need are granted here too, at Product scope (fixtureCedar says
-// why that scope). Every grant is written through the admin API before the step that needs
-// it and removed when the test ends.
+// binding tests' fixtures: a workload identity with no product permissions beyond Owner on one
+// folder, BEYONDTRUST_TEST_POLICY_FIXTURE_ROOT. The fixtures are arranged around that.
+//
+// The dynamic secret is created inside that folder, so Owner cascades to it: create, read,
+// destroy, and reading and revoking its leases. Generating is not part of Owner, which is the
+// whole point.
+//
+// Integrations sit outside the folder tree, so the integration is created up front through
+// the API as the provider identity, after a product-scoped CreateIntegration grant, and the
+// identity is then made its Owner by path. Both grants bind at once, because the product and,
+// by then, the integration exist. A grant on a path that does not exist yet binds only after
+// the resource is created, by a background pipeline, which is why Terraform does not create
+// the integration here: its first refresh would race that pipeline. The integration resource
+// has its own tests in the product-site job.
+//
+// Every grant is written through the admin API before the step that needs it and removed when
+// the test ends. Without a fixture root the dynamic secret goes to the product root, which
+// needs an identity already allowed to manage secrets there, such as a product admin
+// authenticating with a personal access token locally.
 
 // grantEnv holds the identities and fixtures a granted-generation test needs.
 type grantEnv struct {
 	principal     string
 	siteID        string
+	fixtureRoot   string
 	roleArn       string
 	targetRoleArn string
+	// owner is the product-site client for the identity the provider runs as.
+	owner *btclient.Client
 }
 
 func setupGrantEnv(t *testing.T) *grantEnv {
@@ -49,58 +69,90 @@ func setupGrantEnv(t *testing.T) *grantEnv {
 	if err != nil {
 		t.Fatalf("resolving the principal the grants name: %v", err)
 	}
+	owner, err := acctest.NewTestClient()
+	if err != nil {
+		t.Fatalf("product-site client: %v", err)
+	}
 
 	return &grantEnv{
 		principal:     principal,
 		siteID:        acctest.PolicyTargetSiteID(),
+		fixtureRoot:   acctest.PolicyFixtureRoot(),
 		roleArn:       os.Getenv(acctest.EnvTestAWSRoleARN),
 		targetRoleArn: os.Getenv(acctest.EnvTestAWSTargetRoleARN),
+		owner:         owner,
 	}
 }
 
-// generateCedar grants the principal GenerateDynamicCredential on one dynamic secret. The
-// secret sits at the product root, so its path is its name.
+// dsPath is the dynamic secret's Cedar path: under the fixture root when there is one.
+func (e *grantEnv) dsPath(dynamicSecretName string) string {
+	if e.fixtureRoot == "" {
+		return "/" + dynamicSecretName
+	}
+	return "/" + e.fixtureRoot + "/" + dynamicSecretName
+}
+
+// folderAttr is the folder attribute line for a dynamic secret block, or nothing at the root.
+func (e *grantEnv) folderAttr() string {
+	if e.fixtureRoot == "" {
+		return ""
+	}
+	return fmt.Sprintf("  folder = %q\n", e.fixtureRoot)
+}
+
+// generateCedar grants the principal GenerateDynamicCredential on one dynamic secret.
 func (e *grantEnv) generateCedar(dynamicSecretName string) string {
 	return fmt.Sprintf(`@siteId(%q)
 permit(
   principal == %s,
   action == WorkloadCredentials::Action::"GenerateDynamicCredential",
-  resource == WorkloadCredentials::DynamicSecret::"/%s"
+  resource == WorkloadCredentials::DynamicSecret::%q
 );
-`, e.siteID, e.principal, dynamicSecretName)
+`, e.siteID, e.principal, e.dsPath(dynamicSecretName))
 }
 
-// fixtureCedar grants the principal what the fixture step needs, in one policy at Product
-// scope: creating the integration and dynamic secret, reading them back on refresh, and
-// removing them on destroy. Create actions are checked on the parent, which for a resource at
-// the root is the product; the rest are checked on the resources themselves, and a
-// product-scoped grant covers every resource in the product, including ones that do not exist
-// yet. That last point is why this is not an Owner grant on the two resource paths: a grant on
-// a path that does not exist yet binds only after the resource is created, by a background
-// pipeline, and Terraform reads the integration back the moment the apply ends.
-func (e *grantEnv) fixtureCedar() string {
+// createIntegrationCedar grants the principal CreateIntegration. Integrations live at the
+// product root, so the only scope the action accepts is the Product itself.
+func (e *grantEnv) createIntegrationCedar() string {
 	return fmt.Sprintf(`@siteId(%q)
 permit(
   principal == %s,
-  action in [
-    WorkloadCredentials::Action::"CreateIntegration",
-    WorkloadCredentials::Action::"ReadIntegration",
-    WorkloadCredentials::Action::"DeleteIntegration",
-    WorkloadCredentials::Action::"CreateDynamicSecret",
-    WorkloadCredentials::Action::"ReadDynamicSecret",
-    WorkloadCredentials::Action::"DeleteDynamicSecret",
-    WorkloadCredentials::Action::"DestroyDynamicSecret"
-  ],
+  action == WorkloadCredentials::Action::"CreateIntegration",
   resource is WorkloadCredentials::Product
 );
 `, e.siteID, e.principal)
 }
 
-// grantFixtureAccess writes fixtureCedar and waits for it to be ACTIVE. Named after the
-// dynamic secret so concurrent runs cannot collide on policy names.
-func (e *grantEnv) grantFixtureAccess(t *testing.T, dynamicSecretName string) {
+// ownIntegrationCedar makes the principal Owner of one integration, which is how it gets to
+// read the integration back and delete it. Integration paths are the provider then the name.
+func (e *grantEnv) ownIntegrationCedar(provider, integrationName string) string {
+	return fmt.Sprintf(`@siteId(%q)
+permit(
+  principal == %s,
+  action == WorkloadCredentials::Action::"Owner",
+  resource == WorkloadCredentials::Integration::%q
+);
+`, e.siteID, e.principal, "/"+provider+"/"+integrationName)
+}
+
+// createFixtureIntegration creates the integration a dynamic secret fixture needs, as the
+// provider identity, and makes that identity its Owner. See the file header for why this is
+// not a Terraform resource in the test configuration.
+//
+// The integration's cleanup is registered after the Owner grant's, so that it runs first:
+// deleting the integration needs the grant to still be in effect.
+func (e *grantEnv) createFixtureIntegration(t *testing.T, provider, integrationName string, body any) {
 	t.Helper()
-	grantViaAdmin(t, dynamicSecretName+"-fixtures", e.fixtureCedar())
+
+	grantViaAdmin(t, integrationName+"-create", e.createIntegrationCedar())
+
+	path := e.owner.BuildPath("/integrations/" + provider + "/" + integrationName)
+	if err := e.owner.Post(context.Background(), path, nil, body, nil); err != nil {
+		t.Fatalf("creating %s integration %q: %v", provider, integrationName, err)
+	}
+
+	grantViaAdmin(t, integrationName+"-own", e.ownIntegrationCedar(provider, integrationName))
+	registerIntegrationCleanup(t, provider, integrationName)
 }
 
 func TestAccAwsDynamicSecretEphemeral_generatesWithGrant(t *testing.T) {
@@ -109,9 +161,6 @@ func TestAccAwsDynamicSecretEphemeral_generatesWithGrant(t *testing.T) {
 	env := setupGrantEnv(t)
 	integrationName := acctest.RandomIntegrationName()
 	dynamicSecretName := acctest.RandomDynamicSecretName()
-
-	registerIntegrationCleanup(t, "aws", integrationName)
-	registerDynamicSecretCleanup(t, dynamicSecretName, "")
 
 	// resource.Test, not ParallelTest, deliberately.
 	//
@@ -124,6 +173,7 @@ func TestAccAwsDynamicSecretEphemeral_generatesWithGrant(t *testing.T) {
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { preCheckGrantedAWS(t) },
 		ProtoV6ProviderFactories: ephemeralProviderFactories(),
+		CheckDestroy:             testAccCheckEphemeralFixturesDestroyed,
 		TerraformVersionChecks: []tfversion.TerraformVersionCheck{
 			tfversion.SkipBelow(tfversion.Version1_10_0),
 		},
@@ -131,10 +181,18 @@ func TestAccAwsDynamicSecretEphemeral_generatesWithGrant(t *testing.T) {
 			// Step 1: the fixtures, with no ephemeral resource present. They must exist before
 			// anything generates: an ephemeral resource is opened while the plan is built, so a
 			// plan holding all of it would call generate before the secret and the grant it
-			// depends on exist. The fixture grant goes in first, for the identity explained above.
+			// depends on exist. The integration goes in first, through the API, for the
+			// reasons in the file header. The dynamic secret's cleanup is registered after it
+			// so that, if the test fails midway, the secret is removed before the integration
+			// it references.
 			{
-				PreConfig: func() { env.grantFixtureAccess(t, dynamicSecretName) },
-				Config:    env.setupConfig(integrationName, dynamicSecretName),
+				PreConfig: func() {
+					env.createFixtureIntegration(t, "aws", integrationName, resources.AwsIntegrationCreateRequest{
+						RoleArn: env.roleArn,
+					})
+					registerDynamicSecretCleanup(t, dynamicSecretName, env.fixtureRoot)
+				},
+				Config: env.setupConfig(integrationName, dynamicSecretName),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("beyondtrust_workload_credentials_aws_dynamic_secret.test", "name", dynamicSecretName),
 				),
@@ -163,36 +221,32 @@ func TestAccAwsDynamicSecretEphemeral_generatesWithGrant(t *testing.T) {
 	})
 }
 
-// setupConfig creates the fixtures. Just those: the grant is not a resource here.
+// setupConfig declares the dynamic secret fixture. The integration it names already exists;
+// the grant is not a resource here either.
 func (e *grantEnv) setupConfig(integrationName, dynamicSecretName string) string {
 	return fmt.Sprintf(`
-resource "beyondtrust_workload_credentials_aws_integration" "test" {
-  name     = %[1]q
-  role_arn = %[3]q
-}
-
 resource "beyondtrust_workload_credentials_aws_dynamic_secret" "test" {
-  name             = %[2]q
-  integration_name = beyondtrust_workload_credentials_aws_integration.test.name
+  name             = %[1]q
+  integration_name = %[2]q
   credential_type  = "assumed_role"
-  role_arn         = %[4]q
+  role_arn         = %[3]q
   ttl              = 3600
-}
-`, integrationName, dynamicSecretName, e.roleArn, e.targetRoleArn)
+%[4]s}
+`, dynamicSecretName, integrationName, e.targetRoleArn, e.folderAttr())
 }
 
 // generateConfig adds the ephemeral resource, which runs as the default provider — the
 // identity the grant above names.
 func (e *grantEnv) generateConfig(integrationName, dynamicSecretName string) string {
-	return e.setupConfig(integrationName, dynamicSecretName) + `
+	return e.setupConfig(integrationName, dynamicSecretName) + fmt.Sprintf(`
 ephemeral "beyondtrust_workload_credentials_aws_dynamic_secret" "test" {
   name = beyondtrust_workload_credentials_aws_dynamic_secret.test.name
-}
+%[1]s}
 
 provider "echo" {
   data = ephemeral.beyondtrust_workload_credentials_aws_dynamic_secret.test
 }
 
 resource "echo" "aws" {}
-`
+`, e.folderAttr())
 }

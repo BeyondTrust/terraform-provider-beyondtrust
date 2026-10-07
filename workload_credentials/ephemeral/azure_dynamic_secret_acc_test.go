@@ -18,6 +18,7 @@ import (
 	"github.com/beyondtrust/terraform-provider-beyondtrust/internal/acctest"
 	btclient "github.com/beyondtrust/terraform-provider-beyondtrust/internal/client"
 	_ "github.com/beyondtrust/terraform-provider-beyondtrust/internal/provider" // Import to trigger init()
+	"github.com/beyondtrust/terraform-provider-beyondtrust/workload_credentials/resources"
 )
 
 func TestAccAzureDynamicSecretEphemeral_generatesAndRevokes(t *testing.T) {
@@ -26,14 +27,7 @@ func TestAccAzureDynamicSecretEphemeral_generatesAndRevokes(t *testing.T) {
 	env := setupGrantEnv(t)
 	integrationName := acctest.RandomIntegrationName()
 	dynamicSecretName := acctest.RandomDynamicSecretName()
-	tenantID := os.Getenv(acctest.EnvTestAzureTenantID)
-	clientID := os.Getenv(acctest.EnvTestAzureClientID)
-	clientSecret := os.Getenv(acctest.EnvTestAzureClientSecret)
 	appObjectID := os.Getenv(acctest.EnvTestAzureAppObjectID)
-
-	// Safety net (LIFO: secret cleaned up before the integration it references).
-	registerIntegrationCleanup(t, "azure", integrationName)
-	registerDynamicSecretCleanup(t, dynamicSecretName, "")
 
 	// resource.Test, not ParallelTest, deliberately.
 	//
@@ -51,9 +45,13 @@ func TestAccAzureDynamicSecretEphemeral_generatesAndRevokes(t *testing.T) {
 			tfversion.SkipBelow(tfversion.Version1_10_0),
 		},
 		Steps: []resource.TestStep{
+			// See the AWS test for the ordering of fixtures, grants and cleanups.
 			{
-				PreConfig: func() { env.grantFixtureAccess(t, dynamicSecretName) },
-				Config:    env.azureSetupConfig(integrationName, tenantID, clientID, clientSecret, dynamicSecretName, appObjectID),
+				PreConfig: func() {
+					env.createFixtureIntegration(t, "azure", integrationName, env.azureIntegrationRequest())
+					registerDynamicSecretCleanup(t, dynamicSecretName, env.fixtureRoot)
+				},
+				Config: env.azureSetupConfig(integrationName, dynamicSecretName, appObjectID),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("beyondtrust_workload_credentials_azure_dynamic_secret.test", "name", dynamicSecretName),
 				),
@@ -63,13 +61,13 @@ func TestAccAzureDynamicSecretEphemeral_generatesAndRevokes(t *testing.T) {
 					grantViaAdmin(t, dynamicSecretName+"-generate", env.generateCedar(dynamicSecretName))
 					grantViaAdmin(t, dynamicSecretName+"-revoke", env.revokeCedar(dynamicSecretName))
 				},
-				Config: env.azureGenerateConfig(integrationName, tenantID, clientID, clientSecret, dynamicSecretName, appObjectID, true),
+				Config: env.azureGenerateConfig(integrationName, dynamicSecretName, appObjectID, true),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					recordRan(t),
 					resource.TestCheckResourceAttrSet("echo.azure", "data.client_secret"),
 					resource.TestCheckResourceAttrSet("echo.azure", "data.key_id"),
 					resource.TestCheckResourceAttrSet("echo.azure", "data.lease_id"),
-					resource.TestCheckResourceAttr("echo.azure", "data.tenant_id", tenantID),
+					resource.TestCheckResourceAttr("echo.azure", "data.tenant_id", os.Getenv(acctest.EnvTestAzureTenantID)),
 					resource.TestCheckResourceAttr("echo.azure", "data.revoke_on_close", "true"),
 					// Close runs at the end of the apply walk, before checks execute, so
 					// by now the lease must already be gone.
@@ -89,23 +87,9 @@ func TestAccAzureDynamicSecretEphemeral_revokeOnCloseDisabled(t *testing.T) {
 	env := setupGrantEnv(t)
 	integrationName := acctest.RandomIntegrationName()
 	dynamicSecretName := acctest.RandomDynamicSecretName()
-	tenantID := os.Getenv(acctest.EnvTestAzureTenantID)
-	clientID := os.Getenv(acctest.EnvTestAzureClientID)
-	clientSecret := os.Getenv(acctest.EnvTestAzureClientSecret)
 	appObjectID := os.Getenv(acctest.EnvTestAzureAppObjectID)
 
-	// Safety net (LIFO: secret cleaned up before the integration it references).
-	registerIntegrationCleanup(t, "azure", integrationName)
-	registerDynamicSecretCleanup(t, dynamicSecretName, "")
-
-	// resource.Test, not ParallelTest, deliberately.
-	//
-	// Each of these configures two identities — the admin that authors the grants and the
-	// principal that uses them — and every provider configuration costs an OIDC exchange.
-	// Run in parallel, the three tests produced transient 403s on the admin's policy reads
-	// and 401 "OIDC workload exchange denied" on the principal's writes, varying between
-	// tests within a single run while the same code succeeded elsewhere in it. Serialising
-	// trades a little wall clock for a suite whose failures mean something.
+	// resource.Test, not ParallelTest, deliberately; see the test above.
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { preCheckGrantedAzure(t) },
 		ProtoV6ProviderFactories: ephemeralProviderFactories(),
@@ -115,15 +99,18 @@ func TestAccAzureDynamicSecretEphemeral_revokeOnCloseDisabled(t *testing.T) {
 		},
 		Steps: []resource.TestStep{
 			{
-				PreConfig: func() { env.grantFixtureAccess(t, dynamicSecretName) },
-				Config:    env.azureSetupConfig(integrationName, tenantID, clientID, clientSecret, dynamicSecretName, appObjectID),
+				PreConfig: func() {
+					env.createFixtureIntegration(t, "azure", integrationName, env.azureIntegrationRequest())
+					registerDynamicSecretCleanup(t, dynamicSecretName, env.fixtureRoot)
+				},
+				Config: env.azureSetupConfig(integrationName, dynamicSecretName, appObjectID),
 			},
 			{
 				PreConfig: func() {
 					grantViaAdmin(t, dynamicSecretName+"-generate", env.generateCedar(dynamicSecretName))
 					grantViaAdmin(t, dynamicSecretName+"-revoke", env.revokeCedar(dynamicSecretName))
 				},
-				Config: env.azureGenerateConfig(integrationName, tenantID, clientID, clientSecret, dynamicSecretName, appObjectID, false),
+				Config: env.azureGenerateConfig(integrationName, dynamicSecretName, appObjectID, false),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					recordRan(t),
 					resource.TestCheckResourceAttr("echo.azure", "data.revoke_on_close", "false"),
@@ -251,50 +238,55 @@ func requireLeaseStaysAbsent(c *btclient.Client, leaseID string) error {
 	}
 }
 
-// revokeCedar grants the principal RevokeLease and ReadLease on one dynamic secret.
-// revoke_on_close defaults to true, and without RevokeLease Close only warns while the
-// password lives to its TTL. ReadLease is what the checks below use to see whether it did.
+// revokeCedar grants the principal RevokeLease and ReadLease on one dynamic secret, which
+// Owner on the fixture folder already includes; it is written all the same so that a run
+// without a fixture root has the permissions the checks below need spelled out. Without
+// RevokeLease, Close only warns while the password lives to its TTL.
 func (e *grantEnv) revokeCedar(dynamicSecretName string) string {
 	return fmt.Sprintf(`@siteId(%q)
 permit(
   principal == %s,
   action in [WorkloadCredentials::Action::"RevokeLease", WorkloadCredentials::Action::"ReadLease"],
-  resource == WorkloadCredentials::DynamicSecret::"/%s"
+  resource == WorkloadCredentials::DynamicSecret::%q
 );
-`, e.siteID, e.principal, dynamicSecretName)
+`, e.siteID, e.principal, e.dsPath(dynamicSecretName))
 }
 
-func (e *grantEnv) azureSetupConfig(integrationName, tenantID, clientID, clientSecret, dynamicSecretName, appObjectID string) string {
+// azureIntegrationRequest is the body that creates the Azure integration fixture, from the
+// same environment the Azure precheck requires.
+func (e *grantEnv) azureIntegrationRequest() resources.AzureIntegrationCreateRequest {
+	return resources.AzureIntegrationCreateRequest{
+		TenantID:     os.Getenv(acctest.EnvTestAzureTenantID),
+		ClientID:     os.Getenv(acctest.EnvTestAzureClientID),
+		ClientSecret: os.Getenv(acctest.EnvTestAzureClientSecret),
+	}
+}
+
+// azureSetupConfig declares the dynamic secret fixture. The integration it names already
+// exists; see the AWS test's file header.
+func (e *grantEnv) azureSetupConfig(integrationName, dynamicSecretName, appObjectID string) string {
 	return fmt.Sprintf(`
-resource "beyondtrust_workload_credentials_azure_integration" "test" {
-  name                  = %[1]q
-  tenant_id             = %[2]q
-  client_id             = %[3]q
-  client_secret         = %[4]q
-  client_secret_version = 1
-}
-
 resource "beyondtrust_workload_credentials_azure_dynamic_secret" "test" {
-  name                  = %[5]q
-  integration_name      = beyondtrust_workload_credentials_azure_integration.test.name
+  name                  = %[1]q
+  integration_name      = %[2]q
   credential_type       = "service_principal_password"
-  application_object_id = %[6]q
+  application_object_id = %[3]q
   ttl                   = 3600
-}
-`, integrationName, tenantID, clientID, clientSecret, dynamicSecretName, appObjectID)
+%[4]s}
+`, dynamicSecretName, integrationName, appObjectID, e.folderAttr())
 }
 
-func (e *grantEnv) azureGenerateConfig(integrationName, tenantID, clientID, clientSecret, dynamicSecretName, appObjectID string, revokeOnClose bool) string {
-	return e.azureSetupConfig(integrationName, tenantID, clientID, clientSecret, dynamicSecretName, appObjectID) + fmt.Sprintf(`
+func (e *grantEnv) azureGenerateConfig(integrationName, dynamicSecretName, appObjectID string, revokeOnClose bool) string {
+	return e.azureSetupConfig(integrationName, dynamicSecretName, appObjectID) + fmt.Sprintf(`
 ephemeral "beyondtrust_workload_credentials_azure_dynamic_secret" "test" {
   name            = beyondtrust_workload_credentials_azure_dynamic_secret.test.name
   revoke_on_close = %[1]t
-}
+%[2]s}
 
 provider "echo" {
   data = ephemeral.beyondtrust_workload_credentials_azure_dynamic_secret.test
 }
 
 resource "echo" "azure" {}
-`, revokeOnClose)
+`, revokeOnClose, e.folderAttr())
 }
