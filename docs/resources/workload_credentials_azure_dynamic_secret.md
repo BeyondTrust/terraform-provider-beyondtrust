@@ -34,8 +34,8 @@ resource "beyondtrust_workload_credentials_azure_dynamic_secret" "app_creds" {
   integration_name = beyondtrust_workload_credentials_azure_integration.production.name
 
   credential_type       = "service_principal_password"
-  application_object_id = "33333333-3333-3333-3333-333333333333"  # Object ID of the target app (not client ID)
-  ttl                   = 3600  # seconds; valid range: 3600–86400
+  application_object_id = "33333333-3333-3333-3333-333333333333" # Object ID of the target app (not client ID)
+  ttl                   = 3600                                   # seconds; valid range: 3600–86400
 }
 ```
 
@@ -44,15 +44,15 @@ resource "beyondtrust_workload_credentials_azure_dynamic_secret" "app_creds" {
 
 ### Required
 
-- `application_object_id` (String) The Object ID of the Azure Active Directory application registration to generate credentials for. Must be a valid UUID. **Note:** this is the Object ID, not the Application (client) ID.
-- `credential_type` (String) The type of Azure credentials to generate. Currently supported: `service_principal_password`. Changing this requires replacing the resource.
+- `application_object_id` (String) The Object ID of the Azure Active Directory application registration to generate credentials for. Must be a valid UUID. Note: this is the Object ID, not the Application (client) ID.
+- `credential_type` (String) The type of Azure credentials to generate. Currently supported: 'service_principal_password'. Changing this requires replacing the resource.
 - `integration_name` (String) The name of the Azure integration to use for generating credentials. Changing this requires replacing the resource.
 - `name` (String) The name of the dynamic secret. Must match pattern: ^[a-zA-Z0-9\-_@~\*\^]{1,130}$ (single path segment, max 130 chars).
-- `ttl` (Number) Time-to-live in seconds for generated credentials. Valid range: 3600–86400 (1 hour to 24 hours).
+- `ttl` (Number) Time-to-live in seconds for generated credentials. Valid range: 3600-86400 (1 hour to 24 hours).
 
 ### Optional
 
-- `folder` (String) The parent folder path (e.g., `production` or `production/azure`). Leave empty for root level. Each segment must match: ^[a-zA-Z0-9\-_@~\*\^]{1,130}$.
+- `folder` (String) The parent folder path (e.g., 'production' or 'production/azure'). Leave empty for root level. Each segment must match: ^[a-zA-Z0-9\-_@~\*\^]{1,130}$.
 
 ### Read-Only
 

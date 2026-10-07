@@ -215,7 +215,7 @@ test-coverage-html: test-unit
 ## generate: Run code generation tools (docs)
 generate:
 	@echo "Running code generation..."
-	@cd tools && go generate ./...
+	@cd tools && go generate -tags tools ./...
 
 ## docs: Generate documentation (alias for generate)
 docs: generate

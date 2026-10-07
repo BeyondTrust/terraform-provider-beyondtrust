@@ -69,8 +69,11 @@ resource "kubernetes_secret" "api_credentials" {
 ### Read-Only
 
 - `created_at` (String) The timestamp when the secret was created.
+- `created_by` (String) The ID of the user who created the secret.
+- `deleted_at` (String) The timestamp when the secret was soft-deleted (if applicable).
 - `id` (String) The unique identifier (UUID) of the secret.
 - `path` (String) The full path to the secret (computed).
+- `version` (Number) The current version number of the secret.
 
 ## Import
 
