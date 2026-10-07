@@ -25,23 +25,16 @@ resource "beyondtrust_workload_credentials_azure_dynamic_secret" "deploy" {
   ttl                   = 3600
 }
 
-# Mint from that definition.
-#
-# The dynamic secret above must ALREADY EXIST before this runs. An ephemeral resource is
-# opened while the plan is built, so a single apply that both creates the definition and
-# generates from it fails: the generate call happens first and the secret is not there yet.
-# depends_on does not change that — the open precedes it.
-#
-# So in a configuration that manages the definition, apply it before adding this block.
-# Once the definition exists, every later apply is a single step.
+# Generate credentials from that definition. The dynamic secret must already exist:
+# apply it first, then add this block. depends_on does not help, because ephemeral
+# resources are opened while the plan is built.
 ephemeral "beyondtrust_workload_credentials_azure_dynamic_secret" "deploy" {
   name   = beyondtrust_workload_credentials_azure_dynamic_secret.deploy.name
   folder = beyondtrust_workload_credentials_azure_dynamic_secret.deploy.folder
 }
 
-# Ephemeral values may flow into provider configuration, write-only attributes, other
-# ephemeral resources, and locals or outputs marked ephemeral. Terraform rejects them
-# anywhere else, including ordinary resource attributes.
+# Ephemeral values can be used in provider configuration, write-only attributes and other
+# ephemeral resources, but not in ordinary resource attributes.
 provider "azurerm" {
   features {}
 
@@ -50,12 +43,8 @@ provider "azurerm" {
   tenant_id     = ephemeral.beyondtrust_workload_credentials_azure_dynamic_secret.deploy.tenant_id
 }
 
-# `revoke_on_close` defaults to true, deleting the password as soon as Terraform is done
-# with it. Set it to false only when handing the credential to a system that must keep
-# using it after the apply — and note that every generated password then stays on the
-# app registration until its TTL elapses, against a registration that caps how many it
-# can hold. It is deliberately not shown here, because an example that mints an
-# unrevoked credential is one people copy by accident.
+# revoke_on_close defaults to true, deleting the password once Terraform is done with it.
+# Set it to false only when another system must keep using the password after the apply.
 ```
 
 ## The dynamic secret must already exist
@@ -102,17 +91,12 @@ Two things to get right:
 - The principal must be the identity whose token the provider authenticates with, not a
   separate subject. Granting to anyone else yields a policy that reports `ACTIVE` and
   changes nothing.
-- Granting `Owner` on the dynamic secret does **not** confer generation.
-  `GenerateDynamicCredential` resolves through the `operator` role while most other
-  dynamic-secret permissions resolve through `owner`, and `operator` cannot be granted on a
-  folder or a secret — it only descends from the product. A direct grant of this action is
-  the only least-privilege route.
+- `Owner` on the dynamic secret or its folder does **not** include generation. Grant
+  `GenerateDynamicCredential` directly.
 
-`revoke_on_close` needs a second grant, `RevokeLease`, on the same resource. Without it the
-apply still succeeds and `Close` only emits a warning, while the password survives to its TTL —
-a silent failure, which is why it is worth granting explicitly rather than assuming generation
-implies revocation. Unlike generation, `RevokeLease` resolves through `owner`, so an `Owner`
-grant on the dynamic secret does cover it.
+`revoke_on_close` also needs `RevokeLease` on the same dynamic secret, which `Owner` includes.
+Without it the apply still succeeds, but Terraform only warns and the password stays valid until
+its TTL.
 
 Check the policy's `status` after applying. `ACTIVE` means the grant is in effect; anything
 else, such as `WAITING_FOR_RESOURCE`, means it is not — and that is reported as a warning
@@ -128,15 +112,14 @@ Each generated password is a real credential added to the target app registratio
 
 By default the generated password is deleted from the target application via Microsoft Graph as soon as Terraform finishes using it. The delete is idempotent — a password that is already gone is treated as success.
 
-Revocation is best effort. If it fails, Terraform emits a warning rather than failing the operation, and the credential remains valid until the dynamic secret's `ttl` elapses. A revocation that fails consistently usually means the principal lacks the `can_revoke_lease` permission on the dynamic secret. Terraform also cannot revoke anything if the process is killed outright.
+Revocation is best effort. If it fails, Terraform emits a warning rather than failing the operation, and the credential remains valid until the dynamic secret's `ttl` elapses. A revocation that fails consistently usually means the principal lacks the `RevokeLease` permission on the dynamic secret. Terraform also cannot revoke anything if the process is killed outright.
 
 There is no `expiration` attribute on this resource: the generate response does not include one. Read `ttl` from the `beyondtrust_workload_credentials_azure_dynamic_secret` resource instead.
 
 ## Using the generated credentials
 
-Generation is the only operation that returns credential values. Nothing stores them: a lease
-records `dynamicSecretPath`, `externalEntityId`, `expiration` and similar metadata, never the
-credential itself, so there is no later call that can hand the values back.
+Generation is the only operation that returns credential values. They are not stored anywhere,
+so no later call can return them again.
 
 Within Terraform those values may only flow to:
 

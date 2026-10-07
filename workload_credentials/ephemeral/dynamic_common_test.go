@@ -5,6 +5,7 @@ package ephemeral
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"sync/atomic"
@@ -161,8 +162,7 @@ func TestRevokeLease_NotRevocableIsReported(t *testing.T) {
 	assert.Equal(t, int32(1), calls.Load(), "a non-revocable lease must not be retried")
 }
 
-// The API returns a leaseId from an enqueued workflow before the row is committed, so
-// a revoke can briefly outrun its own lease.
+// A new lease may not be visible for a moment, so a 404 right after generate is retried.
 func TestRevokeLease_RetriesTransientNotFound(t *testing.T) {
 	t.Parallel()
 
@@ -197,9 +197,7 @@ func TestRevokeLease_PersistentNotFoundIsSuccess(t *testing.T) {
 	assert.Greater(t, calls.Load(), int32(1), "a transient status should have been retried first")
 }
 
-// A 403 is ambiguous between the durability window and a principal that simply lacks
-// can_revoke_lease. The second case never clears, so retrying it would make every
-// under-privileged caller pay the full backoff budget on every apply.
+// A 403 may mean the caller lacks RevokeLease, which never clears, so it is not retried.
 func TestRevokeLease_DoesNotRetryForbidden(t *testing.T) {
 	t.Parallel()
 
@@ -317,4 +315,48 @@ func TestGenerateCredential_RejectsNoContent(t *testing.T) {
 	_, err := generateCredential[azureGeneratedSecret](context.Background(), newTestClient(t, srv.URL), "s", "")
 	require.Error(t, err)
 	assert.ErrorIs(t, err, ErrMalformedGenerateResponse)
+}
+
+// Permission advice belongs only to a 403 or 404, not to a server error.
+func TestGenerateFailureDetail_AdviceMatchesStatus(t *testing.T) {
+	t.Parallel()
+
+	for name, tc := range map[string]struct {
+		err          error
+		wantSubstr   []string
+		notWantSubst []string
+	}{
+		"forbidden": {
+			err:          &client.APIError{StatusCode: http.StatusForbidden, Code: "forbidden", Message: "nope", TraceID: "tr-1"},
+			wantSubstr:   []string{"GenerateDynamicCredential", "depends_on does not help", "API error code: forbidden", "Trace ID: tr-1"},
+			notWantSubst: []string{"server-side failure"},
+		},
+		"not found": {
+			err:        &client.APIError{StatusCode: http.StatusNotFound, Code: "dynamic_secret_not_found", Message: "gone"},
+			wantSubstr: []string{"GenerateDynamicCredential"},
+		},
+		"internal error": {
+			err:          &client.APIError{StatusCode: http.StatusInternalServerError, Code: "internal_error", Message: "boom", TraceID: "tr-2"},
+			wantSubstr:   []string{"server-side failure", "Trace ID: tr-2"},
+			notWantSubst: []string{"GenerateDynamicCredential", "depends_on"},
+		},
+		"non-api error": {
+			err:          errors.New("dial tcp: refused"),
+			wantSubstr:   []string{"dial tcp: refused"},
+			notWantSubst: []string{"GenerateDynamicCredential", "server-side failure"},
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			got := generateFailureDetail("my-secret", tc.err)
+			assert.Contains(t, got, "my-secret")
+			for _, want := range tc.wantSubstr {
+				assert.Contains(t, got, want)
+			}
+			for _, unwanted := range tc.notWantSubst {
+				assert.NotContains(t, got, unwanted)
+			}
+		})
+	}
 }

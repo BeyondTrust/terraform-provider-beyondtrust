@@ -1,6 +1,7 @@
 package acctest
 
 import (
+	"context"
 	"fmt"
 	"math/rand"
 	"os"
@@ -8,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/beyondtrust/terraform-provider-beyondtrust/internal/client"
 	"github.com/beyondtrust/terraform-provider-beyondtrust/internal/constants"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 )
@@ -148,6 +150,31 @@ func PolicyBindingSkipReason() string {
 	return ""
 }
 
+// GenerateGrantSkipReason returns why the dynamic credential tests cannot run, or "" when
+// they can: they need the admin site to author the grant and a way to name the identity the
+// grant is for, either EnvTestGeneratePrincipal or a service name to resolve it from.
+func GenerateGrantSkipReason() string {
+	if _, err := LoadAdminTestConfig(); err != nil {
+		return fmt.Sprintf("%v (set %s and %s)", err, EnvAdminSiteID, EnvAdminAccessToken)
+	}
+
+	principal := os.Getenv(EnvTestGeneratePrincipal)
+	if principal == "" {
+		if os.Getenv(constants.EnvServiceName) == "" {
+			return fmt.Sprintf("neither %s (a Cedar entity, e.g. Pathfinder::Workload::Id::%q) nor %s "+
+				"(a service name to resolve it from) is set",
+				EnvTestGeneratePrincipal, "<uuid>", constants.EnvServiceName)
+		}
+		return ""
+	}
+	if !strings.Contains(principal, "::") || !strings.Contains(principal, `"`) {
+		return fmt.Sprintf("%s must be a whole Cedar entity such as Pathfinder::Workload::Id::%q, got %q",
+			EnvTestGeneratePrincipal, "<uuid>", principal)
+	}
+
+	return ""
+}
+
 // PolicyPrincipalSkipReason returns why the configured Cedar principal is unusable, or "".
 //
 // The value is a whole Cedar entity rather than a bare name, because a workload identity has no
@@ -270,4 +297,48 @@ func RandomTags() map[string]string {
 		"ManagedBy":   "terraform",
 		"TestRun":     RandomString(8),
 	}
+}
+
+// workloadIdentityPage is the shape of GET /platform/auth/workload-identities, reduced to
+// what resolving a service name needs.
+type workloadIdentityPage struct {
+	Issuers []struct {
+		IdentityID  string `json:"identityId"`
+		ServiceName string `json:"serviceName"`
+	} `json:"issuers"`
+	TotalCount int `json:"totalCount"`
+}
+
+// ResolveGeneratePrincipal returns the Cedar entity the dynamic credential tests grant to.
+//
+// EnvTestGeneratePrincipal wins when set. Otherwise the provider identity's service name
+// (BEYONDTRUST_SERVICE_NAME) is looked up among the org's workload identities through the
+// admin site, and the entity is Pathfinder::Workload::Id::"<identityId>", the form a workload
+// identity takes in Cedar. Service names are matched case-insensitively.
+func ResolveGeneratePrincipal(ctx context.Context, admin *client.Client) (string, error) {
+	if principal := os.Getenv(EnvTestGeneratePrincipal); principal != "" {
+		return principal, nil
+	}
+
+	serviceName := os.Getenv(constants.EnvServiceName)
+	if serviceName == "" {
+		return "", fmt.Errorf("set %s to a Cedar entity, or %s to a service name to resolve one from",
+			EnvTestGeneratePrincipal, constants.EnvServiceName)
+	}
+
+	var page workloadIdentityPage
+	if err := admin.Get(ctx, admin.BuildAuthPath("/workload-identities"), nil, &page); err != nil {
+		return "", fmt.Errorf("listing workload identities to resolve %q: %w", serviceName, err)
+	}
+	for _, issuer := range page.Issuers {
+		if strings.EqualFold(issuer.ServiceName, serviceName) {
+			return fmt.Sprintf("Pathfinder::Workload::Id::%q", issuer.IdentityID), nil
+		}
+	}
+	if page.TotalCount > len(page.Issuers) {
+		return "", fmt.Errorf("no workload identity named %q among the first %d of %d listed; set %s instead",
+			serviceName, len(page.Issuers), page.TotalCount, EnvTestGeneratePrincipal)
+	}
+	return "", fmt.Errorf("no workload identity named %q among the %d the admin site lists",
+		serviceName, len(page.Issuers))
 }
