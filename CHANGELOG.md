@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.4.2](https://github.com/BeyondTrust/terraform-provider-beyondtrust/compare/v1.4.1...v1.4.2) (2026-10-07)
+
+
+### Bug Fixes
+
+* make generate actually generates the docs ([#125](https://github.com/BeyondTrust/terraform-provider-beyondtrust/issues/125)) ([4f84799](https://github.com/BeyondTrust/terraform-provider-beyondtrust/commit/4f8479980e4529ad665bfc085efd0d924b4724a3))
+
 ## [1.4.1](https://github.com/BeyondTrust/terraform-provider-beyondtrust/compare/v1.4.0...v1.4.1) (2026-09-29)
 
 
