@@ -35,12 +35,8 @@ type AzureDynamicSecretEphemeral struct {
 
 // AzureDynamicSecretEphemeralModel describes the ephemeral resource data model.
 //
-// There is deliberately no expiration attribute. The generate response does not carry
-// one — the Azure credential's expiry is computed server-side and kept on the lease —
-// and fabricating one here would mean either a second request into the same lease
-// durability window Close already has to defend against, or a client-side now+ttl guess
-// that ignores backend clock and mint latency. Nothing consumes the value either, since
-// there is no renew endpoint. The dynamic secret's ttl attribute is the source of truth.
+// There is no expiration attribute because the generate response does not include one.
+// The dynamic secret's ttl is the source of truth.
 type AzureDynamicSecretEphemeralModel struct {
 	Name          types.String `tfsdk:"name"`
 	Folder        types.String `tfsdk:"folder"`
@@ -172,15 +168,8 @@ func (e *AzureDynamicSecretEphemeral) Open(ctx context.Context, req ephemeral.Op
 		return
 	}
 
-	// From here on a real credential exists. If anything below fails, Terraform treats
-	// the resource as never opened and will not call Close, so the credential would sit
-	// on the application until its TTL with nothing tracking it. Clean it up inline.
-	//
-	// revoke_on_close = false is honoured even on this path. The credential is useless to
-	// the practitioner either way, since a failed Open returns them nothing — but the flag
-	// says "do not delete this", and deleting it anyway would make the one setting whose
-	// entire job is to keep a credential alive unreliable exactly when it is hardest to
-	// debug. The warning below tells them what leaked instead.
+	// From here on a real credential exists. If anything below fails, Terraform will not
+	// call Close, so revoke it here. revoke_on_close = false is still honoured.
 	defer func() {
 		if !resp.Diagnostics.HasError() || !revokeOnClose {
 			return
@@ -253,7 +242,7 @@ func (e *AzureDynamicSecretEphemeral) Close(ctx context.Context, req ephemeral.C
 		resp.Diagnostics.AddWarning(
 			"Azure Credential Not Revoked",
 			fmt.Sprintf("Could not revoke lease '%s': %s\n\nThe credential remains valid until the dynamic secret's TTL "+
-				"elapses. If this persists, confirm the principal holds the can_revoke_lease permission on the dynamic secret.",
+				"elapses. If this persists, confirm the principal holds the RevokeLease permission on the dynamic secret.",
 				state.LeaseID, err.Error()),
 		)
 	}

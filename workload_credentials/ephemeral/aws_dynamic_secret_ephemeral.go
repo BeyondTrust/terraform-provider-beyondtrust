@@ -15,12 +15,8 @@ import (
 
 // Ensure provider defined types fully satisfy framework interfaces.
 //
-// Note the absence of ephemeral.EphemeralResourceWithClose. An AWS assumed-role lease
-// is not revocable: the STS credential expires on its own and DELETE /leases/id/{id}
-// answers 400 lease_not_revocable for it. Implementing Close would spend a guaranteed
-// failing request — and a can_revoke_lease authorization check the caller may not even
-// hold — on every apply, to swallow the error. The expiration attribute documents the
-// lifetime instead.
+// There is no Close: AWS assumed-role credentials cannot be revoked early, so a revoke
+// would always fail. The expiration attribute documents the lifetime instead.
 var _ ephemeral.EphemeralResourceWithConfigure = &AwsDynamicSecretEphemeral{}
 
 func NewAwsDynamicSecretEphemeral() ephemeral.EphemeralResource {
@@ -44,8 +40,6 @@ type AwsDynamicSecretEphemeralModel struct {
 }
 
 // awsGeneratedSecret is the generate response payload for an AWS dynamic secret.
-// Keys are camelCase: the API merges the lease fields into the provider's own output
-// and normalizes the whole object before serializing it.
 type awsGeneratedSecret struct {
 	LeaseID         string `json:"leaseId"`
 	Type            string `json:"type"`

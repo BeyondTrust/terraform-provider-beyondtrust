@@ -18,19 +18,16 @@ import (
 // state — not config — so anything Close needs has to be stashed here during Open.
 const privateStateLeaseKey = "lease"
 
-// Revoke retry budget. These mirror client.defaultStaleReadRetry() rather than
-// inventing a second set of numbers: the window being defended against is the same
-// eventual-consistency window, just on a DELETE instead of a GET. The client's own
-// retry is GET-only, so a lease revoke has to implement its own.
+// Revoke retry budget, matching the client's own read retry. That retry only covers GETs,
+// so revoke has its own loop.
 const (
 	revokeInitialBackoff  = 25 * time.Millisecond
 	revokeMaxBackoff      = 500 * time.Millisecond
 	revokeMaxTotalBackoff = 2 * time.Second
 	revokeJitter          = 0.25
 
-	// closeTimeout bounds the whole of Close. The backoff budget above bounds sleep,
-	// not wall clock — against a hung backend the default 30s HTTP timeout would let
-	// a handful of attempts run for minutes. This is the actual hang guard.
+	// closeTimeout bounds the whole of Close. The backoff budget only bounds sleep, so
+	// without this a slow API could hold Close for minutes.
 	closeTimeout = 10 * time.Second
 )
 
@@ -99,14 +96,8 @@ func leaseIDOf(secret any) string {
 
 // revokeLease destroys a lease's external credential ahead of its expiration.
 //
-// Only revocable credential types reach the provider destroyer; AWS assumed-role
-// leases answer 400 lease_not_revocable because the STS credential expires on its
-// own. That is a successful outcome here, not a failure.
-//
-// A 404 immediately after generate is the lease-durability window: the API returns
-// the leaseId from an enqueued workflow before the row is committed, so a revoke can
-// briefly outrun its own lease. That case retries. Nothing else does — see
-// classifyRevokeError.
+// A 404 shortly after generate can be transient, because a new lease may not be visible
+// yet. That case retries; nothing else does.
 func revokeLease(ctx context.Context, c *client.Client, leaseID string) error {
 	path := c.BuildPath("/leases/id/" + leaseID)
 
@@ -115,7 +106,7 @@ func revokeLease(ctx context.Context, c *client.Client, leaseID string) error {
 
 	for {
 		err := c.Delete(ctx, path, nil)
-		if err == nil || !isLeaseNotYetDurable(err) {
+		if err == nil || !isLeaseNotYetVisible(err) {
 			return normalizeRevokeError(err)
 		}
 
@@ -159,15 +150,12 @@ func normalizeRevokeError(err error) error {
 	return err
 }
 
-// isLeaseNotYetDurable reports whether err is the transient 404 that a revoke issued
-// moments after generate can hit, before the lease row is committed.
+// isLeaseNotYetVisible reports whether err is the transient 404 a revoke can hit moments
+// after generate.
 //
-// Deliberately narrow. A 403 is not included: the API masks "not found" as "forbidden"
-// for resources the caller cannot see, so a 403 is ambiguous between this same window
-// and a principal that simply lacks can_revoke_lease. The second case is permanent, and
-// retrying it would make every under-privileged caller pay the full backoff budget on
-// every single apply for a failure that was never going to clear.
-func isLeaseNotYetDurable(err error) bool {
+// A 403 is not retried. The API reports resources the caller cannot see as forbidden, so a
+// 403 may just as well mean the caller lacks RevokeLease, which retrying never fixes.
+func isLeaseNotYetVisible(err error) bool {
 	var apiErr *client.APIError
 	return errors.As(err, &apiErr) && apiErr.StatusCode == http.StatusNotFound
 }
@@ -199,23 +187,44 @@ func revokeWithTimeout(ctx context.Context, c *client.Client, leaseID string) er
 
 // generateFailureDetail builds the diagnostic for a failed generate.
 //
-// A 403 is genuinely ambiguous here, so the message names both causes rather than guessing:
-// the API reports a dynamic secret the caller cannot see as forbidden rather than missing.
+// The advice depends on the status: permission guidance under a 500 would send the reader
+// looking for a problem that is not there.
 func generateFailureDetail(name string, err error) string {
-	return fmt.Sprintf("Could not generate credentials from dynamic secret '%s': %s\n\n"+
-		"A 403 here can mean either outcome: the API reports a dynamic secret you cannot see "+
-		"as forbidden rather than missing. Check both.\n\n"+
-		"  - The dynamic secret must already exist when this runs. It is opened during the "+
-		"plan, so a configuration that creates it in the same apply fails here; apply the "+
-		"dynamic secret first. depends_on does not help, because the open happens before it "+
-		"takes effect.\n"+
-		"  - The caller needs the GenerateDynamicCredential permission on it. Product admins "+
-		"hold it already; anyone else needs a policy granting it.", name, err.Error())
+	var apiErr *client.APIError
+	if !errors.As(err, &apiErr) {
+		return fmt.Sprintf("Could not generate credentials from dynamic secret '%s': %s", name, err)
+	}
+
+	detail := fmt.Sprintf("Could not generate credentials from dynamic secret '%s': %s", name, apiErr.Message)
+
+	switch {
+	case apiErr.StatusCode == http.StatusForbidden || apiErr.IsNotFound():
+		// Only here are the two causes genuinely indistinguishable: the API reports a
+		// dynamic secret the caller cannot see as forbidden rather than missing.
+		detail += "\n\nThis can mean either of two things, which the status does not separate:\n\n" +
+			"  - The dynamic secret must already exist when this runs. It is opened while the " +
+			"plan is built, so a configuration that creates it in the same apply fails here; " +
+			"apply the dynamic secret first. depends_on does not help, because the open " +
+			"happens before it takes effect.\n" +
+			"  - The caller needs the GenerateDynamicCredential permission on it. Product " +
+			"admins hold it already; anyone else needs a policy granting it."
+	case apiErr.IsServerError():
+		detail += "\n\nThis is a server-side failure rather than anything wrong with the " +
+			"configuration. Quote the trace id below when reporting it."
+	}
+
+	if apiErr.Code != "" {
+		detail += "\n\nAPI error code: " + apiErr.Code
+	}
+	if apiErr.TraceID != "" {
+		detail += "\nTrace ID: " + apiErr.TraceID
+	}
+
+	return detail
 }
 
-// errUnconfiguredClient is the diagnostic for an Open reached without Configure having
-// supplied a client. The framework always configures before opening, so this is a guard
-// against a provider-wiring mistake surfacing as a nil dereference and a plugin crash.
+// errUnconfiguredClient is the diagnostic for an Open reached without a configured client,
+// so a wiring mistake surfaces as an error rather than a crash.
 func errUnconfiguredClient(resourceName string) (string, string) {
 	return "Ephemeral Resource Not Configured",
 		fmt.Sprintf("%s was opened without a configured API client. "+

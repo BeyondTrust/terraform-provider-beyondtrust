@@ -3,12 +3,15 @@
 package ephemeral_test
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
@@ -17,13 +20,14 @@ import (
 	"github.com/hashicorp/terraform-plugin-testing/echoprovider"
 
 	"github.com/beyondtrust/terraform-provider-beyondtrust/internal/acctest"
+	"github.com/beyondtrust/terraform-provider-beyondtrust/internal/client"
 )
 
 // A skipped acceptance test reports the same green as a passing one. That matters more
-// here than almost anywhere else in this repo: CI supplies no Azure credentials, so the
-// Azure suite — which covers the only revocable credential type, and the only Close
-// implementation — skips in full on every run. Without accounting, "0 Azure tests ran"
-// and "all Azure tests passed" look identical in the log.
+// here than almost anywhere else in this repo: the dynamic credential test needs a
+// persistent dynamic secret, an admin-site token and a resolvable principal on top of the
+// usual credentials, and when any of them is missing it skips in full. Without accounting,
+// "0 tests ran" and "all tests passed" look identical in the log.
 //
 // So the suite accounts for itself: every skip is recorded with its reason, and TestMain
 // prints a summary loud enough to read in a CI log.
@@ -74,38 +78,26 @@ func recordRan(t *testing.T) resource.TestCheckFunc {
 	}
 }
 
-// preCheckAWS mirrors acctest.PreCheckAWS but routes the skip through the accounting
-// above. The env var checked has to stay in step with the acctest helper.
-func preCheckAWS(t *testing.T) {
+// preCheckGrantedAWS gates the AWS test, which grants itself generation rather than
+// assuming the environment already has.
+//
+// On top of the persistent AWS dynamic secret (BEYONDTRUST_TEST_AWS_DYNAMIC_SECRET, see
+// grant_helpers_test.go) they need the admin site, where the IAM policy API lives, and a way
+// to name the identity the grant is for: a service name to resolve, or the entity itself. The
+// admin-site job supplies all three; a job without them skips and the accounting records why.
+//
+// The env-var lists live in acctest so this and the direct prechecks cannot drift.
+func preCheckGrantedAWS(t *testing.T) {
 	t.Helper()
 	acctest.PreCheck(t)
 
-	if os.Getenv(acctest.EnvTestAWSRoleARN) == "" {
-		recordSkip(t, fmt.Sprintf("%s is not set", acctest.EnvTestAWSRoleARN))
+	if os.Getenv(acctest.EnvTestAWSDynamicSecret) == "" {
+		recordSkip(t, acctest.EnvTestAWSDynamicSecret+" is not set: the name of an assumed_role dynamic secret "+
+			"inside the fixture root (grant_helpers_test.go says why the test cannot create its own)")
 		return
 	}
-
-	recordPrechecked(t)
-}
-
-// preCheckAzure mirrors acctest.PreCheckAzure with the same accounting.
-func preCheckAzure(t *testing.T) {
-	t.Helper()
-	acctest.PreCheck(t)
-
-	var missing []string
-	for _, env := range []string{
-		acctest.EnvTestAzureTenantID,
-		acctest.EnvTestAzureClientID,
-		acctest.EnvTestAzureClientSecret,
-		acctest.EnvTestAzureAppObjectID,
-	} {
-		if os.Getenv(env) == "" {
-			missing = append(missing, env)
-		}
-	}
-	if len(missing) > 0 {
-		recordSkip(t, "missing Azure environment variables: "+strings.Join(missing, ", "))
+	if reason := acctest.GenerateGrantSkipReason(); reason != "" {
+		recordSkip(t, reason)
 		return
 	}
 
@@ -149,9 +141,9 @@ func TestMain(m *testing.M) {
 // counting them would let every dynamic-credential test skip while the gate still passed,
 // which is the exact failure it was added to catch.
 //
-// Matching AWS is enough to prove the surface was exercised. The Azure tests cover the only
-// Close and revocation paths, but CI supplies no Azure credentials, so requiring them would
-// fail every run; their coverage comes from the unit tests instead.
+// Any one of them running is enough to prove the surface was exercised; which ones run
+// depends on the fixtures the environment supplies, and the summary names the ones that did
+// not.
 const requiredSurface = "DynamicSecretEphemeral"
 
 // ranSurfaceLocked reports whether any test naming the given surface executed a step.
@@ -269,4 +261,73 @@ func ephemeralProviderFactories() map[string]func() (tfprotov6.ProviderServer, e
 	factories["echo"] = echoprovider.NewProviderServer()
 
 	return factories
+}
+
+// Grants are written through an admin-site client rather than as beyondtrust_iam_policy
+// resources, for two reasons. A provider block carries one service name, and a service name
+// only authenticates against its own site. And an ephemeral resource is opened while the plan
+// is built, so the grant has to be active before that plan runs.
+
+const (
+	grantStatusActive = "ACTIVE"
+	// grantBindTimeout bounds the wait for a grant to become active. A grant still waiting
+	// after this long names a path that does not resolve.
+	grantBindTimeout   = 90 * time.Second
+	envGrantBindTimout = "BEYONDTRUST_TEST_POLICY_BIND_TIMEOUT"
+)
+
+// grantPolicy is the IAM policy API's read shape; only status is consulted.
+type grantPolicy struct {
+	Name   string `json:"name"`
+	Status string `json:"status"`
+}
+
+// grantViaAdmin writes a Cedar policy on the admin site and blocks until it is ACTIVE, so a
+// step that depends on the grant cannot outrun it. The policy is removed when the test ends.
+//
+// A grant the service accepts but never binds parks in WAITING_FOR_RESOURCE and reports no
+// error, so waiting on status is the only way to know the permission is in effect.
+func grantViaAdmin(t *testing.T, name, cedar string) {
+	t.Helper()
+
+	admin, err := acctest.NewAdminTestClient()
+	if err != nil {
+		t.Fatalf("admin client: %v", err)
+	}
+
+	ctx := context.Background()
+	path := admin.BuildIAMPath("/policies/" + name)
+	body := client.RawBody{ContentType: "text/plain", Data: []byte(cedar)}
+
+	var written grantPolicy
+	if err := admin.Put(ctx, path, nil, body, &written); err != nil {
+		t.Fatalf("writing grant %q: %v", name, err)
+	}
+	t.Cleanup(func() {
+		if err := admin.Delete(context.Background(), path, nil); err != nil {
+			t.Logf("Cleanup: could not delete grant %q: %v", name, err)
+		}
+	})
+
+	timeout := grantBindTimeout
+	if raw := os.Getenv(envGrantBindTimout); raw != "" {
+		if secs, err := strconv.Atoi(raw); err == nil && secs > 0 {
+			timeout = time.Duration(secs) * time.Second
+		}
+	}
+	deadline := time.Now().Add(timeout)
+	for {
+		var current grantPolicy
+		if err := admin.Get(ctx, path, nil, &current); err != nil {
+			t.Fatalf("reading grant %q: %v", name, err)
+		}
+		if current.Status == grantStatusActive {
+			return
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("grant %q did not become ACTIVE within %s (last status %q); it was accepted but "+
+				"the service did not finish binding it", name, timeout, current.Status)
+		}
+		time.Sleep(2 * time.Second)
+	}
 }
