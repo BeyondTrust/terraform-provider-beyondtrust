@@ -223,7 +223,7 @@ docs: generate
 ## docs-validate: Validate documentation
 docs-validate:
 	@echo "Validating documentation..."
-	@tfplugindocs validate
+	@tfplugindocs validate --provider-name beyondtrust
 
 # ==========================================
 # Pre-Commit Targets
