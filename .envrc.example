@@ -68,13 +68,19 @@ export BEYONDTRUST_ADMIN_ACCESS_TOKEN="your-admin-site-access-token"
 #
 # Optional: the site named in the policy's @siteId annotation. Defaults to BEYONDTRUST_SITE_ID.
 # export BEYONDTRUST_TEST_POLICY_SITE_ID="your-product-site-uuid"
-# Optional: seconds to wait for a grant to bind. Default 180.
+# Optional: seconds to wait for a grant to bind. Default 90.
 # export BEYONDTRUST_TEST_POLICY_BIND_TIMEOUT="180"
 
 # Required for AWS Integration Tests
 export BEYONDTRUST_TEST_AWS_ROLE_ARN="arn:aws:iam::123456789012:role/staging-test-role"
 export BEYONDTRUST_TEST_AWS_ROLE_ARN_2="arn:aws:iam::123456789012:role/second-staging-test-role"
 export BEYONDTRUST_TEST_AWS_TARGET_ROLE_ARN="arn:aws:iam::123456789012:role/staging-target-role"
+
+# Required for the AWS dynamic credential ephemeral test: the name of an assumed_role dynamic
+# secret that already exists inside BEYONDTRUST_TEST_POLICY_FIXTURE_ROOT. The test cannot create
+# its own, because AWS leases cannot be revoked and a dynamic secret with a live lease cannot be
+# destroyed until they expire. See docs/TESTING_AWS.md.
+# export BEYONDTRUST_TEST_AWS_DYNAMIC_SECRET="tf-acc-fixture-aws-assumed-role"
 
 # Required for Azure Integration Tests
 # tenant_id: Azure AD directory (tenant) UUID

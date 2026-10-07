@@ -21,6 +21,8 @@ import (
 	"github.com/beyondtrust/terraform-provider-beyondtrust/workload_credentials/resources"
 )
 
+// The Azure tests create their fixtures per run; grant_helpers_test.go says how and why, and
+// why they end with a step that sweeps the leases they leave behind.
 func TestAccAzureDynamicSecretEphemeral_generatesAndRevokes(t *testing.T) {
 	preCheckGrantedAzure(t)
 
@@ -74,6 +76,13 @@ func TestAccAzureDynamicSecretEphemeral_generatesAndRevokes(t *testing.T) {
 					testAccCheckLeaseRevoked("echo.azure", true),
 				),
 			},
+			// Step 3: the fixtures alone again, so no plan walk opens the ephemeral resource,
+			// and every lease still open is revoked first. Terraform's destroy follows this
+			// step, and a dynamic secret with a live lease cannot be destroyed.
+			{
+				PreConfig: func() { env.sweepLeases(t, dynamicSecretName) },
+				Config:    env.azureSetupConfig(integrationName, dynamicSecretName, appObjectID),
+			},
 		},
 	})
 }
@@ -116,6 +125,12 @@ func TestAccAzureDynamicSecretEphemeral_revokeOnCloseDisabled(t *testing.T) {
 					resource.TestCheckResourceAttr("echo.azure", "data.revoke_on_close", "false"),
 					testAccCheckLeaseRevoked("echo.azure", false),
 				),
+			},
+			// Step 3: sweep the leases revoke_on_close = false deliberately left alive, one per
+			// plan walk, so that the destroy that follows can succeed. See the test above.
+			{
+				PreConfig: func() { env.sweepLeases(t, dynamicSecretName) },
+				Config:    env.azureSetupConfig(integrationName, dynamicSecretName, appObjectID),
 			},
 		},
 	})
@@ -238,15 +253,19 @@ func requireLeaseStaysAbsent(c *btclient.Client, leaseID string) error {
 	}
 }
 
-// revokeCedar grants the principal RevokeLease and ReadLease on one dynamic secret, which
-// Owner on the fixture folder already includes; it is written all the same so that a run
-// without a fixture root has the permissions the checks below need spelled out. Without
-// RevokeLease, Close only warns while the password lives to its TTL.
+// revokeCedar grants the principal RevokeLease, ReadLease and ListLeases on one dynamic
+// secret, which Owner on the fixture folder already includes; it is written all the same so
+// that a run without a fixture root has the permissions the checks and the sweep need spelled
+// out. Without RevokeLease, Close only warns while the password lives to its TTL.
 func (e *grantEnv) revokeCedar(dynamicSecretName string) string {
 	return fmt.Sprintf(`@siteId(%q)
 permit(
   principal == %s,
-  action in [WorkloadCredentials::Action::"RevokeLease", WorkloadCredentials::Action::"ReadLease"],
+  action in [
+    WorkloadCredentials::Action::"RevokeLease",
+    WorkloadCredentials::Action::"ReadLease",
+    WorkloadCredentials::Action::"ListLeases"
+  ],
   resource == WorkloadCredentials::DynamicSecret::%q
 );
 `, e.siteID, e.principal, e.dsPath(dynamicSecretName))

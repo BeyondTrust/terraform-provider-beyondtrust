@@ -14,6 +14,11 @@ const (
 	EnvTestAWSRoleARN       = "BEYONDTRUST_TEST_AWS_ROLE_ARN"
 	EnvTestAWSRoleARN2      = "BEYONDTRUST_TEST_AWS_ROLE_ARN_2"
 	EnvTestAWSTargetRoleARN = "BEYONDTRUST_TEST_AWS_TARGET_ROLE_ARN"
+	// EnvTestAWSDynamicSecret names the assumed_role dynamic secret, inside the fixture root
+	// folder, that the AWS dynamic credential ephemeral test generates from. It outlives test
+	// runs because AWS leases cannot be revoked and a dynamic secret with a live lease cannot
+	// be destroyed; see workload_credentials/ephemeral/grant_helpers_test.go.
+	EnvTestAWSDynamicSecret = "BEYONDTRUST_TEST_AWS_DYNAMIC_SECRET"
 	EnvTestAWSExternalID    = "BEYONDTRUST_TEST_AWS_EXTERNAL_ID"
 	EnvAWSAccountID         = "BEYONDTRUST_AWS_ACCOUNT_ID"
 )

@@ -81,18 +81,19 @@ func recordRan(t *testing.T) resource.TestCheckFunc {
 // preCheckGrantedAWS gates the AWS tests, which grant themselves generation rather than
 // assuming the environment already has.
 //
-// On top of the AWS fixtures they need the admin site, where the IAM policy API lives, and
-// a way to name the identity the grant is for: a service name to resolve, or the entity
-// itself. The admin-site job supplies all three; a job without admin credentials skips
-// them and the accounting records why.
+// On top of the persistent AWS dynamic secret (BEYONDTRUST_TEST_AWS_DYNAMIC_SECRET, see
+// grant_helpers_test.go) they need the admin site, where the IAM policy API lives, and a way
+// to name the identity the grant is for: a service name to resolve, or the entity itself. The
+// admin-site job supplies all three; a job without them skips and the accounting records why.
 //
 // The env-var lists live in acctest so this and the direct prechecks cannot drift.
 func preCheckGrantedAWS(t *testing.T) {
 	t.Helper()
 	acctest.PreCheck(t)
 
-	if reason := acctest.AWSSkipReason(); reason != "" {
-		recordSkip(t, reason)
+	if os.Getenv(acctest.EnvTestAWSDynamicSecret) == "" {
+		recordSkip(t, acctest.EnvTestAWSDynamicSecret+" is not set: the name of an assumed_role dynamic secret "+
+			"inside the fixture root (grant_helpers_test.go says why the test cannot create its own)")
 		return
 	}
 	if reason := acctest.GenerateGrantSkipReason(); reason != "" {
@@ -158,9 +159,9 @@ func TestMain(m *testing.M) {
 // counting them would let every dynamic-credential test skip while the gate still passed,
 // which is the exact failure it was added to catch.
 //
-// Matching AWS is enough to prove the surface was exercised. The Azure tests cover the only
-// Close and revocation paths, but CI supplies no Azure credentials, so requiring them would
-// fail every run; their coverage comes from the unit tests instead.
+// Any one of them running is enough to prove the surface was exercised; which ones run
+// depends on the fixtures the environment supplies, and the summary names the ones that did
+// not.
 const requiredSurface = "DynamicSecretEphemeral"
 
 // ranSurfaceLocked reports whether any test naming the given surface executed a step.

@@ -216,8 +216,10 @@ jobs:
           # The folder the provider identity owns. The dynamic secret fixture is created inside it
           # so that Owner covers its whole lifecycle; see the AWS test's file header.
           BEYONDTRUST_TEST_POLICY_FIXTURE_ROOT: ${{ vars.BEYONDTRUST_TEST_POLICY_FIXTURE_ROOT }}
-          BEYONDTRUST_TEST_AWS_ROLE_ARN: ${{ secrets.BEYONDTRUST_TEST_AWS_ROLE_ARN }}
-          BEYONDTRUST_TEST_AWS_TARGET_ROLE_ARN: ${{ secrets.BEYONDTRUST_TEST_AWS_TARGET_ROLE_ARN }}
+          # The dynamic secret the AWS test generates from. It outlives the run: AWS leases cannot
+          # be revoked and a dynamic secret with a live lease cannot be destroyed. See
+          # workload_credentials/ephemeral/grant_helpers_test.go and docs/TESTING_AWS.md.
+          BEYONDTRUST_TEST_AWS_DYNAMIC_SECRET: ${{ vars.BEYONDTRUST_TEST_AWS_DYNAMIC_SECRET }}
           BEYONDTRUST_TEST_AZURE_TENANT_ID: ${{ secrets.BEYONDTRUST_TEST_AZURE_TENANT_ID }}
           BEYONDTRUST_TEST_AZURE_CLIENT_ID: ${{ secrets.BEYONDTRUST_TEST_AZURE_CLIENT_ID }}
           BEYONDTRUST_TEST_AZURE_CLIENT_SECRET: ${{ secrets.BEYONDTRUST_TEST_AZURE_CLIENT_SECRET }}
