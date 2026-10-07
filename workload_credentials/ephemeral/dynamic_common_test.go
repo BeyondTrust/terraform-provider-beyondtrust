@@ -10,6 +10,7 @@ import (
 	"net/http/httptest"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -359,4 +360,66 @@ func TestGenerateFailureDetail_AdviceMatchesStatus(t *testing.T) {
 			}
 		})
 	}
+}
+
+// shortenAzureGenerateRetryPause is not safe alongside parallel tests that read the pause,
+// so the tests that call it do not run in parallel.
+func shortenAzureGenerateRetryPause(t *testing.T) {
+	t.Helper()
+
+	previous := azureGenerateRetryPause
+	azureGenerateRetryPause = time.Millisecond
+	t.Cleanup(func() { azureGenerateRetryPause = previous })
+}
+
+func TestGenerateCredentialRetryingServerErrors_RetriesThenSucceeds(t *testing.T) {
+	shortenAzureGenerateRetryPause(t)
+
+	var calls atomic.Int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if calls.Add(1) == 1 {
+			writeAPIError(t, w, http.StatusInternalServerError, "internal_error")
+			return
+		}
+		w.WriteHeader(http.StatusCreated)
+		_, _ = w.Write([]byte(`{"secret":{"leaseId":"lease-xyz"}}`))
+	}))
+	defer srv.Close()
+
+	secret, err := generateCredentialRetryingServerErrors[azureGeneratedSecret](context.Background(), newTestClient(t, srv.URL), "my-secret", "")
+	require.NoError(t, err)
+	assert.Equal(t, "lease-xyz", secret.LeaseID)
+	assert.Equal(t, int32(2), calls.Load())
+}
+
+func TestGenerateCredentialRetryingServerErrors_GivesUpAfterBudget(t *testing.T) {
+	shortenAzureGenerateRetryPause(t)
+
+	var calls atomic.Int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls.Add(1)
+		writeAPIError(t, w, http.StatusInternalServerError, "internal_error")
+	}))
+	defer srv.Close()
+
+	_, err := generateCredentialRetryingServerErrors[azureGeneratedSecret](context.Background(), newTestClient(t, srv.URL), "my-secret", "")
+	require.Error(t, err)
+	assert.Equal(t, int32(azureGenerateAttempts), calls.Load())
+}
+
+// A 4xx says something about the request or the caller's permissions, which a retry
+// cannot change, and every retry risks minting another credential.
+func TestGenerateCredentialRetryingServerErrors_DoesNotRetryClientErrors(t *testing.T) {
+	shortenAzureGenerateRetryPause(t)
+
+	var calls atomic.Int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls.Add(1)
+		writeAPIError(t, w, http.StatusForbidden, "forbidden")
+	}))
+	defer srv.Close()
+
+	_, err := generateCredentialRetryingServerErrors[azureGeneratedSecret](context.Background(), newTestClient(t, srv.URL), "my-secret", "")
+	require.Error(t, err)
+	assert.Equal(t, int32(1), calls.Load())
 }
