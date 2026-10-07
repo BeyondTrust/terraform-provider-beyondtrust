@@ -26,7 +26,7 @@ Set credentials via environment variables to keep them out of your Terraform con
 
 ```shell
 export BEYONDTRUST_ACCESS_TOKEN="your-token"
-export BEYONDTRUST_SITE_ID="a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+export BEYONDTRUST_SITE_ID="550e8400-e29b-41d4-a716-446655440000"
 ```
 
 With environment variables configured, the provider block needs no explicit credentials:
@@ -85,7 +85,7 @@ resource "beyondtrust_workload_credentials_folder" "example" {
 
 - `access_token` (String, Sensitive) The API access token for authentication. Can also be set via BEYONDTRUST_ACCESS_TOKEN environment variable.
 - `api_path_version` (String) Optional API path version (e.g., 'v1'). Defaults to empty string (no path version). Can also be set via BEYONDTRUST_API_PATH_VERSION environment variable.
-- `api_url` (String) The base URL for the BeyondTrust API. Defaults to <https://api.beyondtrust.io>; override for other deployments such as GovCloud. Can also be set via BEYONDTRUST_API_URL environment variable.
+- `api_url` (String) The base URL for the BeyondTrust API. Defaults to `https://api.beyondtrust.io`; override for other deployments such as GovCloud. Can also be set via BEYONDTRUST_API_URL environment variable.
 - `api_version` (String) The API header version (date-based, e.g., '2026-04-28'). Defaults to '2026-04-28'. Can also be set via BEYONDTRUST_API_VERSION environment variable.
 - `insecure` (Boolean) Skip TLS certificate verification. Only use for development. Defaults to false. Can also be set via BEYONDTRUST_INSECURE environment variable.
 - `role` (String) Role for X-BT-Role header (when set, X-BT-Auth-Type is automatically set to 'CUSTOM-IDP'). Can also be set via BEYONDTRUST_ROLE environment variable.

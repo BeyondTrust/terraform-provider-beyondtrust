@@ -48,14 +48,16 @@ resource "beyondtrust_workload_credentials_aws_integration" "production_secure" 
 
 ### Required
 
-- `external_id` (String, Sensitive) The external ID for the role trust relationship. Required for confused deputy prevention. Must be 2-1224 characters, alphanumeric plus _+=,.@:\/- characters.
 - `name` (String) The name of the integration. Must match pattern: ^[a-zA-Z0-9\-_@~\*\^]{1,130}$ (single path segment, max 130 chars). This is the resource identifier.
 - `role_arn` (String) The ARN of the IAM role in the customer AWS account that Workload Credentials will assume. Must match pattern: arn:aws:iam::[0-9]+:role/.+
 
 ### Read-Only
 
 - `created_at` (String) The timestamp when the integration was created.
+- `created_by` (String) The ID of the user who created the integration.
+- `external_id` (String, Sensitive) The external ID for the role trust relationship. Server-generated UUID used for confused deputy prevention. Use this value in the IAM role trust policy condition.
 - `id` (String) The unique identifier (UUID) of the integration.
+- `version` (Number) The current version of the integration.
 
 ## Import
 

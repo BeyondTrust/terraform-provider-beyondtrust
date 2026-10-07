@@ -66,7 +66,7 @@ func (p *BeyondTrustProvider) Schema(ctx context.Context, req provider.SchemaReq
 		Description: "The BeyondTrust provider allows you to manage BeyondTrust resources (Workload Credentials and other BeyondTrust services) using infrastructure as code.",
 		Attributes: map[string]schema.Attribute{
 			"api_url": schema.StringAttribute{
-				Description: "The base URL for the BeyondTrust API. Defaults to " + client.DefaultAPIURL + "; override for other deployments such as GovCloud. Can also be set via " + constants.EnvAPIURL + " environment variable.",
+				Description: "The base URL for the BeyondTrust API. Defaults to `" + client.DefaultAPIURL + "`; override for other deployments such as GovCloud. Can also be set via " + constants.EnvAPIURL + " environment variable.",
 				Optional:    true,
 			},
 			"access_token": schema.StringAttribute{

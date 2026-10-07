@@ -26,7 +26,7 @@ resource "beyondtrust_workload_credentials_azure_integration" "production" {
   client_id = "11111111-1111-1111-1111-111111111111"
 
   client_secret         = var.azure_client_secret
-  client_secret_version = 1  # increment to rotate the secret
+  client_secret_version = 1 # increment to rotate the secret
 }
 ```
 
@@ -35,11 +35,13 @@ resource "beyondtrust_workload_credentials_azure_integration" "production" {
 
 ### Required
 
+> **NOTE**: [Write-only arguments](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments) are supported in Terraform 1.11 and later.
+
+- `client_id` (String) The Azure Active Directory application (client) ID. Must be a valid UUID.
+- `client_secret` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) The Azure Active Directory application client secret. Write-only — not stored in Terraform state and never returned by the API. Increment client_secret_version to trigger rotation.
+- `client_secret_version` (Number) User-controlled version number for the client secret. Increment this value to signal that client_secret has changed and should be re-applied. Write-only values cannot be diffed automatically, so this attribute serves as the rotation trigger.
 - `name` (String) The name of the integration. Must match pattern: ^[a-zA-Z0-9\-_@~\*\^]{1,130}$ (single path segment, max 130 chars). This is the resource identifier.
 - `tenant_id` (String) The Azure Active Directory tenant ID (directory ID). Must be a valid UUID.
-- `client_id` (String) The Azure Active Directory application (client) ID. Must be a valid UUID.
-- `client_secret` (String, Sensitive, Write-Only) The Azure Active Directory application client secret. Write-only — not stored in Terraform state and never returned by the API. Increment `client_secret_version` to trigger rotation.
-- `client_secret_version` (Number) User-controlled version number for the client secret. Increment this value to signal that `client_secret` has changed and should be re-applied.
 
 ### Read-Only
 
