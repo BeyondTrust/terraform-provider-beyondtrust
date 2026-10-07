@@ -147,7 +147,7 @@ make pre-commit
 
 ```bash
 # Install required development tools
-make install-tools       # Installs golangci-lint, gofumpt, tfplugindocs
+make install-tools       # Installs golangci-lint, gofumpt
 
 # Optional: Install git hooks for automatic checks
 make install-git-hooks   # Runs pre-commit-quick on every commit

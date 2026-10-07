@@ -96,8 +96,8 @@ resource "beyondtrust_workload_credentials_aws_dynamic_secret" "admin" {
 
 ### Required
 
-- `credential_type` (String) The type of AWS credentials to generate. Currently supported: 'assumed_role'. Other types (iam_user, federation_token, session_token) may be added in the future.
-- `integration_name` (String) The name of the AWS integration to use for generating credentials.
+- `credential_type` (String) The type of AWS credentials to generate. Currently supported: 'assumed_role'. Changing this requires replacing the resource.
+- `integration_name` (String) The name of the AWS integration to use for generating credentials. Changing this requires replacing the resource.
 - `name` (String) The name of the dynamic secret. Must match pattern: ^[a-zA-Z0-9\-_@~\*\^]{1,130}$ (single path segment, max 130 chars).
 - `role_arn` (String) The ARN of the AWS IAM role to assume when generating credentials. Must match pattern: arn:aws:iam::[0-9]+:role/.+
 - `ttl` (Number) Time-to-live in seconds for generated credentials. For assumed_role: 900-43200 (15 min - 12 hours). For other types: 900-129600 (15 min - 36 hours).
@@ -114,10 +114,12 @@ resource "beyondtrust_workload_credentials_aws_dynamic_secret" "admin" {
 ### Read-Only
 
 - `created_at` (String) The timestamp when the dynamic secret was created.
+- `created_by` (String) The ID of the user who created the dynamic secret.
 - `deleted_at` (String) The timestamp when the dynamic secret was soft-deleted (if applicable).
 - `id` (String) The unique identifier (UUID) of the dynamic secret.
 - `integration_id` (String) The UUID of the associated integration (computed from integration_name).
 - `path` (String) The full path to the dynamic secret (computed).
+- `version` (Number) The current version of the dynamic secret.
 
 ## Import
 

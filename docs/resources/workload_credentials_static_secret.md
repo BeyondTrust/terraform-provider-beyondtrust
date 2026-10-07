@@ -57,8 +57,10 @@ resource "kubernetes_secret" "api_credentials" {
 
 ### Required
 
+> **NOTE**: [Write-only arguments](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments) are supported in Terraform 1.11 and later.
+
 - `name` (String) The name of the secret. Must match pattern: ^[a-zA-Z0-9\-_@~\*\^]{1,130}$ (single path segment, max 130 chars).
-- `secret_wo` (Map of String) Key-value pairs for the secret (e.g., {password = 'secret123'}). Write-only - not stored in state. Use the ephemeral resource to read values.
+- `secret_wo` (Map of String, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) Key-value pairs for the secret (e.g., {password = 'secret123'}). Write-only - not stored in state. Use the ephemeral resource to read values.
 - `secret_wo_version` (Number) User-controlled version number for the write-only secret. Increment this value to signal that secret_wo has changed and should be re-applied. Write-only values cannot be diffed automatically against state, so this attribute serves as the rotation trigger.
 
 ### Optional
@@ -69,8 +71,11 @@ resource "kubernetes_secret" "api_credentials" {
 ### Read-Only
 
 - `created_at` (String) The timestamp when the secret was created.
+- `created_by` (String) The ID of the user who created the secret.
+- `deleted_at` (String) The timestamp when the secret was soft-deleted (if applicable).
 - `id` (String) The unique identifier (UUID) of the secret.
 - `path` (String) The full path to the secret (computed).
+- `version` (Number) The current version number of the secret.
 
 ## Import
 

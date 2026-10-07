@@ -212,10 +212,16 @@ test-coverage-html: test-unit
 # Documentation
 # ==========================================
 
+# tfplugindocs reads the provider schema through the Terraform CLI. Pin the version
+# rather than taking whatever is on PATH: version-manager shims resolve
+# .terraform-version from the working directory, and tfplugindocs runs Terraform
+# from a temp dir, so it can silently get an older default that predates
+# write-only attributes and ephemeral resources.
+
 ## generate: Run code generation tools (docs)
 generate:
 	@echo "Running code generation..."
-	@cd tools && go generate ./...
+	@cd tools && TERRAFORM_VERSION=$(TERRAFORM_VERSION) go generate -tags tools ./...
 
 ## docs: Generate documentation (alias for generate)
 docs: generate
@@ -223,7 +229,7 @@ docs: generate
 ## docs-validate: Validate documentation
 docs-validate:
 	@echo "Validating documentation..."
-	@tfplugindocs validate
+	@cd tools && go run github.com/hashicorp/terraform-plugin-docs/cmd/tfplugindocs validate --provider-name beyondtrust --provider-dir ../ --tf-version $(TERRAFORM_VERSION)
 
 # ==========================================
 # Pre-Commit Targets
@@ -360,7 +366,6 @@ check-tools:
 	@which golangci-lint >/dev/null 2>&1 || (echo "❌ golangci-lint not found. Run: make install-tools" && exit 1)
 	@which gofumpt >/dev/null 2>&1 || (echo "❌ gofumpt not found. Run: make install-tools" && exit 1)
 	@which terraform >/dev/null 2>&1 || (echo "❌ terraform not found. Install from https://terraform.io" && exit 1)
-	@which tfplugindocs >/dev/null 2>&1 || (echo "❌ tfplugindocs not found. Run: make install-tools" && exit 1)
 	@golangci-lint --version 2>&1 | grep -q "2.11.4" || echo "⚠️  Warning: golangci-lint version mismatch (expected v2.11.4)"
 	@gofumpt --version 2>&1 | grep -q "v0.8.0" || echo "⚠️  Warning: gofumpt version mismatch (expected v0.8.0)"
 	@echo "✅ All tools available"
@@ -372,8 +377,6 @@ install-tools:
 	@go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.11.4
 	@echo "Installing gofumpt v0.8.0..."
 	@go install mvdan.cc/gofumpt@v0.8.0
-	@echo "Installing tfplugindocs..."
-	@go install github.com/hashicorp/terraform-plugin-docs/cmd/tfplugindocs@latest
 	@echo "✅ All tools installed"
 	@echo ""
 	@echo "Note: Ensure $(shell go env GOPATH)/bin is in your PATH"

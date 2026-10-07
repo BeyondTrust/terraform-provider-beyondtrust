@@ -48,5 +48,8 @@ output "integration_role_arn" {
 ### Read-Only
 
 - `created_at` (String) The timestamp when the integration was created.
+- `created_by` (String) The ID of the user who created the integration.
+- `external_id` (String, Sensitive) The server-generated external ID for the role trust relationship. Use in IAM role trust policy conditions.
 - `id` (String) The unique identifier (UUID) of the integration.
 - `role_arn` (String) The ARN of the IAM role in the customer AWS account.
+- `version` (Number) The current version of the integration.
