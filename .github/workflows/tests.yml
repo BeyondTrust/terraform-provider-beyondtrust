@@ -172,6 +172,25 @@ jobs:
           BEYONDTRUST_TEST_REQUIRE_ACC: "1"
           TF_ACC: "1"
 
+      # Fresh tokens for the step below. A GitHub ID token lives five minutes (measured: issued
+      # 00:49:30, first "OIDC workload exchange denied" at 00:54:30), and the ones minted at the
+      # top of this job are older than that by the time the suites above have run.
+      - name: Get admin-site OIDC token for the ephemeral tests
+        id: oidc-ephemeral-admin
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const token = await core.getIDToken('${{ secrets.BEYONDTRUST_ADMIN_SITE_ID }}')
+            core.setOutput('token', token)
+
+      - name: Get product-site OIDC token for the ephemeral tests
+        id: oidc-ephemeral-product
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const token = await core.getIDToken('${{ secrets.BEYONDTRUST_SITE_ID }}')
+            core.setOutput('token', token)
+
       # The dynamic credential ephemeral tests belong here for the same reason the policy
       # tests do: their generate grant is authored on the admin site. The edge resolves an
       # OIDC exchange by (site id in the URL path, X-BT-Service-Name) and then checks the
@@ -188,11 +207,11 @@ jobs:
       - name: Run dynamic credential ephemeral acceptance tests
         run: make test-acc-ephemeral
         env:
-          BEYONDTRUST_ACCESS_TOKEN: ${{ steps.oidc-product.outputs.token }}
+          BEYONDTRUST_ACCESS_TOKEN: ${{ steps.oidc-ephemeral-product.outputs.token }}
           BEYONDTRUST_SITE_ID: ${{ secrets.BEYONDTRUST_SITE_ID }}
           BEYONDTRUST_SERVICE_NAME: ${{ secrets.BEYONDTRUST_TEST_POLICY_OWNER_SERVICE_NAME }}
           BEYONDTRUST_ADMIN_SITE_ID: ${{ secrets.BEYONDTRUST_ADMIN_SITE_ID }}
-          BEYONDTRUST_ADMIN_ACCESS_TOKEN: ${{ steps.oidc.outputs.token }}
+          BEYONDTRUST_ADMIN_ACCESS_TOKEN: ${{ steps.oidc-ephemeral-admin.outputs.token }}
           BEYONDTRUST_ADMIN_SERVICE_NAME: ${{ secrets.BEYONDTRUST_SERVICE_NAME }}
           # The folder the provider identity owns. The dynamic secret fixture is created inside it
           # so that Owner covers its whole lifecycle; see the AWS test's file header.

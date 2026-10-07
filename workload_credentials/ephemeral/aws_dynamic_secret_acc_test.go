@@ -5,6 +5,7 @@ package ephemeral_test
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"regexp"
@@ -124,15 +125,17 @@ permit(
 }
 
 // ownIntegrationCedar makes the principal Owner of one integration, which is how it gets to
-// read the integration back and delete it. Integration paths are the provider then the name.
-func (e *grantEnv) ownIntegrationCedar(provider, integrationName string) string {
+// read the integration back and delete it. An integration's Cedar path is its bare name: the
+// RBAC guide's "/aws/prod" example never bound (the policy sat in WAITING_FOR_RESOURCE), while
+// every integration policy that has bound in this org names the integration alone.
+func (e *grantEnv) ownIntegrationCedar(integrationName string) string {
 	return fmt.Sprintf(`@siteId(%q)
 permit(
   principal == %s,
   action == WorkloadCredentials::Action::"Owner",
   resource == WorkloadCredentials::Integration::%q
 );
-`, e.siteID, e.principal, "/"+provider+"/"+integrationName)
+`, e.siteID, e.principal, integrationName)
 }
 
 // createFixtureIntegration creates the integration a dynamic secret fixture needs, as the
@@ -151,8 +154,21 @@ func (e *grantEnv) createFixtureIntegration(t *testing.T, provider, integrationN
 		t.Fatalf("creating %s integration %q: %v", provider, integrationName, err)
 	}
 
-	grantViaAdmin(t, integrationName+"-own", e.ownIntegrationCedar(provider, integrationName))
-	registerIntegrationCleanup(t, provider, integrationName)
+	grantViaAdmin(t, integrationName+"-own", e.ownIntegrationCedar(integrationName))
+
+	// Not registerCleanup: that treats a 403 as "already gone", which for a fixture created
+	// outside Terraform would hide exactly the leak this suite has produced before.
+	t.Cleanup(func() {
+		if t.Skipped() {
+			return
+		}
+		err := e.owner.Delete(context.Background(), path, nil)
+		var apiErr *btclient.APIError
+		if err == nil || (errors.As(err, &apiErr) && apiErr.IsGone()) {
+			return
+		}
+		t.Errorf("Cleanup: %s integration %q was not deleted and is leaked: %v", provider, integrationName, err)
+	})
 }
 
 func TestAccAwsDynamicSecretEphemeral_generatesWithGrant(t *testing.T) {

@@ -301,8 +301,12 @@ func ephemeralProviderFactories() map[string]func() (tfprotov6.ProviderServer, e
 // only place that is guaranteed.
 
 const (
-	grantStatusActive  = "ACTIVE"
-	grantBindTimeout   = 3 * time.Minute
+	grantStatusActive = "ACTIVE"
+	// grantBindTimeout bounds the wait for a grant to bind. Binding is documented as moments
+	// and observed as seconds; a grant still WAITING_FOR_RESOURCE after this long names a path
+	// that does not resolve, and waiting longer only pushes the rest of the suite past the
+	// five-minute life of the job's OIDC tokens.
+	grantBindTimeout   = 90 * time.Second
 	envGrantBindTimout = "BEYONDTRUST_TEST_POLICY_BIND_TIMEOUT"
 )
 
