@@ -36,6 +36,16 @@ jobs:
       - name: Validate documentation
         run: make docs-validate
 
+      - name: Check generated documentation is up to date
+        run: |
+          make generate
+          if [ -n "$(git status --porcelain -- docs/)" ]; then
+            echo "::error::docs/ is out of date with templates/, examples/ or schema descriptions. Run 'make generate' and commit the result."
+            git status --short -- docs/
+            git diff -- docs/
+            exit 1
+          fi
+
   golangci-lint:
     name: golangci-lint
     runs-on: ubuntu-latest
