@@ -189,7 +189,8 @@ make install-tools
 This installs:
 - golangci-lint v2.11.4
 - gofumpt v0.8.0
-- tfplugindocs (latest)
+
+tfplugindocs is not installed separately; `make generate` and `make docs-validate` run the version pinned in `tools/go.mod`.
 
 Verify tools are installed:
 ```bash

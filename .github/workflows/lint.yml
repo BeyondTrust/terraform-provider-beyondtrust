@@ -30,9 +30,6 @@ jobs:
       - name: Setup Terraform
         uses: ./.github/actions/setup-terraform
 
-      - name: Install tfplugindocs
-        run: go install github.com/hashicorp/terraform-plugin-docs/cmd/tfplugindocs@v0.24.0
-
       - name: Validate documentation
         run: make docs-validate
 
