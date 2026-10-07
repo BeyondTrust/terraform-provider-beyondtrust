@@ -212,10 +212,16 @@ test-coverage-html: test-unit
 # Documentation
 # ==========================================
 
+# tfplugindocs reads the provider schema through the Terraform CLI. Pin the version
+# rather than taking whatever is on PATH: version-manager shims resolve
+# .terraform-version from the working directory, and tfplugindocs runs Terraform
+# from a temp dir, so it can silently get an older default that predates
+# write-only attributes and ephemeral resources.
+
 ## generate: Run code generation tools (docs)
 generate:
 	@echo "Running code generation..."
-	@cd tools && go generate -tags tools ./...
+	@cd tools && TERRAFORM_VERSION=$(TERRAFORM_VERSION) go generate -tags tools ./...
 
 ## docs: Generate documentation (alias for generate)
 docs: generate
@@ -223,7 +229,7 @@ docs: generate
 ## docs-validate: Validate documentation
 docs-validate:
 	@echo "Validating documentation..."
-	@tfplugindocs validate --provider-name beyondtrust
+	@tfplugindocs validate --provider-name beyondtrust --tf-version $(TERRAFORM_VERSION)
 
 # ==========================================
 # Pre-Commit Targets

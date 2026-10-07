@@ -6,7 +6,7 @@
 package tools
 
 //go:generate terraform fmt -recursive ../examples/
-//go:generate go run github.com/hashicorp/terraform-plugin-docs/cmd/tfplugindocs generate --provider-name beyondtrust --provider-dir ../
+//go:generate go run github.com/hashicorp/terraform-plugin-docs/cmd/tfplugindocs generate --provider-name beyondtrust --provider-dir ../ --tf-version $TERRAFORM_VERSION
 
 import (
 	// Documentation generation
