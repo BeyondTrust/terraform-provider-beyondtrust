@@ -176,23 +176,49 @@ type leasePage struct {
 	} `json:"data"`
 }
 
-// sweepLeases revokes every lease still open on a dynamic secret so that Terraform can
-// destroy it. revoke_on_close = false leaves one per plan walk by design, and a Close that
-// failed leaves one by accident; either blocks the destroy that follows the last step.
-func (e *grantEnv) sweepLeases(t *testing.T, dynamicSecretName string) {
-	t.Helper()
+// sweepLeases revokes every lease still open on a dynamic secret and reports how many there
+// were. A dynamic secret with a live lease cannot be destroyed; revoke_on_close = false leaves
+// one per plan walk by design, and a Close that failed leaves one by accident.
+func (e *grantEnv) sweepLeases(dynamicSecretName string) (int, error) {
 	ctx := context.Background()
 
 	var page leasePage
 	if err := e.owner.Get(ctx, e.owner.BuildPath("/leases/"+dynamicSecretName), folderQuery(e.fixtureRoot), &page); err != nil {
-		t.Fatalf("listing leases on %q: %v", dynamicSecretName, err)
+		return 0, fmt.Errorf("listing leases on %q: %w", dynamicSecretName, err)
 	}
 	for _, lease := range page.Data {
 		err := e.owner.Delete(ctx, e.owner.BuildPath("/leases/id/"+lease.ID), nil)
 		var apiErr *btclient.APIError
 		if err != nil && !(errors.As(err, &apiErr) && apiErr.IsGone()) {
-			t.Fatalf("revoking lease %s on %q: %v", lease.ID, dynamicSecretName, err)
+			return 0, fmt.Errorf("revoking lease %s on %q: %w", lease.ID, dynamicSecretName, err)
 		}
 	}
-	t.Logf("swept %d lease(s) on %q", len(page.Data), dynamicSecretName)
+	return len(page.Data), nil
+}
+
+// requireSwept is sweepLeases for a PreConfig: Terraform destroys the secret after the step.
+func (e *grantEnv) requireSwept(t *testing.T, dynamicSecretName string) {
+	t.Helper()
+	n, err := e.sweepLeases(dynamicSecretName)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Logf("swept %d lease(s) on %q", n, dynamicSecretName)
+}
+
+// registerFixtureSecretCleanup registers the dynamic secret's safety-net deletion, preceded
+// by a lease sweep. A step that fails before the sweeping step runs leaves the leases earlier
+// plan walks opened, and the deletion would otherwise fail on them exactly as Terraform's
+// destroy did, leaking the secret and the integration it holds in use.
+func (e *grantEnv) registerFixtureSecretCleanup(t *testing.T, dynamicSecretName string) {
+	t.Helper()
+	registerDynamicSecretCleanup(t, dynamicSecretName, e.fixtureRoot)
+	t.Cleanup(func() {
+		if t.Skipped() {
+			return
+		}
+		if _, err := e.sweepLeases(dynamicSecretName); err != nil {
+			t.Errorf("Cleanup: %v", err)
+		}
+	})
 }

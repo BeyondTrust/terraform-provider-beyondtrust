@@ -51,7 +51,9 @@ func TestAccAzureDynamicSecretEphemeral_generatesAndRevokes(t *testing.T) {
 			{
 				PreConfig: func() {
 					env.createFixtureIntegration(t, "azure", integrationName, env.azureIntegrationRequest())
-					registerDynamicSecretCleanup(t, dynamicSecretName, env.fixtureRoot)
+					// Registered after the integration's cleanup so that it runs before it:
+					// the secret holds the integration in use until it is gone.
+					env.registerFixtureSecretCleanup(t, dynamicSecretName)
 				},
 				Config: env.azureSetupConfig(integrationName, dynamicSecretName, appObjectID),
 				Check: resource.ComposeAggregateTestCheckFunc(
@@ -80,7 +82,7 @@ func TestAccAzureDynamicSecretEphemeral_generatesAndRevokes(t *testing.T) {
 			// and every lease still open is revoked first. Terraform's destroy follows this
 			// step, and a dynamic secret with a live lease cannot be destroyed.
 			{
-				PreConfig: func() { env.sweepLeases(t, dynamicSecretName) },
+				PreConfig: func() { env.requireSwept(t, dynamicSecretName) },
 				Config:    env.azureSetupConfig(integrationName, dynamicSecretName, appObjectID),
 			},
 		},
@@ -110,7 +112,7 @@ func TestAccAzureDynamicSecretEphemeral_revokeOnCloseDisabled(t *testing.T) {
 			{
 				PreConfig: func() {
 					env.createFixtureIntegration(t, "azure", integrationName, env.azureIntegrationRequest())
-					registerDynamicSecretCleanup(t, dynamicSecretName, env.fixtureRoot)
+					env.registerFixtureSecretCleanup(t, dynamicSecretName)
 				},
 				Config: env.azureSetupConfig(integrationName, dynamicSecretName, appObjectID),
 			},
@@ -129,7 +131,7 @@ func TestAccAzureDynamicSecretEphemeral_revokeOnCloseDisabled(t *testing.T) {
 			// Step 3: sweep the leases revoke_on_close = false deliberately left alive, one per
 			// plan walk, so that the destroy that follows can succeed. See the test above.
 			{
-				PreConfig: func() { env.sweepLeases(t, dynamicSecretName) },
+				PreConfig: func() { env.requireSwept(t, dynamicSecretName) },
 				Config:    env.azureSetupConfig(integrationName, dynamicSecretName, appObjectID),
 			},
 		},
