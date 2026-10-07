@@ -102,6 +102,28 @@ The roles must have this trust policy:
 }
 ```
 
+### Dynamic credential ephemeral test: a persistent dynamic secret
+
+`TestAccAwsDynamicSecretEphemeral_generatesWithGrant` generates STS credentials from a dynamic
+secret and checks what comes back. It does not create that dynamic secret. AWS leases cannot be
+revoked, because an STS session cannot be recalled, and a dynamic secret cannot be destroyed while
+a lease references it, so a secret created during the run could not be cleaned up until its TTL
+expired. The test instead uses one that outlives the run, created once:
+
+1. An AWS integration using the integration role (`BEYONDTRUST_TEST_AWS_ROLE_ARN`).
+2. An `assumed_role` dynamic secret **inside the fixture root folder**
+   (`BEYONDTRUST_TEST_POLICY_FIXTURE_ROOT`, see `iam/README.md`), whose `role_arn` is the role the
+   integration role may assume (`BEYONDTRUST_TEST_AWS_TARGET_ROLE_ARN`). Use the shortest TTL AWS
+   allows, 900 seconds, so the leases test runs leave behind expire quickly.
+3. `BEYONDTRUST_TEST_AWS_DYNAMIC_SECRET` set to that dynamic secret's name. In CI it is a variable
+   of the `acceptance-tests-admin` environment.
+
+The folder matters: the identity the tests run as owns that folder and nothing else, and Owner
+cascades to the secret. The generate grant is written per run, on that secret only, and removed
+afterwards. Leases accumulate on the secret, one per plan walk, and expire on their own.
+
+Without the variable the test skips and says so.
+
 ### Specify AWS Region
 
 ```bash
@@ -274,14 +296,14 @@ jobs:
 
 ## Environment Variables Reference
 
-| Variable                           | Required | Default        | Description                                           |
-|------------------------------------|----------|----------------|-------------------------------------------------------|
-| `BEYONDTRUST_AWS_ACCOUNT_ID`       | Yes      | -              | BeyondTrust Workload Credentials's AWS account ID     |
-| `BEYONDTRUST_TEST_AWS_ROLE_ARN`    | No       | Auto-created   | Pre-created test role ARN                             |
-| `BEYONDTRUST_TEST_AWS_ROLE_ARN_2`  | No       | Auto-created   | Second test role ARN                                  |
-| `BEYONDTRUST_TEST_AWS_EXTERNAL_ID` | No       | Auto-generated | External ID for role trust                            |
-| `AWS_PROFILE`                      | No       | `default`      | AWS CLI profile to use (local dev)                    |
-| `AWS_REGION`                       | No       | `us-east-1`    | AWS region                                            |
+| Variable                              | Required       | Default        | Description                                                  |
+|---------------------------------------|----------------|----------------|--------------------------------------------------------------|
+| `BEYONDTRUST_AWS_ACCOUNT_ID`          | Yes            | -              | BeyondTrust Workload Credentials's AWS account ID            |
+| `BEYONDTRUST_TEST_AWS_ROLE_ARN`       | No             | Auto-created   | Pre-created test role ARN                                    |
+| `BEYONDTRUST_TEST_AWS_ROLE_ARN_2`     | No             | Auto-created   | Second test role ARN                                         |
+| `BEYONDTRUST_TEST_AWS_EXTERNAL_ID`    | No             | Auto-generated | External ID for role trust                                   |
+| `BEYONDTRUST_TEST_AWS_DYNAMIC_SECRET` | Ephemeral test | -              | Persistent `assumed_role` dynamic secret in the fixture root |
+| `AWS_PROFILE`                         | No             | `default`      | AWS CLI profile to use (local dev)                           |
 
 **Note**: AWS credentials are obtained via:
 - **Preferred**: IAM role via OIDC web identity token (CI/CD)
