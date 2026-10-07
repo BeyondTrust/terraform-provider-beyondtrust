@@ -104,6 +104,24 @@ func preCheckGrantedAWS(t *testing.T) {
 	recordPrechecked(t)
 }
 
+// preCheckGrantedAzure gates the Azure tests: the same grant prerequisites as AWS, plus the
+// Azure credentials their fixtures are created from.
+func preCheckGrantedAzure(t *testing.T) {
+	t.Helper()
+	acctest.PreCheck(t)
+
+	if reason := acctest.AzureSkipReason(); reason != "" {
+		recordSkip(t, reason)
+		return
+	}
+	if reason := acctest.GenerateGrantSkipReason(); reason != "" {
+		recordSkip(t, reason)
+		return
+	}
+
+	recordPrechecked(t)
+}
+
 // preCheckBase is the accounting-aware form of acctest.PreCheck for tests that need
 // nothing beyond base credentials.
 func preCheckBase(t *testing.T) {
