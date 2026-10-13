@@ -11,8 +11,8 @@ import (
 	"github.com/beyondtrust/terraform-provider-beyondtrust/internal/acctest"
 )
 
-// The dynamic credential test grants itself GenerateDynamicCredential, since its identity
-// holds only Owner on the fixture folder and Owner does not include generation.
+// The dynamic credential test grants itself GenerateDynamicCredential, the least privilege
+// generation needs, rather than relying on its Owner of the fixture folder.
 //
 // It generates from a dynamic secret that already exists rather than creating one. AWS
 // credentials cannot be revoked early, and a dynamic secret cannot be deleted while it has

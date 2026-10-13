@@ -180,10 +180,9 @@ func TestRevokeLease_RetriesTransientNotFound(t *testing.T) {
 	assert.Equal(t, int32(3), calls.Load())
 }
 
-// A lease that is still absent after the retry budget is gone, which is the state a revoke
-// is trying to reach. Revocation is idempotent, so this is a success rather than a warning
-// about a credential that no longer exists.
-func TestRevokeLease_PersistentNotFoundIsSuccess(t *testing.T) {
+// A lease still not found after the retries may never have become visible, so its
+// credential may still be live. That is reported rather than treated as revoked.
+func TestRevokeLease_PersistentNotFoundIsReported(t *testing.T) {
 	t.Parallel()
 
 	var calls atomic.Int32
@@ -193,7 +192,9 @@ func TestRevokeLease_PersistentNotFoundIsSuccess(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	require.NoError(t, revokeLease(context.Background(), newTestClient(t, srv.URL), "lease-abc"))
+	err := revokeLease(context.Background(), newTestClient(t, srv.URL), "lease-abc")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "could not be confirmed")
 	assert.Greater(t, calls.Load(), int32(1), "a transient status should have been retried first")
 }
 

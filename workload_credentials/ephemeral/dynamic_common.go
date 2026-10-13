@@ -107,16 +107,16 @@ func revokeLease(ctx context.Context, c *client.Client, leaseID string) error {
 	for {
 		err := c.Delete(ctx, path, nil)
 		if err == nil || !isLeaseNotYetVisible(err) {
-			return normalizeRevokeError(err)
+			return err
 		}
 
 		if totalBackoff+backoff > revokeMaxTotalBackoff {
-			return normalizeRevokeError(err)
+			return unconfirmedRevokeError(err)
 		}
 
 		select {
 		case <-ctx.Done():
-			return normalizeRevokeError(err)
+			return unconfirmedRevokeError(err)
 		case <-time.After(jittered(backoff)):
 		}
 
@@ -127,27 +127,11 @@ func revokeLease(ctx context.Context, c *client.Client, leaseID string) error {
 	}
 }
 
-// normalizeRevokeError folds the outcomes that are really successes into a nil.
-//
-// A 404 after the retry budget is one: the lease is gone, which is the state a revoke is
-// trying to reach. Revocation is idempotent, so a lease already removed — by an earlier
-// Close, by expiry, or by the backend — is not a failure to report.
-//
-// lease_not_revocable is deliberately NOT folded. Only the Azure resource implements Close,
-// and for a revocable credential type that code means the password was not deleted and is
-// still live, which the practitioner needs to hear. The AWS resource, whose leases really
-// are non-revocable, never calls this.
-func normalizeRevokeError(err error) error {
-	if err == nil {
-		return nil
-	}
-
-	var apiErr *client.APIError
-	if errors.As(err, &apiErr) && apiErr.StatusCode == http.StatusNotFound {
-		return nil
-	}
-
-	return err
+// unconfirmedRevokeError reports a lease that was still not found when the retries ran
+// out. Only a lease this provider just generated is revoked, so it most likely never
+// became visible and its credential may still be live. Callers surface it as a warning.
+func unconfirmedRevokeError(err error) error {
+	return fmt.Errorf("lease was not found, so its revocation could not be confirmed: %w", err)
 }
 
 // isLeaseNotYetVisible reports whether err is the transient 404 a revoke can hit moments

@@ -67,7 +67,8 @@ yet and a missing permission produce the same error.
 ## Permissions
 
 Generating requires the `GenerateDynamicCredential` permission on the dynamic secret. Product
-admins already hold it and need no policy. Anyone else needs a grant:
+admins already hold it, and so does `Owner` on the dynamic secret or its folder. To grant only
+generation, write a policy:
 
 ```hcl
 resource "beyondtrust_iam_policy" "generate" {
@@ -86,13 +87,8 @@ resource "beyondtrust_iam_policy" "generate" {
 }
 ```
 
-Two things to get right:
-
-- The principal must be the identity whose token the provider authenticates with, not a
-  separate subject. Granting to anyone else yields a policy that reports `ACTIVE` and
-  changes nothing.
-- `Owner` on the dynamic secret or its folder does **not** include generation. Grant
-  `GenerateDynamicCredential` directly.
+The principal must be the identity whose token the provider authenticates with, not a separate
+subject. Granting to anyone else yields a policy that reports `ACTIVE` and changes nothing.
 
 `revoke_on_close` also needs `RevokeLease` on the same dynamic secret, which `Owner` includes.
 Without it the apply still succeeds, but Terraform only warns and the password stays valid until
