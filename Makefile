@@ -4,7 +4,7 @@
 # Variables and Configuration
 # ==========================================
 
-.PHONY: help build install test test-unit test-acc test-acc-admin test-acc-policy test-acc-binding testacc test-coverage test-coverage-html clean fmt lint generate docs docs-validate tf-local tf-local-shell default
+.PHONY: help build install test test-unit test-acc test-acc-ephemeral test-acc-admin test-acc-policy test-acc-binding testacc test-coverage test-coverage-html clean fmt lint generate docs docs-validate tf-local tf-local-shell default
 .PHONY: pre-commit pre-commit-quick ci-local check-tools install-tools gofumpt-fix tf-fmt-check tf-fmt-fix spell-check go-mod-tidy check-uncommitted install-git-hooks
 
 BINARY_NAME := terraform-provider-beyondtrust
@@ -171,7 +171,7 @@ test:
 ## test-unit: Run unit tests only (excludes acceptance tests)
 test-unit:
 	@echo "Running unit tests..."
-	@go test -v -cover -timeout=120s -parallel=10 -coverprofile=coverage-unit.out -covermode=atomic ./internal/... ./auth/... ./iam/...
+	@go test -v -cover -timeout=120s -parallel=10 -coverprofile=coverage-unit.out -covermode=atomic ./internal/... ./auth/... ./iam/... ./workload_credentials/...
 
 ## test-acc: Run acceptance tests (requires Workload Credentials instance)
 test-acc:
@@ -183,6 +183,14 @@ test-acc:
 test-acc-admin:
 	@echo "Running admin-site (workload identity) acceptance tests..."
 	@TF_ACC=1 TFENV_TERRAFORM_VERSION=$(TERRAFORM_VERSION) go test -v -timeout=30m -tags acceptance -run TestAccWorkloadIdentity ./auth/...
+
+## test-acc-ephemeral: Run dynamic credential ephemeral acceptance tests only
+#
+# Scoped by name: the package also holds the static secret tests, which need permissions the
+# identity used for this target does not have.
+test-acc-ephemeral:
+	@echo "Running dynamic credential ephemeral acceptance tests..."
+	@TF_ACC=1 TFENV_TERRAFORM_VERSION=$(TERRAFORM_VERSION) go test -v -timeout=30m -tags acceptance -run 'TestAcc(Aws|Azure)DynamicSecretEphemeral' ./workload_credentials/ephemeral/...
 
 ## test-acc-policy: Run every IAM policy acceptance test (lifecycle + binding)
 test-acc-policy:

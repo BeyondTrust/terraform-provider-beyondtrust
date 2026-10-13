@@ -1,6 +1,7 @@
 package acctest
 
 import (
+	"context"
 	"fmt"
 	"math/rand"
 	"os"
@@ -8,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/beyondtrust/terraform-provider-beyondtrust/internal/client"
 	"github.com/beyondtrust/terraform-provider-beyondtrust/internal/constants"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 )
@@ -47,27 +49,48 @@ func PreCheck(t *testing.T) {
 	}
 }
 
+// AWSSkipReason returns why the AWS acceptance tests cannot run, or "" when they can.
+//
+// Returned rather than skipped directly so callers can also count and report it — a suite
+// that skips silently reports green while verifying nothing. PreCheckAWS is the shorthand
+// for callers that only need to skip.
+func AWSSkipReason() string {
+	if os.Getenv(EnvTestAWSRoleARN) == "" {
+		return EnvTestAWSRoleARN + " is not set"
+	}
+	return ""
+}
+
 // PreCheckAWS checks that AWS-specific environment variables are set
 func PreCheckAWS(t *testing.T) {
 	t.Helper()
 
-	if v := os.Getenv(EnvTestAWSRoleARN); v == "" {
-		t.Skipf("%s must be set for AWS integration acceptance tests", EnvTestAWSRoleARN)
+	if reason := AWSSkipReason(); reason != "" {
+		t.Skipf("AWS acceptance tests skipped: %s", reason)
 	}
 }
 
-// PreCheckAzure checks that Azure-specific environment variables are set
-func PreCheckAzure(t *testing.T) {
-	t.Helper()
-
-	missing := []string{}
+// AzureSkipReason returns why the Azure acceptance tests cannot run, or "" when they can.
+// See AWSSkipReason for why this is returned rather than skipped.
+func AzureSkipReason() string {
+	var missing []string
 	for _, env := range []string{EnvTestAzureTenantID, EnvTestAzureClientID, EnvTestAzureClientSecret, EnvTestAzureAppObjectID} {
 		if os.Getenv(env) == "" {
 			missing = append(missing, env)
 		}
 	}
 	if len(missing) > 0 {
-		t.Skipf("Azure acceptance tests skipped: missing environment variables: %v", missing)
+		return "missing environment variables: " + strings.Join(missing, ", ")
+	}
+	return ""
+}
+
+// PreCheckAzure checks that Azure-specific environment variables are set
+func PreCheckAzure(t *testing.T) {
+	t.Helper()
+
+	if reason := AzureSkipReason(); reason != "" {
+		t.Skipf("Azure acceptance tests skipped: %s", reason)
 	}
 }
 
@@ -124,6 +147,31 @@ func PolicyBindingSkipReason() string {
 	if reason := PolicyPrincipalSkipReason(); reason != "" {
 		return reason
 	}
+	return ""
+}
+
+// GenerateGrantSkipReason returns why the dynamic credential tests cannot run, or "" when
+// they can: they need the admin site to author the grant and a way to name the identity the
+// grant is for, either EnvTestGeneratePrincipal or a service name to resolve it from.
+func GenerateGrantSkipReason() string {
+	if _, err := LoadAdminTestConfig(); err != nil {
+		return fmt.Sprintf("%v (set %s and %s)", err, EnvAdminSiteID, EnvAdminAccessToken)
+	}
+
+	principal := os.Getenv(EnvTestGeneratePrincipal)
+	if principal == "" {
+		if os.Getenv(constants.EnvServiceName) == "" {
+			return fmt.Sprintf("neither %s (a Cedar entity, e.g. Pathfinder::Workload::Id::%q) nor %s "+
+				"(a service name to resolve it from) is set",
+				EnvTestGeneratePrincipal, "<uuid>", constants.EnvServiceName)
+		}
+		return ""
+	}
+	if !strings.Contains(principal, "::") || !strings.Contains(principal, `"`) {
+		return fmt.Sprintf("%s must be a whole Cedar entity such as Pathfinder::Workload::Id::%q, got %q",
+			EnvTestGeneratePrincipal, "<uuid>", principal)
+	}
+
 	return ""
 }
 
@@ -249,4 +297,48 @@ func RandomTags() map[string]string {
 		"ManagedBy":   "terraform",
 		"TestRun":     RandomString(8),
 	}
+}
+
+// workloadIdentityPage is the shape of GET /platform/auth/workload-identities, reduced to
+// what resolving a service name needs.
+type workloadIdentityPage struct {
+	Issuers []struct {
+		IdentityID  string `json:"identityId"`
+		ServiceName string `json:"serviceName"`
+	} `json:"issuers"`
+	TotalCount int `json:"totalCount"`
+}
+
+// ResolveGeneratePrincipal returns the Cedar entity the dynamic credential tests grant to.
+//
+// EnvTestGeneratePrincipal wins when set. Otherwise the provider identity's service name
+// (BEYONDTRUST_SERVICE_NAME) is looked up among the org's workload identities through the
+// admin site, and the entity is Pathfinder::Workload::Id::"<identityId>", the form a workload
+// identity takes in Cedar. Service names are matched case-insensitively.
+func ResolveGeneratePrincipal(ctx context.Context, admin *client.Client) (string, error) {
+	if principal := os.Getenv(EnvTestGeneratePrincipal); principal != "" {
+		return principal, nil
+	}
+
+	serviceName := os.Getenv(constants.EnvServiceName)
+	if serviceName == "" {
+		return "", fmt.Errorf("set %s to a Cedar entity, or %s to a service name to resolve one from",
+			EnvTestGeneratePrincipal, constants.EnvServiceName)
+	}
+
+	var page workloadIdentityPage
+	if err := admin.Get(ctx, admin.BuildAuthPath("/workload-identities"), nil, &page); err != nil {
+		return "", fmt.Errorf("listing workload identities to resolve %q: %w", serviceName, err)
+	}
+	for _, issuer := range page.Issuers {
+		if strings.EqualFold(issuer.ServiceName, serviceName) {
+			return fmt.Sprintf("Pathfinder::Workload::Id::%q", issuer.IdentityID), nil
+		}
+	}
+	if page.TotalCount > len(page.Issuers) {
+		return "", fmt.Errorf("no workload identity named %q among the first %d of %d listed; set %s instead",
+			serviceName, len(page.Issuers), page.TotalCount, EnvTestGeneratePrincipal)
+	}
+	return "", fmt.Errorf("no workload identity named %q among the %d the admin site lists",
+		serviceName, len(page.Issuers))
 }

@@ -14,6 +14,9 @@ const (
 	EnvTestAWSRoleARN       = "BEYONDTRUST_TEST_AWS_ROLE_ARN"
 	EnvTestAWSRoleARN2      = "BEYONDTRUST_TEST_AWS_ROLE_ARN_2"
 	EnvTestAWSTargetRoleARN = "BEYONDTRUST_TEST_AWS_TARGET_ROLE_ARN"
+	// EnvTestAWSDynamicSecret is an existing assumed_role dynamic secret, inside the fixture
+	// root folder, that the AWS dynamic credential test generates from.
+	EnvTestAWSDynamicSecret = "BEYONDTRUST_TEST_AWS_DYNAMIC_SECRET"
 	EnvTestAWSExternalID    = "BEYONDTRUST_TEST_AWS_EXTERNAL_ID"
 	EnvAWSAccountID         = "BEYONDTRUST_AWS_ACCOUNT_ID"
 )
@@ -62,6 +65,11 @@ const (
 	// name picks which registration it resolves to.
 	EnvTestPolicyPrincipalServiceName = "BEYONDTRUST_TEST_POLICY_PRINCIPAL_SERVICE_NAME"
 
+	// EnvAdminServiceName is the admin-site workload identity's service name, for runs where
+	// BEYONDTRUST_SERVICE_NAME names a product-site identity. A service name only authenticates
+	// against its own site. Defaults to BEYONDTRUST_SERVICE_NAME.
+	EnvAdminServiceName = "BEYONDTRUST_ADMIN_SERVICE_NAME"
+
 	// EnvTestPolicyOwnerServiceName selects the workload identity that seeds the binding tests'
 	// fixtures. It exists because BEYONDTRUST_SERVICE_NAME cannot serve both sites at once: in
 	// the policy job that variable names the admin-site identity, which the provider and the
@@ -70,6 +78,11 @@ const (
 	EnvTestPolicyOwnerServiceName = "BEYONDTRUST_TEST_POLICY_OWNER_SERVICE_NAME"
 
 	EnvTestPolicySiteID = "BEYONDTRUST_TEST_POLICY_SITE_ID"
+
+	// EnvTestGeneratePrincipal is the Cedar principal the dynamic credential tests grant
+	// generation to. When unset it is resolved from BEYONDTRUST_SERVICE_NAME, so it is only
+	// needed with access tokens.
+	EnvTestGeneratePrincipal = "BEYONDTRUST_TEST_GENERATE_PRINCIPAL"
 
 	// EnvTestPolicyFixtureRoot is an existing folder the seeding identity owns, which the tests
 	// create their per-run fixtures inside.
@@ -159,6 +172,10 @@ provider "beyondtrust" {
 		config += fmt.Sprintf("  api_version  = %q\n", c.APIVersion)
 	}
 
+	if c.ServiceName != "" {
+		config += fmt.Sprintf("  service_name = %q\n", c.ServiceName)
+	}
+
 	config += "}\n"
 	return config
 }
@@ -168,12 +185,18 @@ provider "beyondtrust" {
 // credentials, so they require BEYONDTRUST_ADMIN_SITE_ID and BEYONDTRUST_ADMIN_ACCESS_TOKEN.
 // The base/normal-site site id and token are not used (only the shared API URL/version are).
 func LoadAdminTestConfig() (*TestConfig, error) {
+	// See EnvAdminServiceName.
+	serviceName := os.Getenv(EnvAdminServiceName)
+	if serviceName == "" {
+		serviceName = os.Getenv(constants.EnvServiceName)
+	}
+
 	cfg := &TestConfig{
 		APIURL:      os.Getenv(constants.EnvAPIURL),
 		SiteID:      os.Getenv(EnvAdminSiteID),
 		AccessToken: os.Getenv(EnvAdminAccessToken),
 		APIVersion:  os.Getenv(constants.EnvAPIVersion),
-		ServiceName: os.Getenv(constants.EnvServiceName),
+		ServiceName: serviceName,
 	}
 	if cfg.APIVersion == "" {
 		cfg.APIVersion = client.DefaultAPIVersion
@@ -255,6 +278,20 @@ func NewTestClient() (*client.Client, error) {
 // NewPolicyOwnerTestClient creates the product-site client that seeds the binding tests'
 // fixtures, selecting its workload identity by service name when one is configured.
 func NewPolicyOwnerTestClient() (*client.Client, error) {
+	cfg, err := LoadPolicyOwnerTestConfig()
+	if err != nil {
+		return nil, err
+	}
+	return NewClientForConfig(cfg)
+}
+
+// LoadPolicyOwnerTestConfig loads the product-site identity that seeds fixtures.
+//
+// Separate from LoadTestConfig because BEYONDTRUST_SERVICE_NAME cannot serve both sites at
+// once: in the admin-site job it names the admin identity, which the provider and the admin
+// client need, while the fixture owner is a different identity on the product site. Unset
+// falls back to the default, which is right when one identity covers both.
+func LoadPolicyOwnerTestConfig() (*TestConfig, error) {
 	cfg, err := LoadTestConfig()
 	if err != nil {
 		return nil, fmt.Errorf("failed to load test config: %w", err)
@@ -262,7 +299,7 @@ func NewPolicyOwnerTestClient() (*client.Client, error) {
 	if name := os.Getenv(EnvTestPolicyOwnerServiceName); name != "" {
 		cfg.ServiceName = name
 	}
-	return NewClientForConfig(cfg)
+	return cfg, nil
 }
 
 // NewAdminTestClient creates a client against the org's admin site, where the IAM policy and

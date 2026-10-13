@@ -21,6 +21,9 @@ export BEYONDTRUST_SITE_ID="your-site-uuid"
 # scoped to a single site). When unset, the workload-identity acceptance tests are skipped.
 export BEYONDTRUST_ADMIN_SITE_ID="your-admin-site-uuid"
 export BEYONDTRUST_ADMIN_ACCESS_TOKEN="your-admin-site-access-token"
+# Optional. Service name of the admin-site workload identity, when it differs from
+# BEYONDTRUST_SERVICE_NAME. Defaults to BEYONDTRUST_SERVICE_NAME. Not needed with access tokens.
+# export BEYONDTRUST_ADMIN_SERVICE_NAME="your-admin-service-name"
 
 # Optional. Sent as X-BT-Service-Name; required when authenticating via workload identity
 # federation (e.g. GitHub OIDC) rather than a personal access token.
@@ -46,6 +49,10 @@ export BEYONDTRUST_ADMIN_ACCESS_TOKEN="your-admin-site-access-token"
 # The identity that seeds the fixtures. Only needed when one identity cannot cover both sites —
 # BEYONDTRUST_SERVICE_NAME names the admin-site one, so the product-site owner needs its own.
 # export BEYONDTRUST_TEST_POLICY_OWNER_SERVICE_NAME="tf-acc-owner"
+
+# Optional. The Cedar principal the dynamic credential tests grant generation to. Resolved from
+# BEYONDTRUST_SERVICE_NAME when unset, so only needed with access tokens.
+# export BEYONDTRUST_TEST_GENERATE_PRINCIPAL='Pathfinder::Workload::Id::"00000000-0000-0000-0000-000000000000"'
 #
 # The folder that identity owns, which each run's fixtures are created inside. Needed whenever the
 # seeding identity is not a product admin — a freshly created workload identity never is. Grant it
@@ -58,13 +65,17 @@ export BEYONDTRUST_ADMIN_ACCESS_TOKEN="your-admin-site-access-token"
 #
 # Optional: the site named in the policy's @siteId annotation. Defaults to BEYONDTRUST_SITE_ID.
 # export BEYONDTRUST_TEST_POLICY_SITE_ID="your-product-site-uuid"
-# Optional: seconds to wait for a grant to bind. Default 180.
+# Optional: seconds to wait for a grant to bind. Default 90.
 # export BEYONDTRUST_TEST_POLICY_BIND_TIMEOUT="180"
 
 # Required for AWS Integration Tests
 export BEYONDTRUST_TEST_AWS_ROLE_ARN="arn:aws:iam::123456789012:role/staging-test-role"
 export BEYONDTRUST_TEST_AWS_ROLE_ARN_2="arn:aws:iam::123456789012:role/second-staging-test-role"
 export BEYONDTRUST_TEST_AWS_TARGET_ROLE_ARN="arn:aws:iam::123456789012:role/staging-target-role"
+
+# Required for the AWS dynamic credential ephemeral test: an existing assumed_role dynamic secret
+# inside BEYONDTRUST_TEST_POLICY_FIXTURE_ROOT. See docs/TESTING_AWS.md.
+# export BEYONDTRUST_TEST_AWS_DYNAMIC_SECRET="your-assumed-role-dynamic-secret"
 
 # Required for Azure Integration Tests
 # tenant_id: Azure AD directory (tenant) UUID
