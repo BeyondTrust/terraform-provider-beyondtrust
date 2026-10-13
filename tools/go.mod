@@ -1,6 +1,6 @@
 module github.com/beyondtrust/terraform-provider-beyondtrust/tools
 
-go 1.26.7
+go 1.26.9
 
 require (
 	github.com/hashicorp/terraform-plugin-docs v0.25.0
