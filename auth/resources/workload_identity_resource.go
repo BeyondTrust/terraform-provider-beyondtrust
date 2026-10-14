@@ -304,7 +304,8 @@ func (r *WorkloadIdentityResource) Delete(ctx context.Context, req resource.Dele
 }
 
 func (r *WorkloadIdentityResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
-	// Import by identityId; Read repopulates the rest from the API.
+	// Import by identityId; Read repopulates the rest from the API, including the immutable
+	// fields, which are null in state until then (see applyRead).
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }
 
