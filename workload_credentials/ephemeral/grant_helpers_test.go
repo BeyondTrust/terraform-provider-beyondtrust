@@ -115,15 +115,15 @@ permit(
 }
 
 // ownIntegrationCedar makes the principal Owner of one integration. An integration's path in
-// a policy is its bare name.
-func (e *grantEnv) ownIntegrationCedar(integrationName string) string {
+// a policy is its provider and name, such as "azure/my-integration", with no leading slash.
+func (e *grantEnv) ownIntegrationCedar(provider, integrationName string) string {
 	return fmt.Sprintf(`@siteId(%q)
 permit(
   principal == %s,
   action == WorkloadCredentials::Action::"Owner",
   resource == WorkloadCredentials::Integration::%q
 );
-`, e.siteID, e.principal, integrationName)
+`, e.siteID, e.principal, provider+"/"+integrationName)
 }
 
 // createFixtureIntegration creates an integration as the provider identity and makes that
@@ -141,7 +141,7 @@ func (e *grantEnv) createFixtureIntegration(t *testing.T, provider, integrationN
 		t.Fatalf("creating %s integration %q: %v", provider, integrationName, err)
 	}
 
-	grantViaAdmin(t, integrationName+"-own", e.ownIntegrationCedar(integrationName))
+	grantViaAdmin(t, integrationName+"-own", e.ownIntegrationCedar(provider, integrationName))
 
 	// Unlike registerCleanup, a 403 here is a leak worth failing on, not "already gone".
 	t.Cleanup(func() {
