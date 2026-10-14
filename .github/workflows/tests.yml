@@ -172,6 +172,43 @@ jobs:
           BEYONDTRUST_TEST_REQUIRE_ACC: "1"
           TF_ACC: "1"
 
+      # Its own step and tokens: it writes several grants and outlasts one token's lifetime
+      # if it shares a step with the policy suite.
+      - name: Get admin-site OIDC token for the integration binding test
+        id: oidc-integration-admin
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const token = await core.getIDToken('${{ secrets.BEYONDTRUST_ADMIN_SITE_ID }}')
+            core.setOutput('token', token)
+
+      - name: Get product-site OIDC token for the integration binding test
+        id: oidc-integration-product
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const token = await core.getIDToken('${{ secrets.BEYONDTRUST_SITE_ID }}')
+            core.setOutput('token', token)
+
+      - name: Run integration policy binding acceptance test
+        run: make test-acc-integration-binding
+        env:
+          BEYONDTRUST_ADMIN_SITE_ID: ${{ secrets.BEYONDTRUST_ADMIN_SITE_ID }}
+          BEYONDTRUST_ADMIN_ACCESS_TOKEN: ${{ steps.oidc-integration-admin.outputs.token }}
+          BEYONDTRUST_SITE_ID: ${{ secrets.BEYONDTRUST_SITE_ID }}
+          BEYONDTRUST_ACCESS_TOKEN: ${{ steps.oidc-integration-product.outputs.token }}
+          BEYONDTRUST_SERVICE_NAME: ${{ secrets.BEYONDTRUST_SERVICE_NAME }}
+          BEYONDTRUST_TEST_POLICY_PRINCIPAL: ${{ secrets.BEYONDTRUST_TEST_POLICY_PRINCIPAL }}
+          BEYONDTRUST_TEST_POLICY_OWNER_SERVICE_NAME: ${{ secrets.BEYONDTRUST_TEST_POLICY_OWNER_SERVICE_NAME }}
+          BEYONDTRUST_TEST_POLICY_PRINCIPAL_SERVICE_NAME: ${{ secrets.BEYONDTRUST_TEST_POLICY_PRINCIPAL_SERVICE_NAME }}
+          BEYONDTRUST_TEST_AWS_ROLE_ARN: ${{ secrets.BEYONDTRUST_TEST_AWS_ROLE_ARN }}
+          BEYONDTRUST_TEST_AZURE_TENANT_ID: ${{ secrets.BEYONDTRUST_TEST_AZURE_TENANT_ID }}
+          BEYONDTRUST_TEST_AZURE_CLIENT_ID: ${{ secrets.BEYONDTRUST_TEST_AZURE_CLIENT_ID }}
+          BEYONDTRUST_TEST_AZURE_CLIENT_SECRET: ${{ secrets.BEYONDTRUST_TEST_AZURE_CLIENT_SECRET }}
+          BEYONDTRUST_TEST_AZURE_APPLICATION_OBJECT_ID: ${{ secrets.BEYONDTRUST_TEST_AZURE_APPLICATION_OBJECT_ID }}
+          BEYONDTRUST_TEST_REQUIRE_ACC: "1"
+          TF_ACC: "1"
+
       # Fresh tokens for the step below: GitHub OIDC tokens are short-lived, and the ones from the
       # top of this job may have expired by now.
       - name: Get admin-site OIDC token for the ephemeral tests
