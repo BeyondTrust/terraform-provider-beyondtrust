@@ -285,8 +285,11 @@ func TestAccPolicyBinding_revoked(t *testing.T) {
 
 // --- checks ---
 
-// checkListReturnsOnly polls until the list endpoint admits the principal, then asserts the
-// response contains exactly the named secret.
+// checkListReturnsOnly polls until the list endpoint admits the principal and returns at least
+// one secret, then asserts the response contains exactly the named secret.
+//
+// An empty list keeps polling: list results can lag a newly active grant, so the gate can open
+// before the read grant shows up in the list.
 func (e *policyBindingEnv) checkListReturnsOnly(t *testing.T, want string) resource.TestCheckFunc {
 	return func(*terraform.State) error {
 		ctx := context.Background()
@@ -297,7 +300,7 @@ func (e *policyBindingEnv) checkListReturnsOnly(t *testing.T, want string) resou
 			switch status {
 			case http.StatusOK:
 				last = resp
-				return true, nil
+				return resp != nil && len(resp.Data) > 0, nil
 			case http.StatusForbidden:
 				return false, nil // gate not bound yet
 			case http.StatusUnauthorized:
