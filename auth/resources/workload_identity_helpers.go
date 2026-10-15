@@ -32,8 +32,17 @@ func applyComputed(data *WorkloadIdentityResourceModel, iss issuer) diag.Diagnos
 // fields (service_name, issuer_url, idp_category) are left as their state values: they can't
 // change through this API, and the auth service lower-cases the issuer URL / service name in storage,
 // so echoing the response back would cause spurious diffs.
+//
+// The exception is a null state value, which only happens on the first Read after import. Those
+// fields are filled from the response; leaving them null would make every import plan a replacement,
+// since all three force replacement. An imported config whose values differ from the stored ones
+// only by case will still plan a replacement.
 func applyRead(ctx context.Context, data *WorkloadIdentityResourceModel, iss issuer) diag.Diagnostics {
 	var diags diag.Diagnostics
+
+	fillIfNull(&data.ServiceName, iss.ServiceName)
+	fillIfNull(&data.IssuerURL, iss.IssuerURL)
+	fillIfNull(&data.IdpCategory, iss.IdpCategory)
 
 	data.ID = types.StringValue(iss.IdentityID)
 	data.OrganizationID = types.StringValue(iss.OrganizationID)
@@ -50,6 +59,14 @@ func applyRead(ctx context.Context, data *WorkloadIdentityResourceModel, iss iss
 	data.RegisteredScopes = scopes
 
 	return diags
+}
+
+// fillIfNull sets field to value when field is null and value is non-empty. An empty response
+// value leaves the field null rather than writing "", so a missing field still shows up as a diff.
+func fillIfNull(field *types.String, value string) {
+	if field.IsNull() && value != "" {
+		*field = types.StringValue(value)
+	}
 }
 
 // isNotFound reports whether err is (or wraps) a 404 from the API client.
