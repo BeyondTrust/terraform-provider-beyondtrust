@@ -159,7 +159,7 @@ func (e *AzureDynamicSecretEphemeral) Open(ctx context.Context, req ephemeral.Op
 
 	name := data.Name.ValueString()
 
-	secret, err := generateCredential[azureGeneratedSecret](ctx, e.client, name, data.Folder.ValueString())
+	secret, err := generateCredentialRetryingServerErrors[azureGeneratedSecret](ctx, e.client, name, data.Folder.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error Generating Azure Credentials",
