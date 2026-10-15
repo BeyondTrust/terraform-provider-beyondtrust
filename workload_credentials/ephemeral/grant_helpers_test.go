@@ -202,8 +202,12 @@ func (e *grantEnv) registerFixtureSecretCleanup(t *testing.T, dynamicSecretName 
 		if t.Skipped() {
 			return
 		}
-		if _, err := e.sweepLeases(dynamicSecretName); err != nil {
-			t.Errorf("Cleanup: %v", err)
+		_, err := e.sweepLeases(dynamicSecretName)
+		// After a successful destroy the secret is gone, which the API reports as 404 or 403.
+		var apiErr *btclient.APIError
+		if err == nil || (errors.As(err, &apiErr) && (apiErr.IsGone() || apiErr.IsPermissionError())) {
+			return
 		}
+		t.Errorf("Cleanup: %v", err)
 	})
 }
