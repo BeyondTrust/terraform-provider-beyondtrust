@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.5.0](https://github.com/BeyondTrust/terraform-provider-beyondtrust/compare/v1.4.1...v1.5.0) (2026-10-15)
+
+
+### Features
+
+* generate dynamic credentials via ephemeral resources ([#123](https://github.com/BeyondTrust/terraform-provider-beyondtrust/issues/123)) ([8e88ecf](https://github.com/BeyondTrust/terraform-provider-beyondtrust/commit/8e88ecf5cf3c41afc00cf60f7f12f46303835508))
+
+
+### Bug Fixes
+
+* **deps:** bump golang.org/x/net to v0.60.0 and Go to 1.26.9 ([#130](https://github.com/BeyondTrust/terraform-provider-beyondtrust/issues/130)) ([7731793](https://github.com/BeyondTrust/terraform-provider-beyondtrust/commit/7731793a24f0e6ee61257f2f3d17c3b4b4ae6545))
+* make generate actually generates the docs ([#125](https://github.com/BeyondTrust/terraform-provider-beyondtrust/issues/125)) ([4f84799](https://github.com/BeyondTrust/terraform-provider-beyondtrust/commit/4f8479980e4529ad665bfc085efd0d924b4724a3))
+* Populate immutable workload identity fields on import ([#132](https://github.com/BeyondTrust/terraform-provider-beyondtrust/issues/132)) ([dda37ff](https://github.com/BeyondTrust/terraform-provider-beyondtrust/commit/dda37ffd09d1eb2d7a2fcfd15caef6ba54cc86c7))
+
 ## [1.4.1](https://github.com/BeyondTrust/terraform-provider-beyondtrust/compare/v1.4.0...v1.4.1) (2026-09-29)
 
 
