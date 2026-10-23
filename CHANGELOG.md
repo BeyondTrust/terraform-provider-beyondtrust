@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.5.1](https://github.com/BeyondTrust/terraform-provider-beyondtrust/compare/v1.5.0...v1.5.1) (2026-10-23)
+
+
+### Bug Fixes
+
+* Bump Go to 1.26.10 for GO-2026-6809 ([#136](https://github.com/BeyondTrust/terraform-provider-beyondtrust/issues/136)) ([c128bb9](https://github.com/BeyondTrust/terraform-provider-beyondtrust/commit/c128bb96f72a36173779c404a2405a73c2a37adf))
+
 ## [1.5.0](https://github.com/BeyondTrust/terraform-provider-beyondtrust/compare/v1.4.1...v1.5.0) (2026-10-15)
 
 
