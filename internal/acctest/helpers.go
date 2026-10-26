@@ -312,9 +312,7 @@ type workloadIdentityPage struct {
 // ResolveGeneratePrincipal returns the Cedar entity the dynamic credential tests grant to.
 //
 // EnvTestGeneratePrincipal wins when set. Otherwise the provider identity's service name
-// (BEYONDTRUST_SERVICE_NAME) is looked up among the org's workload identities through the
-// admin site, and the entity is Pathfinder::Workload::Id::"<identityId>", the form a workload
-// identity takes in Cedar. Service names are matched case-insensitively.
+// (BEYONDTRUST_SERVICE_NAME) is resolved with ResolveWorkloadPrincipal.
 func ResolveGeneratePrincipal(ctx context.Context, admin *client.Client) (string, error) {
 	if principal := os.Getenv(EnvTestGeneratePrincipal); principal != "" {
 		return principal, nil
@@ -325,7 +323,17 @@ func ResolveGeneratePrincipal(ctx context.Context, admin *client.Client) (string
 		return "", fmt.Errorf("set %s to a Cedar entity, or %s to a service name to resolve one from",
 			EnvTestGeneratePrincipal, constants.EnvServiceName)
 	}
+	principal, err := ResolveWorkloadPrincipal(ctx, admin, serviceName)
+	if err != nil {
+		return "", fmt.Errorf("%w; set %s instead", err, EnvTestGeneratePrincipal)
+	}
+	return principal, nil
+}
 
+// ResolveWorkloadPrincipal looks a service name up among the org's workload identities through
+// the admin site and returns its Cedar entity, Pathfinder::Workload::Id::"<identityId>".
+// Service names are matched case-insensitively.
+func ResolveWorkloadPrincipal(ctx context.Context, admin *client.Client, serviceName string) (string, error) {
 	var page workloadIdentityPage
 	if err := admin.Get(ctx, admin.BuildAuthPath("/workload-identities"), nil, &page); err != nil {
 		return "", fmt.Errorf("listing workload identities to resolve %q: %w", serviceName, err)
@@ -336,8 +344,8 @@ func ResolveGeneratePrincipal(ctx context.Context, admin *client.Client) (string
 		}
 	}
 	if page.TotalCount > len(page.Issuers) {
-		return "", fmt.Errorf("no workload identity named %q among the first %d of %d listed; set %s instead",
-			serviceName, len(page.Issuers), page.TotalCount, EnvTestGeneratePrincipal)
+		return "", fmt.Errorf("no workload identity named %q among the first %d of %d listed",
+			serviceName, len(page.Issuers), page.TotalCount)
 	}
 	return "", fmt.Errorf("no workload identity named %q among the %d the admin site lists",
 		serviceName, len(page.Issuers))

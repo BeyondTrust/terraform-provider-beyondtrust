@@ -402,13 +402,7 @@ func statusSettled(status, want int, err error) (bool, error) {
 func waitForBinding(t *testing.T, what string, probe func() (bool, error)) error {
 	t.Helper()
 
-	timeout := defaultBindTimeout
-	if raw := os.Getenv(envBindTimeoutSeconds); raw != "" {
-		if secs, err := strconv.Atoi(raw); err == nil && secs > 0 {
-			timeout = time.Duration(secs) * time.Second
-		}
-	}
-
+	timeout := bindTimeout()
 	deadline := time.Now().Add(timeout)
 	for {
 		done, err := probe()
@@ -428,4 +422,15 @@ func waitForBinding(t *testing.T, what string, probe func() (bool, error)) error
 		t.Logf("waiting for %s to take effect...", what)
 		time.Sleep(defaultBindInterval)
 	}
+}
+
+// bindTimeout is how long to wait for a grant to take effect, overridable by
+// envBindTimeoutSeconds.
+func bindTimeout() time.Duration {
+	if raw := os.Getenv(envBindTimeoutSeconds); raw != "" {
+		if secs, err := strconv.Atoi(raw); err == nil && secs > 0 {
+			return time.Duration(secs) * time.Second
+		}
+	}
+	return defaultBindTimeout
 }

@@ -4,7 +4,7 @@
 # Variables and Configuration
 # ==========================================
 
-.PHONY: help build install test test-unit test-acc test-acc-ephemeral test-acc-admin test-acc-policy test-acc-binding testacc test-coverage test-coverage-html clean fmt lint generate docs docs-validate tf-local tf-local-shell default
+.PHONY: help build install test test-unit test-acc test-acc-ephemeral test-acc-admin test-acc-policy test-acc-binding test-acc-integration-binding testacc test-coverage test-coverage-html clean fmt lint generate docs docs-validate tf-local tf-local-shell default
 .PHONY: pre-commit pre-commit-quick ci-local check-tools install-tools gofumpt-fix tf-fmt-check tf-fmt-fix spell-check go-mod-tidy check-uncommitted install-git-hooks
 
 BINARY_NAME := terraform-provider-beyondtrust
@@ -56,6 +56,7 @@ help:
 	@echo "  test-acc-admin    - Run only the workload-identity acceptance tests (admin site)"
 	@echo "  test-acc-policy   - Run the IAM policy acceptance tests (lifecycle + binding)"
 	@echo "  test-acc-binding  - Prove a policy changes what the product API returns"
+	@echo "  test-acc-integration-binding - Prove an integration policy reaches only the provider it names"
 	@echo "  test-coverage     - Generate coverage report"
 	@echo "  test-coverage-html - Generate HTML coverage report"
 	@echo ""
@@ -201,6 +202,11 @@ test-acc-policy:
 test-acc-binding:
 	@echo "Running IAM policy binding acceptance tests..."
 	@TF_ACC=1 TFENV_TERRAFORM_VERSION=$(TERRAFORM_VERSION) go test -v -timeout=30m -tags acceptance -run TestAccPolicyBinding ./iam/...
+
+## test-acc-integration-binding: Prove a policy on an integration reaches only the provider it names
+test-acc-integration-binding:
+	@echo "Running integration policy binding acceptance tests..."
+	@TF_ACC=1 TFENV_TERRAFORM_VERSION=$(TERRAFORM_VERSION) go test -v -timeout=30m -tags acceptance -run TestAccIntegrationPolicyBinding ./iam/...
 
 ## testacc: Alias for test-acc
 testacc: test-acc
