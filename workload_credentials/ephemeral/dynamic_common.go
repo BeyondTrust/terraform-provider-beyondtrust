@@ -80,6 +80,39 @@ func generateCredential[T any](ctx context.Context, c *client.Client, name, fold
 	return envelope.Secret, nil
 }
 
+// Azure generate retry budget. See generateCredentialRetryingServerErrors.
+const azureGenerateAttempts = 3
+
+// azureGenerateRetryPause is a variable so unit tests can shorten it.
+var azureGenerateRetryPause = 3 * time.Second
+
+// generateCredentialRetryingServerErrors is generateCredential, retried on a 5xx.
+//
+// Terraform opens an ephemeral resource during both plan and apply, so one apply adds two
+// passwords to the same application a few seconds apart. Azure can reject the second with
+// a transient concurrency error, which currently reaches the provider as a 500.
+//
+// Generate is not idempotent. If the server failed after Azure created the password, a
+// retry leaves that password behind until the dynamic secret's TTL elapses.
+//
+// TODO: remove once the API retries Azure's concurrent request error itself.
+func generateCredentialRetryingServerErrors[T any](ctx context.Context, c *client.Client, name, folder string) (T, error) {
+	for attempt := 1; ; attempt++ {
+		secret, err := generateCredential[T](ctx, c, name, folder)
+
+		var apiErr *client.APIError
+		if err == nil || attempt == azureGenerateAttempts || !errors.As(err, &apiErr) || !apiErr.IsServerError() {
+			return secret, err
+		}
+
+		select {
+		case <-ctx.Done():
+			return secret, err
+		case <-time.After(jittered(azureGenerateRetryPause)):
+		}
+	}
+}
+
 // leaseIDOf reads the lease id a generated credential must carry.
 //
 // Every credential type returns one, so its absence means the response was not the object

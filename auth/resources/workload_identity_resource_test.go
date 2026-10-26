@@ -197,3 +197,36 @@ func TestApplyRead_KeepsImmutableFieldsRefreshesMutable(t *testing.T) {
 		t.Fatalf("conditions not refreshed: %+v", data.Conditions)
 	}
 }
+
+func TestApplyRead_AfterImportFillsNullImmutableFields(t *testing.T) {
+	// After ImportState only id is set; everything else is null.
+	data := &WorkloadIdentityResourceModel{
+		ServiceName: types.StringNull(),
+		IssuerURL:   types.StringNull(),
+		IdpCategory: types.StringNull(),
+	}
+	diags := applyRead(context.Background(), data, issuer{
+		IdentityID:       "id-1",
+		ServiceName:      "ci-pipeline",
+		IssuerURL:        "https://x",
+		IdpCategory:      idpCustom,
+		SiteID:           "site-1",
+		ScopeLevel:       "site",
+		Conditions:       map[string][]string{"sub": {"x"}},
+		RegisteredScopes: []string{"secrets"},
+	})
+	if diags.HasError() {
+		t.Fatalf("unexpected diags: %v", diags)
+	}
+	if data.ServiceName.ValueString() != "ci-pipeline" || data.IssuerURL.ValueString() != "https://x" || data.IdpCategory.ValueString() != idpCustom {
+		t.Fatalf("null immutable fields should be filled from the response: %+v", data)
+	}
+}
+
+func TestApplyRead_AfterImportLeavesFieldNullWhenResponseEmpty(t *testing.T) {
+	data := &WorkloadIdentityResourceModel{ServiceName: types.StringNull()}
+	applyRead(context.Background(), data, issuer{IdentityID: "id-1"})
+	if !data.ServiceName.IsNull() {
+		t.Fatalf("empty response value should leave the field null, got %q", data.ServiceName.ValueString())
+	}
+}

@@ -51,14 +51,22 @@ func TestAccWorkloadIdentityResource_basicAndUpdate(t *testing.T) {
 					resource.TestCheckResourceAttr(wiResourceName, "description", "updated description"),
 				),
 			},
-			// Import by identity id
+			// Import by identity id. The immutable identity fields are filled from the API on
+			// import, so they're verified too; the config values are already lower-case, which
+			// is how the API stores them.
 			{
 				ResourceName:      wiResourceName,
 				ImportState:       true,
 				ImportStateVerify: true,
-				// Immutable identity fields are kept from state on read (not echoed from the
-				// API, which lower-cases them), so don't verify them on import.
-				ImportStateVerifyIgnore: []string{"service_name", "issuer_url", "idp_category"},
+			},
+			// Import with an import block and plan against the same config. The framework fails
+			// the step unless the plan is a no-op import, so this catches an import that plans a
+			// replacement.
+			{
+				Config:          testAccWorkloadIdentityConfig(adminCfg, serviceName, issuerURL, "updated description"),
+				ResourceName:    wiResourceName,
+				ImportState:     true,
+				ImportStateKind: resource.ImportBlockWithID,
 			},
 		},
 	})
