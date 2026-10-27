@@ -1,0 +1,42 @@
+name: Security Gate
+
+# Pre-merge release SLA gate. Runs as a required check on the release-please PR so a failing
+# gate blocks the merge, rather than stranding the tag and draft release that release-please
+# creates on merge (which a re-run cannot finish). Skipped on all other PRs, which GitHub
+# reports as a passing required check.
+
+on:
+  pull_request:
+    branches:
+      - main
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions: {}
+
+jobs:
+  security-gate:
+    name: Security Gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # Release PR only, and same-repo only: the job runs a local action against checked-out
+    # code, so it must never run on a fork (head_ref is attacker-controllable).
+    if: >-
+      github.head_ref == 'release-please--branches--main' &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    permissions:
+      contents: read
+      security-events: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Security gate
+        # Evaluate main's open alerts, not the release PR's (empty) diff.
+        uses: ./.github/actions/security-gate
+        with:
+          ref: refs/heads/main
