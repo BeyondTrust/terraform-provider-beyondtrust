@@ -135,6 +135,26 @@ func updateSecret(ctx context.Context, c *client.Client, name, folder, probe str
 	return status, nil
 }
 
+// createIntegration creates an integration of the given provider ("aws" or "azure"). The body
+// is the provider's config, e.g. {"roleArn": ...} for AWS.
+func createIntegration(ctx context.Context, c *client.Client, provider, name string, body any) error {
+	return c.Post(ctx, c.BuildPath("/integrations/"+provider+"/"+name), nil, body, nil)
+}
+
+// deleteIntegration deletes an integration. Gated on DeleteIntegration, which only an
+// integration's owner holds by default. Success is 204; a missing integration reads as 403.
+func deleteIntegration(ctx context.Context, c *client.Client, provider, name string) (int, error) {
+	err := c.Delete(ctx, c.BuildPath("/integrations/"+provider+"/"+name), nil)
+	status, transportErr := statusOf(err)
+	if transportErr != nil {
+		return 0, transportErr
+	}
+	if status == http.StatusOK {
+		return http.StatusNoContent, nil
+	}
+	return status, err
+}
+
 func folderQuery(folder string) url.Values {
 	query := url.Values{}
 	if folder != "" {
