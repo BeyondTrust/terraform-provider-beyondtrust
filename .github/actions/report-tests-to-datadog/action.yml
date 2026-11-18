@@ -1,0 +1,53 @@
+name: "Report Tests to Datadog"
+
+description: "Convert a go test -v log to JUnit and upload it, with optional coverage, to Datadog Test Optimization."
+
+inputs:
+  suite:
+    description: "Suite name, sent as the suite tag."
+    required: true
+  log:
+    description: "Path to the go test -v output."
+    required: true
+  coverprofile:
+    description: "Optional Go coverprofile; its total is sent as test.code_coverage.lines_pct."
+    required: false
+    default: ""
+  datadog-api-key:
+    description: "Datadog API key."
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - name: Install datadog-ci
+      id: install
+      shell: bash
+      env:
+        DATADOG_CI_VERSION: "5.26.1"
+        DATADOG_CI_SHA256: "6bfead2585e062a4db0fb6f58cc8c34c26f3333e02e68931e18aeaacf141efdb"
+      run: |
+        set -euo pipefail
+        bin="$RUNNER_TEMP/datadog-ci"
+        if [[ ! -x "$bin" ]]; then
+          curl -fsSL --retry 3 -o "$bin" "https://github.com/DataDog/datadog-ci/releases/download/v${DATADOG_CI_VERSION}/datadog-ci_linux-x64"
+          echo "${DATADOG_CI_SHA256}  $bin" | sha256sum -c -
+          chmod +x "$bin"
+        fi
+        echo "path=$bin" >> "$GITHUB_OUTPUT"
+
+    - name: Upload ${{ inputs.suite }} results
+      shell: bash
+      env:
+        DATADOG_API_KEY: ${{ inputs.datadog-api-key }}
+        DATADOG_CI: ${{ steps.install.outputs.path }}
+        DD_SITE: datadoghq.com
+        DD_SERVICE: terraform-provider-beyondtrust
+        DD_GIT_COMMIT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        DD_GIT_BRANCH: ${{ github.head_ref || github.ref_name }}
+        DD_TAGS: "ci.source_workflow:${{ github.workflow_ref }},ci.source_event:${{ github.event_name }}"
+        GO_JUNIT_REPORT_VERSION: "v2.1.0"
+        SUITE: ${{ inputs.suite }}
+        LOG: ${{ inputs.log }}
+        COVERPROFILE: ${{ inputs.coverprofile }}
+      run: '"$GITHUB_ACTION_PATH/report.sh" "$SUITE" "$LOG" "$COVERPROFILE"'

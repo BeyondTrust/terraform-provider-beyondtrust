@@ -45,7 +45,23 @@ jobs:
         uses: ./.github/actions/setup-go
 
       - name: Run unit tests
-        run: make test-unit
+        id: unit
+        run: |
+          set -o pipefail
+          make test-unit 2>&1 | tee "$RUNNER_TEMP/unit.log"
+
+      - name: Report unit tests to Datadog
+        if: >-
+          !cancelled() &&
+          github.actor != 'dependabot[bot]' &&
+          (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) &&
+          (steps.unit.outcome == 'success' || steps.unit.outcome == 'failure')
+        uses: ./.github/actions/report-tests-to-datadog
+        with:
+          suite: unit
+          log: ${{ runner.temp }}/unit.log
+          coverprofile: coverage-unit.out
+          datadog-api-key: ${{ secrets.DATADOG_API_KEY }}
 
   acceptance-tests:
     name: Acceptance Tests
@@ -84,7 +100,10 @@ jobs:
             core.setOutput('token', token)
 
       - name: Run acceptance tests
-        run: make test-acc
+        id: acc
+        run: |
+          set -o pipefail
+          make test-acc 2>&1 | tee "$RUNNER_TEMP/acceptance.log"
         env:
           BEYONDTRUST_ACCESS_TOKEN: ${{ steps.oidc.outputs.token }}
           BEYONDTRUST_SITE_ID: ${{ secrets.BEYONDTRUST_SITE_ID }}
@@ -97,6 +116,17 @@ jobs:
           BEYONDTRUST_TEST_AZURE_CLIENT_SECRET: ${{ secrets.BEYONDTRUST_TEST_AZURE_CLIENT_SECRET }}
           BEYONDTRUST_TEST_AZURE_APPLICATION_OBJECT_ID: ${{ secrets.BEYONDTRUST_TEST_AZURE_APPLICATION_OBJECT_ID }}
           TF_ACC: "1"
+
+      - name: Report acceptance tests to Datadog
+        if: >-
+          !cancelled() &&
+          (steps.acc.outcome == 'success' || steps.acc.outcome == 'failure')
+        uses: ./.github/actions/report-tests-to-datadog
+        with:
+          suite: acceptance
+          log: ${{ runner.temp }}/acceptance.log
+          coverprofile: coverage-acc.out
+          datadog-api-key: ${{ secrets.DATADOG_API_KEY }}
 
   acceptance-tests-admin:
     name: Acceptance Tests (admin site)
@@ -134,7 +164,10 @@ jobs:
             core.setOutput('token', token)
 
       - name: Run workload-identity acceptance tests
-        run: make test-acc-admin
+        id: acc-admin-1
+        run: |
+          set -o pipefail
+          make test-acc-admin 2>&1 | tee -a "$RUNNER_TEMP/acceptance-admin.log"
         env:
           BEYONDTRUST_ADMIN_SITE_ID: ${{ secrets.BEYONDTRUST_ADMIN_SITE_ID }}
           BEYONDTRUST_ADMIN_ACCESS_TOKEN: ${{ steps.oidc.outputs.token }}
@@ -157,7 +190,10 @@ jobs:
       # BEYONDTRUST_SERVICE_NAME stays the admin identity here: the provider and the admin client
       # both use it, so the owner needs its own variable rather than sharing that one.
       - name: Run IAM policy acceptance tests
-        run: make test-acc-policy
+        id: acc-admin-2
+        run: |
+          set -o pipefail
+          make test-acc-policy 2>&1 | tee -a "$RUNNER_TEMP/acceptance-admin.log"
         env:
           BEYONDTRUST_ADMIN_SITE_ID: ${{ secrets.BEYONDTRUST_ADMIN_SITE_ID }}
           BEYONDTRUST_ADMIN_ACCESS_TOKEN: ${{ steps.oidc.outputs.token }}
@@ -200,7 +236,10 @@ jobs:
       # The ephemeral tests take seconds, so they go first and the binding test starts with
       # near-fresh tokens.
       - name: Run dynamic credential ephemeral and integration binding acceptance tests
-        run: make test-acc-ephemeral test-acc-integration-binding
+        id: acc-admin-3
+        run: |
+          set -o pipefail
+          make test-acc-ephemeral test-acc-integration-binding 2>&1 | tee -a "$RUNNER_TEMP/acceptance-admin.log"
         env:
           BEYONDTRUST_ACCESS_TOKEN: ${{ steps.oidc-ephemeral-product.outputs.token }}
           BEYONDTRUST_SITE_ID: ${{ secrets.BEYONDTRUST_SITE_ID }}
@@ -220,3 +259,15 @@ jobs:
           BEYONDTRUST_TEST_AZURE_APPLICATION_OBJECT_ID: ${{ secrets.BEYONDTRUST_TEST_AZURE_APPLICATION_OBJECT_ID }}
           BEYONDTRUST_TEST_REQUIRE_ACC: "1"
           TF_ACC: "1"
+
+      - name: Report admin-site acceptance tests to Datadog
+        if: >-
+          !cancelled() &&
+          (steps.acc-admin-1.outcome == 'success' || steps.acc-admin-1.outcome == 'failure' ||
+           steps.acc-admin-2.outcome == 'success' || steps.acc-admin-2.outcome == 'failure' ||
+           steps.acc-admin-3.outcome == 'success' || steps.acc-admin-3.outcome == 'failure')
+        uses: ./.github/actions/report-tests-to-datadog
+        with:
+          suite: acceptance-admin
+          log: ${{ runner.temp }}/acceptance-admin.log
+          datadog-api-key: ${{ secrets.DATADOG_API_KEY }}
