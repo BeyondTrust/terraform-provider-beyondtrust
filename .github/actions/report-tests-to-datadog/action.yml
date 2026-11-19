@@ -14,14 +14,23 @@ inputs:
     required: false
     default: ""
   datadog-api-key:
-    description: "Datadog API key."
-    required: true
+    description: "Datadog API key. When empty, the upload is skipped with a warning."
+    required: false
+    default: ""
 
 runs:
   using: "composite"
   steps:
+    - name: Skip ${{ inputs.suite }} upload without an API key
+      if: inputs.datadog-api-key == ''
+      shell: bash
+      env:
+        SUITE: ${{ inputs.suite }}
+      run: echo "::warning::DATADOG_API_KEY is not set, so the $SUITE results were not sent to Datadog."
+
     - name: Install datadog-ci
       id: install
+      if: inputs.datadog-api-key != ''
       shell: bash
       env:
         DATADOG_CI_VERSION: "5.26.1"
@@ -37,6 +46,7 @@ runs:
         echo "path=$bin" >> "$GITHUB_OUTPUT"
 
     - name: Upload ${{ inputs.suite }} results
+      if: inputs.datadog-api-key != ''
       shell: bash
       env:
         DATADOG_API_KEY: ${{ inputs.datadog-api-key }}
