@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.5.2](https://github.com/BeyondTrust/terraform-provider-beyondtrust/compare/v1.5.1...v1.5.2) (2026-11-23)
+
+
+### Bug Fixes
+
+* Bump Go to 1.26.11 for GO-2026-6859 ([#151](https://github.com/BeyondTrust/terraform-provider-beyondtrust/issues/151)) ([26e9d5e](https://github.com/BeyondTrust/terraform-provider-beyondtrust/commit/26e9d5eba22e091988744cee40db63ba15707c80))
+* **deps:** bump golang.org/x/net to v0.62.0 for CVE-2026-78661 ([#146](https://github.com/BeyondTrust/terraform-provider-beyondtrust/issues/146)) ([e80ac78](https://github.com/BeyondTrust/terraform-provider-beyondtrust/commit/e80ac780cb75a9ad630c82d4283143c34c92c40d))
+
 ## [1.5.1](https://github.com/BeyondTrust/terraform-provider-beyondtrust/compare/v1.5.0...v1.5.1) (2026-11-05)
 
 
